@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useChallengeDetailVM, useLeaderboardVM, useSubmissionsVM } from '../../viewmodels/useChallengeVM';
+import { useChallengeDetailVM, useLeaderboardVM } from '../../viewmodels/useChallengeVM';
+import { useSubmissionVM } from '../../viewmodels/useSubmissionVM';
 
 import ChallengeTimer from '../components/ChallengeTimer';
 import MetricBadge from '../components/MetricBadge';
+import SubmitFileZone from '../components/SubmitFileZone';
+import SubmissionHistoryTable from '../components/SubmissionHistoryTable';
 
 type Tab = 'description' | 'leaderboard' | 'submit' | 'history';
 
@@ -16,11 +19,23 @@ const ChallengeDetailPage = () => {
 
   const { challenge, loading: detailLoading, error: detailError, enroll } = useChallengeDetailVM(id || '');
   const { entries, loading: lbLoading, leaderboardType, setLeaderboardType } = useLeaderboardVM(id || '');
-  const { submissions, loading: subLoading, submitFile, submitting, submitError, submitSuccess } = useSubmissionsVM(id || '');
+  const { 
+    submissions, 
+    loading: subLoading,
+    error: subError,
+    submitFile, 
+    submitting, 
+    submitError, 
+    submitSuccess,
+    uploadProgress,
+    rateLimitCountdown,
+    togglingPrivateId,
+    isPolling,
+    toggleSelectForPrivate,
+    clearSubmitMessages
+  } = useSubmissionVM(id || '');
 
   const [enrolling, setEnrolling] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleEnroll = async () => {
     setEnrolling(true);
@@ -31,31 +46,6 @@ const ChallengeDetailPage = () => {
       alert(e instanceof Error ? e.message : 'Lỗi ghi danh');
     } finally {
       setEnrolling(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedFile) return;
-    try {
-      await submitFile(selectedFile);
-      setSelectedFile(null); // clear after success
-    } catch {
-      // Error handled by VM
     }
   };
 
@@ -244,125 +234,28 @@ const ChallengeDetailPage = () => {
 
         {/* TAB 3: NỘP BÀI */}
         {activeTab === 'submit' && (
-          <div className="max-w-2xl mx-auto">
-            {submitSuccess && (
-              <div className="mb-6 bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-xl flex items-center gap-3">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                {submitSuccess}
-              </div>
-            )}
-            
-            {submitError && (
-              <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center gap-3">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                {submitError}
-              </div>
-            )}
-
-            <div className="bg-surface-dark border border-slate-800 rounded-2xl p-8">
-              <h3 className="text-lg font-bold text-white mb-6">Nộp kết quả dự đoán</h3>
-              
-              <div 
-                className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
-                  dragActive ? 'border-primary bg-primary/5' : 'border-slate-700 hover:border-slate-500 hover:bg-white/5'
-                }`}
-                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
-                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); }}
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
-                onDrop={handleDrop}
-              >
-                {!selectedFile ? (
-                  <>
-                    <svg className="w-12 h-12 text-slate-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <p className="text-slate-300 font-medium mb-1">Kéo thả file .csv vào đây</p>
-                    <p className="text-slate-500 text-sm mb-4">hoặc</p>
-                    <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                      Chọn file
-                      <input type="file" className="hidden" accept=".csv" onChange={handleFileChange} />
-                    </label>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <svg className="w-12 h-12 text-primary mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-white font-medium mb-1">{selectedFile.name}</p>
-                    <p className="text-slate-500 text-sm mb-4">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                    <button onClick={() => setSelectedFile(null)} className="text-red-400 hover:text-red-300 text-sm font-medium">Hủy bỏ</button>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-8 flex justify-end">
-                <button
-                  onClick={handleSubmit}
-                  disabled={!selectedFile || submitting}
-                  className="px-8 py-3 bg-primary hover:bg-primary/90 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-xl font-medium transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                >
-                  {submitting && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>}
-                  Gửi bài
-                </button>
-              </div>
-            </div>
-          </div>
+          <SubmitFileZone 
+            maxFileSizeMb={challenge.max_file_size_mb || 50}
+            rateLimitCountdown={rateLimitCountdown}
+            submitting={submitting}
+            uploadProgress={uploadProgress}
+            submitError={submitError}
+            submitSuccess={submitSuccess}
+            onSubmit={submitFile}
+            onClearErrors={clearSubmitMessages}
+          />
         )}
 
         {/* TAB 4: LỊCH SỬ NỘP */}
         {activeTab === 'history' && (
-          <div className="bg-surface-dark border border-slate-800 rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-6">Lịch sử nộp bài</h3>
-            
-            {subLoading ? (
-              <div className="text-center py-12 text-slate-400">Đang tải lịch sử...</div>
-            ) : submissions.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">Chưa có bài nộp nào.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500">
-                      <th className="py-4 px-4 font-medium">Thời gian</th>
-                      <th className="py-4 px-4 font-medium">Trạng thái</th>
-                      <th className="py-4 px-4 font-medium text-right">Điểm Public</th>
-                      <th className="py-4 px-4 font-medium text-center">Tính Private</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map((sub) => (
-                      <tr key={sub.id} className="border-b border-slate-800/50 hover:bg-white/5 transition-colors">
-                        <td className="py-4 px-4 text-sm text-slate-300">
-                          {new Date(sub.submitted_at).toLocaleString('vi-VN')}
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            sub.status === 'SUCCESS' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                            sub.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                            sub.status === 'PROCESSING' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                            'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                          }`}>
-                            {sub.status === 'PROCESSING' && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 pulse-ring"></span>}
-                            {sub.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-right font-bold text-white">
-                          {sub.public_score !== null ? sub.public_score.toFixed(4) : '-'}
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          {sub.is_selected_for_private ? (
-                            <span className="text-green-400 text-lg">✓</span>
-                          ) : (
-                            <span className="text-slate-600">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <SubmissionHistoryTable 
+            submissions={submissions}
+            loading={subLoading}
+            error={subError}
+            isPolling={isPolling}
+            togglingPrivateId={togglingPrivateId}
+            onTogglePrivate={toggleSelectForPrivate}
+          />
         )}
 
       </div>

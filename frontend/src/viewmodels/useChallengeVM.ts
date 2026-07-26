@@ -9,7 +9,7 @@ import type { Challenge, PaginatedResponse, LeaderboardEntry, Submission, Leader
 
 const MOCK_CHALLENGES: Challenge[] = [
   {
-    id: 'c1',
+    id: '11111111-1111-1111-1111-111111111111',
     title: 'Phân loại ảnh Chó Mèo với CNN',
     description: 'Cuộc thi xây dựng mô hình Deep Learning để phân loại ảnh chó và mèo. \n\n## Mục tiêu\n\nPhân loại ảnh chó mèo với độ chính xác cao nhất.',
     type: 'PUBLIC',
@@ -23,7 +23,7 @@ const MOCK_CHALLENGES: Challenge[] = [
     dataset_url: 'https://google.com'
   },
   {
-    id: 'c2',
+    id: '22222222-2222-2222-2222-222222222222',
     title: 'Dự đoán giá nhà Boston',
     description: 'Sử dụng Random Forest hoặc XGBoost để dự đoán giá nhà. Đề bài rất cơ bản...',
     type: 'COMPETITION',
@@ -39,15 +39,15 @@ const MOCK_CHALLENGES: Challenge[] = [
 ];
 
 const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, team_id: 't1', team_name: 'AI Club Team A', best_public_score: 0.985, best_private_score: null, last_submission_time: new Date().toISOString(), is_selected_for_private: true },
-  { rank: 2, team_id: 't2', team_name: 'DHKTPM K20', best_public_score: 0.950, best_private_score: null, last_submission_time: new Date(Date.now() - 3600000).toISOString(), is_selected_for_private: false },
-  { rank: 3, team_id: 't3', team_name: 'The Underdogs', best_public_score: 0.890, best_private_score: null, last_submission_time: new Date(Date.now() - 7200000).toISOString(), is_selected_for_private: true },
+  { rank: 1, team_id: 'a1111111-1111-1111-1111-111111111111', team_name: 'AI Club Team A', best_public_score: 0.985, best_private_score: null, last_submission_time: new Date().toISOString(), is_selected_for_private: true },
+  { rank: 2, team_id: 'b2222222-2222-2222-2222-222222222222', team_name: 'DHKTPM K20', best_public_score: 0.950, best_private_score: null, last_submission_time: new Date(Date.now() - 3600000).toISOString(), is_selected_for_private: false },
+  { rank: 3, team_id: 'c3333333-3333-3333-3333-333333333333', team_name: 'The Underdogs', best_public_score: 0.890, best_private_score: null, last_submission_time: new Date(Date.now() - 7200000).toISOString(), is_selected_for_private: true },
 ];
 
 const MOCK_SUBMISSIONS: Submission[] = [
-  { id: 's1', public_score: 0.985, status: 'SUCCESS', is_selected_for_private: true, file_size_bytes: 1024 * 50, execution_time_ms: 1200, error_message: null, submitted_at: new Date().toISOString() },
-  { id: 's2', public_score: null, status: 'PROCESSING', is_selected_for_private: false, file_size_bytes: 1024 * 40, execution_time_ms: null, error_message: null, submitted_at: new Date(Date.now() - 10000).toISOString() },
-  { id: 's3', public_score: null, status: 'FAILED', is_selected_for_private: false, file_size_bytes: 1024 * 60, execution_time_ms: 50, error_message: 'File format error', submitted_at: new Date(Date.now() - 86400000).toISOString() },
+  { id: '11111111-1111-1111-1111-111111111111', public_score: 0.985, status: 'SUCCESS', is_selected_for_private: true, file_size_bytes: 1024 * 50, execution_time_ms: 1200, error_message: null, submitted_at: new Date().toISOString() },
+  { id: '22222222-2222-2222-2222-222222222222', public_score: null, status: 'PROCESSING', is_selected_for_private: false, file_size_bytes: 1024 * 40, execution_time_ms: null, error_message: null, submitted_at: new Date(Date.now() - 10000).toISOString() },
+  { id: '33333333-3333-3333-3333-333333333333', public_score: null, status: 'FAILED', is_selected_for_private: false, file_size_bytes: 1024 * 60, execution_time_ms: 50, error_message: 'File format error', submitted_at: new Date(Date.now() - 86400000).toISOString() },
 ];
 
 interface UseChallengeListOptions {

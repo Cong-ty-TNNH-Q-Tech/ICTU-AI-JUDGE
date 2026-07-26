@@ -59,7 +59,6 @@ export interface Challenge {
 export interface Submission {
   id: string;
   public_score: number | null;
-  private_score?: number | null;
   status: SubmissionStatus;
   is_selected_for_private: boolean;
   file_size_bytes: number;
@@ -143,7 +142,7 @@ export interface PaginatedResponse<T> extends PaginationMeta {
 // ==========================================
 
 export interface ApiError {
-  detail: string;
+  detail: string | Array<{ msg: string; loc: string[]; type: string }>;
   wait_minutes?: number;
   max_mb?: number;
 }
