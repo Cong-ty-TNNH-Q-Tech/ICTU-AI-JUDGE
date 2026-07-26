@@ -11,6 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
+from app.application.interfaces.repositories import IUserRepository
+from app.adapters.database.user_repository import UserRepository
+from app.domain.entities.entities import UserEntity
+from app.domain.exceptions.exceptions import PermissionDeniedError
 
 settings = get_settings()
 
@@ -68,6 +72,41 @@ def get_current_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token không hợp lệ.",
         )
+
+
+def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
+    """Dependency: inject UserRepository."""
+    return UserRepository(db)
+
+
+def get_current_user(
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    user_repo: IUserRepository = Depends(get_user_repository),
+) -> UserEntity:
+    """
+    Dependency: lấy UserEntity đầy đủ từ DB dựa trên token.
+    Raises 401 nếu user không tồn tại hoặc đã bị xóa.
+    """
+    user = user_repo.get_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Người dùng không tồn tại hoặc đã bị khóa.",
+        )
+    return user
+
+
+def require_admin(user: UserEntity = Depends(get_current_user)) -> UserEntity:
+    """
+    Dependency: kiểm tra quyền ADMIN.
+    Raises 403 nếu không phải ADMIN.
+    """
+    if not user.is_admin():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Không có quyền thực hiện thao tác này.",
+        )
+    return user
 
 
 # Re-export kiểu để Router dùng làm type hint
