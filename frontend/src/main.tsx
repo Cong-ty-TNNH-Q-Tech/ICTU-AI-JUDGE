@@ -4,19 +4,14 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-// MOCK AUTH STATE FOR UI TESTING
-localStorage.setItem('ictu-auth', JSON.stringify({
-  state: {
-    user: { id: "test-admin", email: "admin@ictu.edu.vn", full_name: "Admin ICTU", role: "ADMIN" },
-    isAuthenticated: true
-  },
-  version: 0
-}));
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   </React.StrictMode>,
 );

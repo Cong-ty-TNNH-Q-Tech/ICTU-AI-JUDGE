@@ -23,7 +23,7 @@ apiClient.interceptors.response.use(
   (error) => {
     const apiErr = error.response?.data as ApiError | undefined;
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
       // Token hết hạn — redirect về trang login
       window.location.href = '/login';
       return Promise.reject(error);
