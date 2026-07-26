@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.adapters.database.models import SubmissionModel, TeamMemberModel, TeamModel
 from app.application.interfaces.repositories import ITeamRepository
-from app.domain.entities.entities import TeamEntity
+from app.domain.entities.entities import TeamEntity, TeamInviteEntity, InviteStatus
 
 
 class SQLTeamRepository(ITeamRepository):
