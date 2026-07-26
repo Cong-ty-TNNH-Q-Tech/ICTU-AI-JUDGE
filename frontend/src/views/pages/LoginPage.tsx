@@ -4,7 +4,7 @@ import { useAuthVM } from '../../viewmodels/useAuthVM';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 
 const LoginPage = () => {
-  const { loading, error, loginWithGoogle, isAuthenticated, mockAdminLogin } = useAuthVM();
+  const { loading, error, loginWithGoogle, isAuthenticated } = useAuthVM();
   const navigate = useNavigate();
   const [sdkError, setSdkError] = useState<string | null>(null);
 
@@ -68,18 +68,7 @@ const LoginPage = () => {
         </div>
       </div>
       
-      {/* DEV ONLY */}
-      <div className="mt-4 flex justify-center">
-        <button
-          onClick={() => {
-            mockAdminLogin();
-            navigate('/challenges', { replace: true });
-          }}
-          className="text-xs text-slate-500 hover:text-slate-300 underline transition-colors"
-        >
-          [DEV] Đăng nhập nhanh quyền Admin
-        </button>
-      </div>
+
     </div>
   );
 };
