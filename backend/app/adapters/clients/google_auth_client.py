@@ -13,23 +13,18 @@ from app.domain.exceptions.exceptions import AuthenticationError
 logger = logging.getLogger(__name__)
 
 class GoogleAuthClient(IGoogleAuthClient):
-    USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
-
     def verify_token(self, token: str) -> Dict[str, Any]:
         """
-        Verify Google access_token via userinfo endpoint.
-        Raises AuthenticationError if token is invalid or expired.
+        Verify Google Token using oauth2 endpoint.
         """
-        req = urllib.request.Request(
-            self.USERINFO_URL,
-            headers={"Authorization": f"Bearer {token}"},
-        )
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
         try:
+            req = urllib.request.Request(url)
             with urllib.request.urlopen(req) as response:
                 return json.loads(response.read().decode())
-        except urllib.error.HTTPError as e:
-            logger.warning("Google userinfo failed: HTTP %s — %s", e.code, e.reason)
-            raise AuthenticationError("Token Google không hợp lệ hoặc đã hết hạn.")
         except urllib.error.URLError as e:
-            logger.warning("Google userinfo connection error: %s", e)
+            logger.warning(f"Google Token verification failed: {e}")
+            raise AuthenticationError("Token Google không hợp lệ hoặc đã hết hạn.")
+        except Exception as e:
+            logger.error(f"Unexpected error during Google Token verification: {e}")
             raise AuthenticationError("Có lỗi xảy ra khi xác thực với Google.")
