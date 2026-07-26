@@ -1,0 +1,518 @@
+openapi: 3.0.3
+info:
+  title: ICTU AI Judge API
+  description: RESTful API spec for ICTU AI Judge Platform (FastAPI Backend)
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+
+# Bảo mật: Yêu cầu JWT Token truyền ngầm qua HttpOnly Cookie thay vì Header Bearer.
+security:
+  - cookieAuth: []
+
+paths:
+  # ==========================================
+  # AUTH & USER ENDPOINTS
+  # ==========================================
+  /auth/google-login:
+    post:
+      summary: Đăng nhập bằng Google OAuth
+      tags:
+        - Auth
+      description: Gửi Google Access Token để đổi lấy JWT HttpOnly Cookie. Trả về thông tin User.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                google_token:
+                  type: string
+      responses:
+        '200':
+          description: Đăng nhập thành công (Cookie được set ngầm).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Token không hợp lệ hoặc email không thuộc @ictu.edu.vn
+
+  /auth/logout:
+    post:
+      summary: Đăng xuất
+      tags:
+        - Auth
+      description: Xóa JWT HttpOnly Cookie.
+      responses:
+        '200':
+          description: Đăng xuất thành công.
+
+  /users/me:
+    get:
+      summary: Lấy thông tin cá nhân
+      tags:
+        - Users
+      responses:
+        '200':
+          description: Thông tin user hiện tại.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Chưa đăng nhập.
+
+  /users/me/teams:
+    get:
+      summary: Lấy danh sách Đội thi (và Bài thi) mà tôi đang tham gia
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Phân trang danh sách Teams.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Team'
+
+  # ==========================================
+  # CHALLENGE ENDPOINTS
+  # ==========================================
+  /challenges:
+    get:
+      summary: Lấy danh sách Bài thi
+      tags:
+        - Challenges
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PUBLISHED, ARCHIVED]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Danh sách bài thi (Phân trang).
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Challenge'
+                  
+    post:
+      summary: Tạo Bài thi mới (Admin)
+      tags:
+        - Challenges
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeCreate'
+      responses:
+        '201':
+          description: Tạo cấu trúc thông tin JSON thành công.
+
+  /challenges/{id}/upload-secrets:
+    post:
+      summary: Upload File Đáp án và Script chấm điểm (Dành cho Admin)
+      tags:
+        - Challenges
+      description: Upload File Ground Truth và Custom Metric để lưu an toàn trên Storage ngầm, thí sinh không thể truy cập.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                ground_truth_csv:
+                  type: string
+                  format: binary
+                  description: File đáp án bắt buộc chứa cột 'Usage'
+                metric_script_py:
+                  type: string
+                  format: binary
+                  description: (Tùy chọn) Script python chấm điểm thủ công
+      responses:
+        '200':
+          description: Upload thành công.
+
+  /challenges/{id}:
+    get:
+      summary: Chi tiết Bài thi
+      tags:
+        - Challenges
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Thông tin chi tiết.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+
+  /challenges/{id}/enroll:
+    post:
+      summary: Ghi danh (Tự động tạo Team of 1)
+      tags:
+        - Challenges
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Ghi danh thành công, trả về Team ID.
+
+  # ==========================================
+  # TEAM ENDPOINTS
+  # ==========================================
+  /teams/{id}/invites:
+    post:
+      summary: Trưởng nhóm tạo mã mời
+      tags:
+        - Teams
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invitee_email:
+                  type: string
+      responses:
+        '201':
+          description: Trả về Invite Token link.
+        '403':
+          description: Đội đã full hoặc bạn không phải trưởng nhóm.
+
+  /teams/join:
+    post:
+      summary: Tham gia Đội qua mã mời
+      tags:
+        - Teams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Gia nhập thành công.
+        '400':
+          description: Bạn đã thuộc đội khác hoặc mã hết hạn.
+
+  # ==========================================
+  # SUBMISSION ENDPOINTS
+  # ==========================================
+  /challenges/{id}/submissions:
+    get:
+      summary: Lịch sử nộp bài của Đội
+      tags:
+        - Submissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Danh sách lượt nộp (Phân trang).
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Submission'
+
+    post:
+      summary: Upload file Nộp bài
+      tags:
+        - Submissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File CSV dự đoán
+      responses:
+        '201':
+          description: File hợp lệ, bắt đầu chấm điểm ngầm (Trạng thái PENDING).
+        '429':
+          description: Vi phạm Rate Limit (Xin chờ X phút).
+        '409':
+          description: Trùng Hash MD5 (Spam, file này vừa nộp rồi).
+
+  /submissions/{id}:
+    patch:
+      summary: Tích chọn bài tính điểm chung cuộc (Partial Update)
+      tags:
+        - Submissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_selected_for_private:
+                  type: boolean
+      responses:
+        '200':
+          description: Cập nhật cờ chọn bài thành công.
+
+  /submissions/{id}/source-code:
+    post:
+      summary: Upload Source Code cuối kỳ (Top N Teams)
+      tags:
+        - Submissions
+      description: Dành cho Top N đội. Bắt buộc nộp File Zip hoặc Ipynb kèm requirements.txt.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Nộp Source code thành công.
+        '403':
+          description: Cuộc thi chưa kết thúc hoặc đội không lọt Top N.
+
+  # ==========================================
+  # LEADERBOARD ENDPOINTS
+  # ==========================================
+  /challenges/{id}/leaderboard:
+    get:
+      summary: Lấy bảng xếp hạng (Phân trang)
+      tags:
+        - Leaderboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [public, private]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Bảng xếp hạng.
+        '403':
+          description: Private Leaderboard chưa được công bố.
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: JWT Token được lưu an toàn trong HttpOnly Cookie.
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Vị trí trang hiện tại
+      schema:
+        type: integer
+        default: 1
+    SizeParam:
+      name: size
+      in: query
+      description: Số lượng item trên một trang
+      schema:
+        type: integer
+        default: 20
+
+  schemas:
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 1500
+        page:
+          type: integer
+          example: 1
+        size:
+          type: integer
+          example: 20
+        total_pages:
+          type: integer
+          example: 75
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [STUDENT, ADMIN]
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        challenge_id:
+          type: string
+          format: uuid
+        leader_id:
+          type: string
+          format: uuid
+
+    Challenge:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        metric_direction:
+          type: string
+        dataset_url:
+          type: string
+          format: uri
+
+    ChallengeCreate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        metric_name:
+          type: string
+        rate_limit_minutes:
+          type: integer
+          
+    Submission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        public_score:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, SUCCESS, FAILED]
+        is_selected_for_private:
+          type: boolean
+        submitted_at:
+          type: string
+          format: date-time

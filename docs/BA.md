@@ -39,17 +39,17 @@ Hệ thống chia làm 2 nhóm bài chính:
 ### 2.3. Cấu trúc của một Bài toán (Challenge Structure)
 Mỗi bài (dù là Public hay Competition) đều bao gồm các thành phần sau:
 - **Thông tin chung:** Tiêu đề, Mô tả bài toán (Mục tiêu, bối cảnh).
-- **Dữ liệu (Dataset):** Mô tả cấu trúc dữ liệu, đính kèm link tải dataset (vd: Link Google Drive hoặc tải trực tiếp). Yêu cầu có thêm **file mẫu (`sample_submission.csv`)** để thí sinh biết cấu trúc cột (ID, Prediction) trước khi nộp.
+- **Dữ liệu (Dataset):** Admin đính kèm **Link thư mục Google Drive** chứa toàn bộ các file cần thiết cho quá trình làm bài của sinh viên (ví dụ: `dataset.zip`, `baseline.ipynb`, `public_submission.csv`, `best_model.pth`).
 - **Thảo luận (Discussion):** Khu vực để thí sinh hỏi đáp, báo lỗi dataset và Admin vào giải đáp.
 - **Luật chơi & Giới hạn thời gian (Rules & Timeline):**
   - Thời gian mở bài (Start Time) và Thời gian đóng bài (End Time). Ngoài thời gian này, hệ thống không nhận submit.
 - **Hệ thống chấm điểm (Evaluation/Metrics):**
   - Admin đưa ra khung metrics để chấm điểm (ví dụ: Accuracy, F1-Score, RMSE). Ngoài ra, hỗ trợ **Custom Metric** bằng cách cho phép Admin tải lên một script Python (`metric.py`) để hệ thống chấm điểm cho các bài toán đặc thù.
-  - File kết quả chuẩn (Ground Truth): Admin upload lên, bắt buộc phải có **cột `Usage` (chứa nhãn `Public`, `Private`)**. Worker khi chấm điểm sẽ dựa vào cột này để phân định dòng nào tính cho Public Leaderboard, dòng nào tính cho Private Leaderboard (chống Data Leakage, đảm bảo phân phối test chuẩn).
+  - File kết quả chuẩn (Ground Truth): Admin upload **trực tiếp lên Server** (bảo mật tuyệt đối), bắt buộc phải có **cột `Usage` (chứa nhãn `Public`, `Private`)**. Worker khi chấm điểm sẽ đọc file này để phân định dòng nào tính cho Public Leaderboard, dòng nào tính cho Private Leaderboard. Sinh viên không thể thấy file này.
 - **Cơ chế Nộp bài (Submission Type):**
   - Hệ thống chỉ yêu cầu nộp **file kết quả (vd: .csv, .json)**, thí sinh tự chạy model trên máy cá nhân/Google Colab. Không chạy trực tiếp model trên server web để tiết kiệm chi phí phần cứng.
 - **Giới hạn nộp bài (Submission Limits):**
-  - Giới hạn số lần nộp bài tối đa trong 1 ngày (Daily limit).
+  - Không giới hạn số lần nộp bài trong ngày (Unlimited daily submits).
   - Giới hạn khoảng thời gian giữa 2 lần nộp (Rate limit - ví dụ: 10 phút sau lần submit trước mới được nộp tiếp). Nếu là đội thi, giới hạn này áp dụng chung cho cả đội.
   - **Giới hạn dung lượng file:** Admin thiết lập kích thước tối đa cho file upload (ví dụ max 50MB) để ngăn chặn việc spam file lớn gây quá tải máy chủ.
 - **Bảng xếp hạng (Leaderboard):**
@@ -117,7 +117,7 @@ Mỗi bài (dù là Public hay Competition) đều bao gồm các thành phần 
 ### Luồng 1: Tổ chức cuộc thi (Admin)
 1. Admin tạo Competition -> Nhập Mô tả, Thời gian, Dataset Link.
 2. Admin cấu hình Metric (chuẩn hoặc tải lên `metric.py`) -> Upload file mẫu `sample_submission.csv` và file `Ground Truth` (có cột phân định `Usage`).
-3. Admin thiết lập rules: max 5 submits/ngày, rate limit 10 phút, giới hạn file size 50MB, deadline khóa đội.
+3. Admin thiết lập rules: rate limit 10 phút, giới hạn file size 50MB, deadline khóa đội.
 4. Admin import danh sách user/team được phép tham gia vào Competition.
 
 ### Luồng 2: Thí sinh tham gia thi (User)
