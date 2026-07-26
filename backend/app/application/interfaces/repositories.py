@@ -72,6 +72,18 @@ class ITeamRepository(ABC):
     @abstractmethod
     def has_submissions(self, team_id: uuid.UUID) -> bool: ...
 
+    @abstractmethod
+    def create_invite(self, team_id: uuid.UUID, inviter_id: uuid.UUID, token: str, expires_at: datetime) -> str: ...
+
+    @abstractmethod
+    def get_invite_by_token(self, token: str) -> "TeamInviteEntity | None": ...
+
+    @abstractmethod
+    def update_invite_status(self, token: str, status: "InviteStatus") -> None: ...
+
+    @abstractmethod
+    def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
+
 
 class ISubmissionRepository(ABC):
     @abstractmethod

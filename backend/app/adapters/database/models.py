@@ -72,6 +72,7 @@ class ChallengeModel(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     team_lock_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rate_limit_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    max_team_size: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     max_file_size_mb: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False)
     metric_direction: Mapped[str] = mapped_column(

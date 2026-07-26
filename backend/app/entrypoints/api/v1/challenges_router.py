@@ -92,11 +92,31 @@ async def upload_secrets(
     raise NotImplementedError("Challenges router — chưa implement")
 
 
-@router.post("/{challenge_id}/enroll")
-async def enroll(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.post("/{challenge_id}/enroll", response_model=dict)
+async def enroll(
+    challenge_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id)
+):
     """UC03 — Ghi danh vào Public Challenge (tự động tạo Team of 1)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.team_use_case import TeamUseCase
+    from app.adapters.database.user_repository import SQLUserRepository
+    from app.adapters.database.team_repository import SQLTeamRepository
+
+    use_case = TeamUseCase(
+        team_repo=SQLTeamRepository(db),
+        challenge_repo=SQLChallengeRepository(db),
+        user_repo=SQLUserRepository(db)
+    )
+    
+    result = use_case.auto_create_team_if_not_exists(user_id=user_id, challenge_id=challenge_id)
+    db.commit()
+    
+    return {
+        "detail": "Ghi danh thành công",
+        "team_id": result.id,
+        "team_name": result.name
+    }
 
 
 @router.get("/{challenge_id}/participants")
