@@ -14,6 +14,7 @@ from app.domain.entities.entities import (
     SubmissionStatus,
     TeamEntity,
     UserEntity,
+    MetricDirection,
 )
 
 
@@ -129,14 +130,13 @@ class ILeaderboardRepository(ABC):
 
     @abstractmethod
     def list_public(
-        self, challenge_id: uuid.UUID, page: int, size: int
-    ) -> tuple[list[LeaderboardEntryEntity], int]: ...
+        self, challenge_id: uuid.UUID, page: int, size: int, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
+    ) -> tuple[list[tuple[LeaderboardEntryEntity, str]], int]: ...
 
     @abstractmethod
     def list_private(
-        self, challenge_id: uuid.UUID, page: int, size: int
-    ) -> tuple[list[LeaderboardEntryEntity], int]: ...
-
+        self, challenge_id: uuid.UUID, page: int, size: int, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
+    ) -> tuple[list[tuple[LeaderboardEntryEntity, str]], int]: ...
 
 class IStorageRepository(ABC):
     @abstractmethod
