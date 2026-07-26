@@ -67,6 +67,8 @@ const LoginPage = () => {
           Chỉ dành cho tài khoản @ictu.edu.vn
         </div>
       </div>
+      
+
     </div>
   );
 };
