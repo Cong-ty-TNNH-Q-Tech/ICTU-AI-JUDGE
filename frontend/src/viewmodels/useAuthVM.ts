@@ -49,6 +49,15 @@ export function useAuthVM() {
     }
   }, [isAuthenticated, setUser]);
 
+  const mockAdminLogin = useCallback(() => {
+    setUser({
+      id: 'mock-admin-id',
+      email: 'admin@ictu.edu.vn',
+      full_name: 'Admin (Mock)',
+      role: 'ADMIN'
+    });
+  }, [setUser]);
+
   return {
     user,
     isAuthenticated,
@@ -57,5 +66,6 @@ export function useAuthVM() {
     loginWithGoogle,
     logout,
     initUser,
+    mockAdminLogin,
   };
 }
