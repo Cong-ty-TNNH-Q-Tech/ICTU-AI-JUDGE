@@ -41,7 +41,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
               <Link to="/" className="flex items-center gap-2 group">
                 <img src={IctuLogo} alt="ICTU Logo" className="h-8 w-auto object-contain" />
                 <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 group-hover:to-white transition-all">
-                  ICTU AI
+                  ICTU AI JUDGE CHALLENGE
                 </span>
               </Link>
             </div>
