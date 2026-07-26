@@ -67,7 +67,7 @@ export function useChallengeListVM(options: UseChallengeListOptions = {}) {
     try {
       const result = await challengeService.list(options);
       setData(result);
-    } catch (err) {
+    } catch {
       console.warn('API list challenges failed, using mock data');
       setData({ items: MOCK_CHALLENGES, total: MOCK_CHALLENGES.length, page: 1, size: 9, total_pages: 1 });
       // setError(err instanceof Error ? err.message : 'Lỗi tải danh sách bài thi');
@@ -95,7 +95,7 @@ export function useChallengeDetailVM(challengeId: string) {
     try {
       const result = await challengeService.getById(challengeId);
       setChallenge(result);
-    } catch (err) {
+    } catch {
       console.warn('API get challenge detail failed, using mock data');
       const mock = MOCK_CHALLENGES.find(c => c.id === challengeId) || MOCK_CHALLENGES[0];
       setChallenge(mock);
@@ -130,7 +130,7 @@ export function useLeaderboardVM(challengeId: string) {
     try {
       const result = await challengeService.getLeaderboard(challengeId, { type: leaderboardType });
       setEntries(result.items);
-    } catch (err) {
+    } catch {
       console.warn('API get leaderboard failed, using mock data');
       setEntries(MOCK_LEADERBOARD);
       // setError(err instanceof Error ? err.message : 'Lỗi tải bảng xếp hạng');
@@ -161,7 +161,7 @@ export function useSubmissionsVM(challengeId: string) {
     try {
       const result = await challengeService.listSubmissions(challengeId);
       setSubmissions(result.items);
-    } catch (err) {
+    } catch {
       console.warn('API get submissions failed, using mock data');
       setSubmissions(MOCK_SUBMISSIONS);
       // setError(err instanceof Error ? err.message : 'Lỗi tải lịch sử nộp bài');
@@ -183,7 +183,7 @@ export function useSubmissionsVM(challengeId: string) {
       await challengeService.submitFile(challengeId, file);
       setSubmitSuccess('Nộp bài thành công!');
       await fetchSubmissions(); // Refresh list after submit
-    } catch (err) {
+    } catch {
       console.warn('API submit file failed, mocking success');
       setSubmitSuccess('Nộp bài thành công (MOCK)!');
       // setSubmitError(err instanceof Error ? err.message : 'Lỗi nộp bài');

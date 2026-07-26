@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChallengeDetailVM, useLeaderboardVM, useSubmissionsVM } from '../../viewmodels/useChallengeVM';
-import { useAuthStore } from '../../store';
+
 import ChallengeTimer from '../components/ChallengeTimer';
 import MetricBadge from '../components/MetricBadge';
 
@@ -13,7 +13,7 @@ const ChallengeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>('description');
   
-  const { user } = useAuthStore();
+
   const { challenge, loading: detailLoading, error: detailError, enroll } = useChallengeDetailVM(id || '');
   const { entries, loading: lbLoading, leaderboardType, setLeaderboardType } = useLeaderboardVM(id || '');
   const { submissions, loading: subLoading, submitFile, submitting, submitError, submitSuccess } = useSubmissionsVM(id || '');
@@ -27,8 +27,8 @@ const ChallengeDetailPage = () => {
     try {
       await enroll();
       alert('Ghi danh thành công!');
-    } catch (e: any) {
-      alert(e.message || 'Lỗi ghi danh');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Lỗi ghi danh');
     } finally {
       setEnrolling(false);
     }
@@ -54,7 +54,7 @@ const ChallengeDetailPage = () => {
     try {
       await submitFile(selectedFile);
       setSelectedFile(null); // clear after success
-    } catch (e) {
+    } catch {
       // Error handled by VM
     }
   };
@@ -221,7 +221,7 @@ const ChallengeDetailPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {entries.map((entry, idx) => (
+                    {entries.map((entry) => (
                       <tr key={entry.team_id} className="border-b border-slate-800/50 hover:bg-white/5 transition-colors">
                         <td className="py-4 px-4">
                           {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : <span className="text-slate-400">#{entry.rank}</span>}
