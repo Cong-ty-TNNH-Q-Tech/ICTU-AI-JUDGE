@@ -28,7 +28,7 @@ class AuthUseCase:
         if not email:
             raise AuthenticationError("Không tìm thấy email trong Token.")
 
-        if data.get("email_verified") is not True:
+        if data.get("email_verified") not in (True, "true"):
             raise AuthenticationError("Email Google chưa được xác thực (email_verified=false).")
 
         if not email.endswith("@ictu.edu.vn"):
