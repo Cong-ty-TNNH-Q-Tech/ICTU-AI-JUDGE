@@ -25,7 +25,7 @@ class GoogleAuthClient(IGoogleAuthClient):
             headers={"Authorization": f"Bearer {token}"},
         )
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 return json.loads(response.read().decode())
         except urllib.error.HTTPError as e:
             logger.warning("Google userinfo failed: HTTP %s — %s", e.code, e.reason)

@@ -32,7 +32,7 @@ class UserResponse(BaseModel):
     role: str
 
 @router.post("/google-login", response_model=UserResponse)
-async def google_login(
+def google_login(
     request: GoogleLoginRequest,
     response: Response,
     user_repo: IUserRepository = Depends(get_user_repository),
