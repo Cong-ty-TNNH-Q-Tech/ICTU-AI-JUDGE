@@ -13,6 +13,8 @@ from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
 from app.application.interfaces.repositories import IUserRepository
 from app.adapters.database.user_repository import UserRepository
+from app.application.interfaces.clients import IGoogleAuthClient
+from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.domain.entities.entities import UserEntity
 from app.domain.exceptions.exceptions import PermissionDeniedError
 
@@ -77,6 +79,11 @@ def get_current_user_id(
 def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     """Dependency: inject UserRepository."""
     return UserRepository(db)
+
+
+def get_google_auth_client() -> IGoogleAuthClient:
+    """Dependency: inject GoogleAuthClient."""
+    return GoogleAuthClient()
 
 
 def get_current_user(

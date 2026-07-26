@@ -1,39 +1,28 @@
 """
 Auth Use Case — UC01: Authenticate via Google OAuth.
 """
-import json
 import logging
-import urllib.request
-import urllib.error
 import uuid
 from datetime import datetime, timezone
 
 from app.application.interfaces.repositories import IUserRepository
+from app.application.interfaces.clients import IGoogleAuthClient
 from app.domain.entities.entities import UserEntity, UserRole
 from app.domain.exceptions.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
 
 class AuthUseCase:
-    def __init__(self, user_repo: IUserRepository):
+    def __init__(self, user_repo: IUserRepository, google_client: IGoogleAuthClient):
         self._user_repo = user_repo
+        self._google_client = google_client
 
     def login_with_google(self, google_token: str) -> UserEntity:
         """
         Verify Google Token and return UserEntity.
         Raises AuthenticationError if token is invalid or email is not @ictu.edu.vn.
         """
-        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={google_token}"
-        try:
-            req = urllib.request.Request(url)
-            with urllib.request.urlopen(req) as response:
-                data = json.loads(response.read().decode())
-        except urllib.error.URLError as e:
-            logger.warning(f"Google Token verification failed: {e}")
-            raise AuthenticationError("Token Google không hợp lệ hoặc đã hết hạn.")
-        except Exception as e:
-            logger.error(f"Unexpected error during Google Token verification: {e}")
-            raise AuthenticationError("Có lỗi xảy ra khi xác thực với Google.")
+        data = self._google_client.verify_token(google_token)
 
         email = data.get("email", "")
         if not email:

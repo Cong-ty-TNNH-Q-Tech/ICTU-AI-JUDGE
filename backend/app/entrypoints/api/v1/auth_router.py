@@ -9,8 +9,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
-from app.entrypoints.dependencies import get_user_repository, get_current_user
+from app.entrypoints.dependencies import get_user_repository, get_google_auth_client
 from app.application.interfaces.repositories import IUserRepository
+from app.application.interfaces.clients import IGoogleAuthClient
 from app.application.use_cases.auth_use_case import AuthUseCase
 from app.domain.entities.entities import UserEntity
 from app.core.config import get_settings
@@ -35,11 +36,12 @@ async def google_login(
     request: GoogleLoginRequest,
     response: Response,
     user_repo: IUserRepository = Depends(get_user_repository),
+    google_client: IGoogleAuthClient = Depends(get_google_auth_client),
 ):
     """
     UC01 — Đăng nhập bằng Google OAuth.
     """
-    auth_use_case = AuthUseCase(user_repo)
+    auth_use_case = AuthUseCase(user_repo, google_client)
     user = auth_use_case.login_with_google(request.google_token)
     
     # Tạo JWT access token
