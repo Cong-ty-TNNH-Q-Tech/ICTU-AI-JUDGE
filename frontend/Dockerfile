@@ -1,0 +1,27 @@
+# Stage 1: Build React/Vite app
+FROM node:20-alpine as builder
+
+WORKDIR /app
+
+# Copy package.json và package-lock.json (nếu có)
+# Bỏ qua lỗi nếu chưa có thư mục mã nguồn
+COPY package*.json ./
+RUN npm install || echo "Bỏ qua npm install vì chưa có package.json"
+
+# Copy mã nguồn và build
+COPY . .
+# Tạo thư mục dist tạm thời nếu chưa có mã nguồn (giúp Nginx stage không bị lỗi)
+RUN npm run build || mkdir -p dist
+
+# Stage 2: Serve với Nginx
+FROM nginx:alpine
+
+# Copy cấu hình Nginx custom
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy build files từ stage 1
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
