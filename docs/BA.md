@@ -40,7 +40,6 @@ Hệ thống chia làm 2 nhóm bài chính:
 Mỗi bài (dù là Public hay Competition) đều bao gồm các thành phần sau:
 - **Thông tin chung:** Tiêu đề, Mô tả bài toán (Mục tiêu, bối cảnh).
 - **Dữ liệu (Dataset):** Admin đính kèm **Link thư mục Google Drive** chứa toàn bộ các file cần thiết cho quá trình làm bài của sinh viên (ví dụ: `dataset.zip`, `baseline.ipynb`, `public_submission.csv`, `best_model.pth`).
-- **Thảo luận (Discussion):** Khu vực để thí sinh hỏi đáp, báo lỗi dataset và Admin vào giải đáp.
 - **Luật chơi & Giới hạn thời gian (Rules & Timeline):**
   - Thời gian mở bài (Start Time) và Thời gian đóng bài (End Time). Ngoài thời gian này, hệ thống không nhận submit.
 - **Hệ thống chấm điểm (Evaluation/Metrics):**
@@ -67,7 +66,6 @@ Mỗi bài (dù là Public hay Competition) đều bao gồm các thành phần 
 
 ### 2.5. Tính năng dành cho User
 - Xem danh sách các Public Challenges và Competitions (được phép tham gia).
-- Xem chi tiết đề bài, tải dataset và tham gia thảo luận (Q&A).
 - Nộp bài (Submit): 
   - Upload file kết quả định dạng `.csv` hoặc `.json`.
   - Hệ thống kiểm tra hợp lệ của file (đối chiếu cấu trúc cột với `sample_submission.csv`, kiểm tra dung lượng).
