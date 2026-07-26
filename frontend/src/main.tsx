@@ -2,21 +2,19 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import ErrorBoundary from './views/components/ErrorBoundary';
 import './index.css';
 
-// MOCK AUTH STATE FOR UI TESTING
-localStorage.setItem('ictu-auth', JSON.stringify({
-  state: {
-    user: { id: "test-admin", email: "admin@ictu.edu.vn", full_name: "Admin ICTU", role: "ADMIN" },
-    isAuthenticated: true
-  },
-  version: 0
-}));
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id.apps.googleusercontent.com'}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </GoogleOAuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );
