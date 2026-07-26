@@ -162,3 +162,24 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             items.append((self._to_entity(model, rank=computed_rank, team_name=team_name), team_name))
 
         return items, total
+
+    def recalculate_ranks(self, challenge_id: uuid.UUID, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER) -> None:
+        if direction == MetricDirection.HIGHER_IS_BETTER:
+            score_order = LeaderboardModel.best_public_score.desc()
+        else:
+            score_order = LeaderboardModel.best_public_score.asc()
+
+        rank_func = func.rank().over(
+            order_by=[score_order, LeaderboardModel.last_submission_time.asc()]
+        ).label("computed_rank")
+
+        stmt = (
+            select(LeaderboardModel, rank_func)
+            .where(LeaderboardModel.challenge_id == challenge_id)
+        )
+        
+        results = self.db.execute(stmt).all()
+        for model, computed_rank in results:
+            model.rank = computed_rank
+            
+        self.db.flush()

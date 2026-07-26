@@ -138,6 +138,13 @@ class ILeaderboardRepository(ABC):
         self, challenge_id: uuid.UUID, page: int, size: int, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
     ) -> tuple[list[tuple[LeaderboardEntryEntity, str]], int]: ...
 
+    @abstractmethod
+    def recalculate_ranks(self, challenge_id: uuid.UUID, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER) -> None:
+        """
+        Recalculates and updates the 'rank' column for all leaderboard entries of a challenge.
+        """
+        ...
+
 class IStorageRepository(ABC):
     @abstractmethod
     def upload(self, key: str, data: bytes, content_type: str = "text/csv") -> str:
