@@ -59,7 +59,6 @@ export interface Challenge {
 export interface Submission {
   id: string;
   public_score: number | null;
-  private_score?: number | null;
   status: SubmissionStatus;
   is_selected_for_private: boolean;
   file_size_bytes: number;
