@@ -40,56 +40,159 @@ def _get_submission_use_case(db: Session) -> SubmissionUseCase:
 # Existing endpoints (skeleton — chưa implement)
 # ==========================================
 
-@router.get("")
+@router.get("", response_model=dict)
 async def list_challenges(
     status_filter: str | None = None,
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
+    user_id: uuid.UUID | None = Depends(get_current_user_id) # Optional cho Public endpoint, nhưng ở đây cứ check nếu có auth thì maybe coi là admin
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    from app.adapters.database.user_repository import SQLUserRepository
+    
+    # Đoán role từ DB nếu cần, nhưng list_all không lộ file.
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    # Check nếu user là Admin thì is_admin=True, nếu ko có thì False
+    is_admin = False
+    if user_id:
+        user_repo = SQLUserRepository(db)
+        user = user_repo.get_by_id(user_id)
+        if user and user.role.value == "ADMIN":
+            is_admin = True
+
+    result = use_case.list_challenges(page=page, size=size, status_filter=status_filter, is_admin=is_admin)
+    return result.dict()
 
 
-@router.post("")
-async def create_challenge(db: Session = Depends(get_db)):
+@router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def create_challenge(
+    request: dict,
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
+):
     """UC09 — Tạo bài thi mới (Admin only)."""
-    # TODO: Validate Admin role từ JWT cookie
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.challenge_dtos import ChallengeCreateRequestDTO
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    
+    dto = ChallengeCreateRequestDTO(**request)
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    
+    result = use_case.create_challenge(admin_id=admin_id, data=dto)
+    db.commit()
+    return result.dict()
 
 
-@router.get("/{challenge_id}")
-async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.get("/{challenge_id}", response_model=dict)
+async def get_challenge(
+    challenge_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID | None = Depends(get_current_user_id)
+):
     """Chi tiết bài thi."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    from app.adapters.database.user_repository import SQLUserRepository
+    
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    
+    is_admin = False
+    if user_id:
+        user_repo = SQLUserRepository(db)
+        user = user_repo.get_by_id(user_id)
+        if user and user.role.value == "ADMIN":
+            is_admin = True
+            
+    try:
+        result = use_case.get_challenge(challenge_id=challenge_id, is_admin=is_admin)
+        return result.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.patch("/{challenge_id}")
-async def update_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.patch("/{challenge_id}", response_model=dict)
+async def update_challenge(
+    challenge_id: uuid.UUID,
+    request: dict,
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
+):
     """UC09 — Cập nhật bài thi (Admin only). Bị khóa nếu đã có Submission."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.challenge_dtos import ChallengeUpdateRequestDTO
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    
+    dto = ChallengeUpdateRequestDTO(**request)
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    
+    try:
+        result = use_case.update_challenge(challenge_id=challenge_id, data=dto)
+        db.commit()
+        return result.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/{challenge_id}")
-async def delete_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.delete("/{challenge_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_challenge(
+    challenge_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
+):
     """UC09 — Soft delete bài thi (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    use_case.delete_challenge(challenge_id)
+    db.commit()
+    return None
 
 
-@router.post("/{challenge_id}/upload-secrets")
+@router.post("/{challenge_id}/upload-secrets", response_model=dict)
 async def upload_secrets(
     challenge_id: uuid.UUID,
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
     db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    
+    gt_bytes = await ground_truth_csv.read()
+    metric_bytes = await metric_script_py.read() if metric_script_py else None
+    
+    try:
+        result = use_case.upload_secrets(
+            challenge_id=challenge_id,
+            ground_truth_bytes=gt_bytes,
+            metric_script_bytes=metric_bytes
+        )
+        db.commit()
+        return result.dict()
+    except ValueError as e:
+        if "Usage" in str(e):
+            raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{challenge_id}/enroll", response_model=dict)
