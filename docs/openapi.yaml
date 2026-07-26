@@ -184,6 +184,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Challenge'
+    patch:
+      summary: Cập nhật Bài thi (Admin)
+      tags:
+        - Challenges
+      description: Cập nhật thông tin bài thi (mô tả, thời gian, luật thi). Bị khóa nếu bài đã có Submission.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeUpdate'
+      responses:
+        '200':
+          description: Cập nhật thành công.
+        '403':
+          description: Không có quyền (không phải Admin hoặc bài thi đã lock).
+    delete:
+      summary: Xóa mềm Bài thi (Admin - Soft Delete)
+      tags:
+        - Challenges
+      description: Đặt `deleted_at` = now(), không xóa cứng khỏi Database.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Xóa mềm thành công.
+        '403':
+          description: Không có quyền hoặc bài thi đang diễn ra.
 
   /challenges/{id}/enroll:
     post:
@@ -200,6 +240,67 @@ paths:
       responses:
         '201':
           description: Ghi danh thành công, trả về Team ID.
+
+  /challenges/{id}/participants:
+    get:
+      summary: Xem danh sách Whitelist (Admin)
+      tags:
+        - Challenges
+        - Admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Danh sách sinh viên được cấp quyền tham gia Competition.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Participant'
+    post:
+      summary: Thêm Whitelist Participant (Admin)
+      tags:
+        - Challenges
+        - Admin
+      description: Thêm một hoặc nhiều user vào danh sách được phép tham gia Competition.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: Danh sách User ID cần thêm vào whitelist
+      responses:
+        '201':
+          description: Thêm whitelist thành công.
+        '403':
+          description: Không có quyền Admin.
 
   # ==========================================
   # TEAM ENDPOINTS
@@ -392,8 +493,80 @@ paths:
       responses:
         '200':
           description: Bảng xếp hạng.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/LeaderboardEntry'
         '403':
           description: Private Leaderboard chưa được công bố.
+
+  # ==========================================
+  # ADMIN ENDPOINTS
+  # ==========================================
+  /admin/users:
+    get:
+      summary: Danh sách Sinh viên (Admin)
+      tags:
+        - Admin
+      parameters:
+        - name: q
+          in: query
+          description: Tìm kiếm theo email hoặc họ tên
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Danh sách user (phân trang).
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Không có quyền Admin.
+
+  /admin/users/{id}:
+    patch:
+      summary: Khóa / Mở khóa tài khoản Sinh viên (Admin)
+      tags:
+        - Admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+                  description: true = mở khóa, false = khóa tài khoản
+      responses:
+        '200':
+          description: Cập nhật trạng thái tài khoản thành công.
+        '403':
+          description: Không có quyền Admin.
 
 components:
   securitySchemes:
@@ -489,16 +662,85 @@ components:
 
     ChallengeCreate:
       type: object
+      required:
+        - title
+        - type
+        - start_time
+        - end_time
+        - metric_name
+        - metric_direction
+      properties:
+        title:
+          type: string
+          example: "Phân loại ảnh CIFAR-10"
+        description:
+          type: string
+          description: Mô tả bài toán (hỗ trợ Markdown)
+        type:
+          type: string
+          enum: [PUBLIC, COMPETITION]
+          description: Loại bài thi
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED]
+          default: DRAFT
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        team_lock_deadline:
+          type: string
+          format: date-time
+          description: Hạn chật khóa đội (trước end_time)
+        rate_limit_minutes:
+          type: integer
+          default: 10
+          description: Khoảng cách tối thiểu giữa 2 lần nộp (phút)
+        max_file_size_mb:
+          type: integer
+          default: 50
+          description: Giới hạn dung lượng file upload (MB)
+        metric_name:
+          type: string
+          example: "Accuracy"
+        metric_direction:
+          type: string
+          enum: [HIGHER_IS_BETTER, LOWER_IS_BETTER]
+        dataset_url:
+          type: string
+          format: uri
+          description: Link Google Drive chứa dataset cho sinh viên tải về
+
+    ChallengeUpdate:
+      type: object
+      description: Tất cả trường đều là tùy chọn (Partial Update). Bị khóa nếu có Submission.
       properties:
         title:
           type: string
         description:
           type: string
-        metric_name:
+        start_time:
           type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        team_lock_deadline:
+          type: string
+          format: date-time
         rate_limit_minutes:
           type: integer
-          
+        max_file_size_mb:
+          type: integer
+        dataset_url:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+
     Submission:
       type: object
       properties:
@@ -513,6 +755,59 @@ components:
           enum: [PENDING, PROCESSING, SUCCESS, FAILED]
         is_selected_for_private:
           type: boolean
+        file_size_bytes:
+          type: integer
+          description: Kích thước file thực tế
+        execution_time_ms:
+          type: integer
+          description: Thời gian Worker chấm bài (ms)
+        error_message:
+          type: string
+          nullable: true
         submitted_at:
+          type: string
+          format: date-time
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+          example: 1
+        team_id:
+          type: string
+          format: uuid
+        team_name:
+          type: string
+          example: "Team Alpha"
+        best_public_score:
+          type: number
+          format: double
+        best_private_score:
+          type: number
+          format: double
+          nullable: true
+          description: Chỉ có sau khi cuộc thi kết thúc
+        last_submission_time:
+          type: string
+          format: date-time
+          description: Mốc thời gian dùng để Tie-break khi cùng điểm
+        is_selected_for_private:
+          type: boolean
+          description: Sinh viên đã chọn bài cho Private chưa
+
+    Participant:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        full_name:
+          type: string
+        is_approved:
+          type: boolean
+        joined_at:
           type: string
           format: date-time

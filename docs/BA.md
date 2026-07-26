@@ -132,9 +132,9 @@ Mỗi bài (dù là Public hay Competition) đều bao gồm các thành phần 
 ---
 
 ## 5. Đề xuất Công nghệ (Tech Stack Suggestion)
-- **Frontend:** React.js / Next.js hoặc Vue.js (Đảm bảo tính tương tác cao và giao diện đẹp).
-- **Backend:** Python (FastAPI / Django) hoặc Node.js. 
-  - *Lưu ý:* Backend bằng Python sẽ rất tiện lợi cho việc tích hợp các thư viện Data Science (như `pandas`, `scikit-learn`) để tính toán Metrics chấm điểm và chạy các Custom Metrics linh hoạt.
+- **Frontend:** React.js + Vite + TypeScript. Áp dụng kiến trúc MVVM với Zustand làm Global Model và Custom Hooks làm ViewModel (Đảm bảo tính tương tác cao và giao diện đẹp).
+- **Backend:** Python (FastAPI + SQLAlchemy). Áp dụng kiến trúc Hexagonal (Ports and Adapters).
+  - *Lưu ý:* Backend bằng Python rất tiện lợi cho việc tích hợp các thư viện Data Science (như `pandas`, `scikit-learn`) để tính toán Metrics chấm điểm và chạy các Custom Metrics linh hoạt.
 - **Database:** PostgreSQL (Lưu trữ dữ liệu user, thông tin cuộc thi, team) + Redis (Lưu trữ cache, rate limit và background jobs queue).
 - **Task Queue:** Celery + Redis (Đảm nhiệm việc chấm điểm bất đồng bộ).
-- **Storage:** AWS S3, MinIO hoặc Google Drive API để lưu trữ Dataset, File submissions và Source code.
+- **Storage:** MinIO (S3 Compatible) làm Storage chính lưu file Submission và Ground Truth của Admin. Google Drive chỉ được dùng làm **link chia sẻ Dataset** cho sinh viên tải về, không phải Storage backend.

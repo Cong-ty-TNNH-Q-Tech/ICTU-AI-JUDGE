@@ -30,18 +30,23 @@ flowchart LR
         %% Nhóm User
         UC01(UC01: Đăng nhập & Xác thực)
         UC02(UC02: Quản lý Đội thi)
-        UC03(UC03: Nộp file kết quả)
-        UC04(UC04: Chọn bài tính điểm cuối kỳ)
-        UC05(UC05: Xem Bảng xếp hạng)
+        UC03(UC03: Ghi danh bài thi)
+        UC04(UC04: Nộp file kết quả)
+        UC05(UC05: Chọn bài tính điểm cuối kỳ)
+        UC06(UC06: Nộp Source Code)
+        UC07(UC07: Xem Bảng xếp hạng)
+        UC08(UC08: Thảo luận Q&A)
         
         %% Nhóm Admin
-        UC06(UC06: Quản lý Bài thi & Metric)
-        UC07(UC07: Duyệt danh sách thi đấu)
-        UC08(UC08: Giám sát lịch sử nộp bài)
+        UC09(UC09: Quản lý Bài thi & Metric)
+        UC10(UC10: Duyệt danh sách thi đấu)
+        UC11(UC11: Giám sát lịch sử nộp bài)
+        UC12(UC12: Quản lý Sinh viên)
+        UC13(UC13: Quản lý Thảo luận)
         
         %% Nhóm Hệ thống
-        UC09(UC09: Chấm điểm tự động)
-        UC10(UC10: Fix Worker Treo & Dọn rác)
+        UC14(UC14: Chấm điểm tự động)
+        UC15(UC15: Fix Worker Treo & Dọn rác)
     end
 
     SV --> UC01
@@ -49,15 +54,18 @@ flowchart LR
     SV --> UC03
     SV --> UC04
     SV --> UC05
+    SV --> UC06
+    SV --> UC07
+    SV --> UC08
 
     GV --> UC01
-    GV --> UC06
-    GV --> UC07
-    GV --> UC08
+    GV --> UC09
+    GV --> UC10
+    GV --> UC11
 
-    UC03 -. Kích hoạt .-> UC09
-    SYS --> UC09
-    SYS --> UC10
+    UC04 -. Kích hoạt .-> UC14
+    SYS --> UC14
+    SYS --> UC15
 ```
 
 ---
@@ -67,9 +75,9 @@ flowchart LR
 ### 3.1. Phân hệ Sinh viên (User)
 - **UC01. Đăng nhập / Đăng ký:** Đăng nhập qua OAuth Google (bắt buộc đuôi `@ictu.edu.vn`).
 - **UC02. Quản lý Đội thi:** Tạo đội, tạo mã mời Token, gia nhập đội.
-- **UC03. Ghi danh bài thi:** Tự do tham gia các `PUBLIC` Challenge.
-- **UC04. Nộp bài dự thi (Submit):** Upload file `.csv`, hệ thống validate chặt chẽ (MD5 Hash, format).
-- **UC05. Chọn bài tính điểm Private:** Đánh dấu chọn (Tích V) tối đa 1-2 file nộp tốt nhất để chấm điểm chung cuộc (chống Overfitting).
+- **UC03. Ghi danh bài thi:** Tự do tham gia các `PUBLIC` Challenge (tự động sinh Team of 1).
+- **UC04. Nộp bài dự thi (Submit):** Upload file `.csv`, hệ thống validate chặt chẽ (MD5 Hash, format, dung lượng).
+- **UC05. Chọn bài tính điểm Private:** Đánh dấu chọn (Đánh dấu V) tối đa 1-2 file nộp tốt nhất để chấm điểm chung cuộc (chống Overfitting).
 - **UC06. Nộp Source Code:** Upload file Code (Jupyter/Python) + `requirements.txt` vào cuối kỳ.
 - **UC07. Xem Bảng xếp hạng:** Xem rank thay đổi theo thời gian thực (Public).
 - **UC08. Thảo luận (Q&A):** Viết bình luận/hỏi đáp trong trang chi tiết bài thi.
@@ -81,11 +89,15 @@ flowchart LR
 - **UC12. Quản lý Sinh viên:** Khóa tài khoản, mở khóa.
 - **UC13. Quản lý Thảo luận:** Giải đáp các bình luận thắc mắc của sinh viên.
 
+### 3.3. Phân hệ Hệ thống (System Worker)
+- **UC14. Chấm điểm tự động:** Celery Worker lấy job từ Redis, khởi tạo Docker Sandbox chấm bài, cập nhật Leaderboard.
+- **UC15. Fix Worker Treo & Dọn rác:** Cronjob quét các Submission kẹt trạng thái `PROCESSING` quá lâu và chuyển sang `FAILED`; xóa file CSV cũ giữ lại file tốt nhất.
+
 ---
 
 ## 4. Đặc tả chi tiết các Use Case cốt lõi (Core Specifications)
 
-### Đặc tả UC03: Nộp bài dự thi (Sinh viên)
+### Đặc tả UC04: Nộp bài dự thi (Sinh viên)
 | Tiêu chí | Nội dung |
 | :--- | :--- |
 | **Mô tả** | Sinh viên upload file `.csv` dự đoán của model lên hệ thống để lấy điểm số (Score). |

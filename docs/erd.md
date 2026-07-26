@@ -99,6 +99,8 @@ erDiagram
         uuid team_id FK "Chủ thể nộp bài (1 Team)"
         uuid submitted_by FK "Người thao tác (User ID)"
         string file_url "Link file CSV"
+        string file_md5_hash "MD5 của file CSV, chống spam trùng lặp (Unique per team + challenge)"
+        int file_size_bytes "Kích thước file thực tế (bytes) để audit và dọn rác"
         string source_code_url "Link file Code/ZIP (cuối kỳ)"
         double public_score "Điểm Public (Double Precision)"
         double private_score "Điểm Private (Double Precision)"
@@ -115,6 +117,8 @@ erDiagram
         uuid team_id FK "Chỉ dùng team_id"
         double best_public_score "Double Precision"
         double best_private_score "Double Precision"
+        uuid best_public_submission_id FK "FK → SUBMISSION.id, bài nộp đang giữ kỷ lục public"
+        uuid best_private_submission_id FK "FK → SUBMISSION.id, bài nộp được chọn cho private (có thể null)"
         datetime last_submission_time "Dùng để Tie-break"
         int rank
         datetime updated_at
@@ -155,10 +159,14 @@ Lưu danh sách sinh viên được phép tham gia một `COMPETITION` (Đóng v
 Bảng cốt lõi với tần suất Insert (Ghi) cực cao trong lúc thi.
 - **Precision Score:** Các trường điểm (`public_score`, `private_score`) bắt buộc sử dụng kiểu `DOUBLE PRECISION` (hoặc `DECIMAL(10,6)`) để tránh sai số thập phân ở những thứ hạng sát nút.
 - `submitted_by`: Ai là người thực sự bấm nút Upload file trong Đội.
+- **`file_md5_hash`**: Hash MD5 của file CSV nộp bài. Dùng để **chống spam** (Anti-Spam): Nếu một Team nộp cùng 1 file đã tồn tại, hệ thống trả `HTTP 409` ngay tại Use Case layer, không tốn tài nguyên Worker. Cần tạo Unique Index trên `(challenge_id, team_id, file_md5_hash)`.
+- **`file_size_bytes`**: Kích thước thực tế của file (bytes). Hỗ trợ chức năng **Storage Retention** (tự động xóa file cũ) và audit log khi có tranh chấp dụng lượng.
 - `execution_time_ms`: Lưu lại thời gian (mili-giây) Worker chạy hàm chấm điểm. Giúp Admin phát hiện những Script (`metric.py`) bị lỗi lặp vô hạn hoặc tốn tài nguyên quá đáng.
 - `is_selected_for_private`: **Chống Overfitting.** Sinh viên được quyền tick chọn file kết quả (CSV) ưng ý nhất để chấm điểm chung cuộc.
 
 ### 2.7. Bảng `LEADERBOARD` (Bảng xếp hạng lưu trữ hóa)
 Bảng này là một **Materialized View** (Bảng được lưu trữ vật lý) giúp query xếp hạng cực nhanh lúc cao điểm.
 - Update bất đồng bộ: Khi Worker chấm xong `SUBMISSION`, nó đối chiếu `metric_direction` xem điểm vừa nhận có phải là kỷ lục mới của Đội không, nếu có thì Update bản ghi này.
+- **`best_public_submission_id`**: FK trỏ tới bản ghi `SUBMISSION` đang giữ kỷ lục public hiện tại. Cho phép Admin tải đúng file CSV tốt nhất của từng Đội mà không cần query toàn bộ SUBMISSION.
+- **`best_private_submission_id`**: FK trỏ tới bài được chọn cho Private Leaderboard. Giá trị này có thể `NULL` (khi sinh viên chưa tick chọn). Hệ thống dùng `best_public_submission_id` làm Fallback khi `best_private_submission_id` là NULL.
 - **Tie-break (Đồng hạng):** Dựa vào `last_submission_time`. Nếu điểm bằng nhau, hệ thống ưu tiên Đội có mốc thời gian này sớm hơn.

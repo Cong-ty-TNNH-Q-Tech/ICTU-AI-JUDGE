@@ -87,8 +87,8 @@ backend/app/
 2. **Application**: Use Case `SubmitPredictionUseCase` băm MD5 file kiểm tra trùng lặp.
 3. **Domain**: Kiểm tra hạn nộp, giới hạn Rate Limit.
 4. **Adapter (Storage)**: Lưu file CSV của sinh viên lên S3.
-5. **Adapter (Worker)**: Đẩy Job ID vào Redis.
-6. **Adapter (Database)**: Lưu `SUBMISSION` (status: PENDING) vào PostgreSQL.
+5. **Adapter (Database)**: Lưu `SUBMISSION` (status: `PENDING`) vào PostgreSQL → nhận về `submission_id`.
+6. **Adapter (Worker)**: Đẩy `submission_id` vào Redis Queue để Celery Worker consume và chấm điểm ngầm.
 
 ---
 
