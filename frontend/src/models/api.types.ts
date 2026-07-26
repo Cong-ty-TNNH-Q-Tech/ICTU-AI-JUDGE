@@ -142,7 +142,7 @@ export interface PaginatedResponse<T> extends PaginationMeta {
 // ==========================================
 
 export interface ApiError {
-  detail: string;
+  detail: string | Array<{ msg: string; loc: string[]; type: string }>;
   wait_minutes?: number;
   max_mb?: number;
 }

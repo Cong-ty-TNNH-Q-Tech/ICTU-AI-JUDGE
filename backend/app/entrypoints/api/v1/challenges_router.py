@@ -48,8 +48,14 @@ async def list_challenges(
     db: Session = Depends(get_db),
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    repo = SQLChallengeRepository(db)
+    items, total = repo.list_all(page=page, size=size, status_filter=status_filter)
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "size": size,
+    }
 
 
 @router.post("")
@@ -62,8 +68,11 @@ async def create_challenge(db: Session = Depends(get_db)):
 @router.get("/{challenge_id}")
 async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
     """Chi tiết bài thi."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    repo = SQLChallengeRepository(db)
+    challenge = repo.get_by_id(challenge_id)
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    return challenge
 
 
 @router.patch("/{challenge_id}")
@@ -207,6 +216,10 @@ async def get_leaderboard(
     db: Session = Depends(get_db),
 ):
     """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    return {
+        "items": [],
+        "total": 0,
+        "page": page,
+        "size": size,
+    }
 
