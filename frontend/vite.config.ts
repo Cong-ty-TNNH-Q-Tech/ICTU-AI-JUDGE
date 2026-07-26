@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  envDir: '../', // Load .env from root directory
   plugins: [react()],
   server: {
     port: 5173,
