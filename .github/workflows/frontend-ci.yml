@@ -1,0 +1,112 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: |
+          npx eslint src/ --max-warnings=50 || {
+            echo "::error::ESLint found issues. Review warnings/errors above."
+            exit 1
+          }
+
+      - name: TypeScript type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+  test:
+    name: Test & Coverage
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Unit Tests
+        working-directory: frontend
+        run: npm run test
+
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build production bundle
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost:8000/api/v1
+        run: npm run build
+
+      - name: Check bundle size
+        working-directory: frontend
+        run: |
+          echo "=== Bundle Size Report ==="
+          du -sh dist/
+          echo "--- Asset breakdown ---"
+          find dist/assets -type f -name "*.js" -exec du -h {} + | sort -rh | head -10
+          find dist/assets -type f -name "*.css" -exec du -h {} + | sort -rh | head -5
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 3
