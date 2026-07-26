@@ -6,19 +6,31 @@ TODO: Implement các endpoint bên dưới
 import logging
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.entrypoints.dependencies import get_db
+from app.entrypoints.dependencies import get_db, get_current_user
+from app.domain.entities.entities import UserEntity
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    role: str
 
-@router.get("/me")
-async def get_me(db: Session = Depends(get_db)):
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(user: UserEntity = Depends(get_current_user)):
     """Lấy thông tin user hiện tại từ JWT Cookie."""
-    # TODO: Decode JWT từ cookie → get user từ DB
-    raise NotImplementedError("Users router — chưa implement")
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+    )
 
 
 @router.get("/me/teams")
