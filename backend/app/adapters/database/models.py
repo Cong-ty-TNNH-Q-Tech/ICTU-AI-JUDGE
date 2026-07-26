@@ -166,7 +166,7 @@ class SubmissionModel(Base):
     challenge_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("challenges.id"), nullable=False, index=True)
     team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id"), nullable=False, index=True)
     submitted_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    file_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    file_url: Mapped[str] = mapped_column(String(1000), nullable=False)
     file_md5_hash: Mapped[str] = mapped_column(String(32), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     source_code_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
