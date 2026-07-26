@@ -109,7 +109,7 @@ export interface ChallengeCreateRequest {
   dataset_url?: string;
 }
 
-export interface ChallengeUpdateRequest extends Partial<ChallengeCreateRequest> {}
+export type ChallengeUpdateRequest = Partial<ChallengeCreateRequest>;
 
 export interface SelectForPrivateRequest {
   is_selected_for_private: boolean;
