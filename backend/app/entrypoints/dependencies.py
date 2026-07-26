@@ -70,5 +70,50 @@ def get_current_user_id(
         )
 
 
+def require_admin(
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+) -> uuid.UUID:
+    """
+    Dependency: đọc JWT từ HttpOnly Cookie, xác nhận role = ADMIN.
+    """
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.",
+        )
+    try:
+        payload = jwt.decode(
+            access_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        user_id_str: str | None = payload.get("sub")
+        role: str | None = payload.get("role")
+        
+        if not user_id_str or not role:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token không hợp lệ.",
+            )
+            
+        if role != "ADMIN":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Truy cập bị từ chối: Yêu cầu quyền quản trị viên.",
+            )
+            
+        return uuid.UUID(user_id_str)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token đã hết hạn. Vui lòng đăng nhập lại.",
+        )
+    except (jwt.InvalidTokenError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không hợp lệ.",
+        )
+
+
 # Re-export kiểu để Router dùng làm type hint
 DBSession = Session

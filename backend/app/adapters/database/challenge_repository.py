@@ -157,3 +157,64 @@ class SQLChallengeRepository(IChallengeRepository):
             .first()
         )
         return result is not None
+
+    def list_participants(self, challenge_id: uuid.UUID, page: int, size: int) -> tuple[list[dict], int]:
+        """UC10 - Lấy danh sách participants của 1 challenge (Kèm thông tin User)."""
+        from app.adapters.database.models import ChallengeParticipantModel, UserModel
+        
+        total = self.db.execute(
+            select(func.count(ChallengeParticipantModel.id))
+            .where(ChallengeParticipantModel.challenge_id == challenge_id)
+        ).scalar_one()
+
+        results = self.db.execute(
+            select(ChallengeParticipantModel, UserModel)
+            .join(UserModel, ChallengeParticipantModel.user_id == UserModel.id)
+            .where(ChallengeParticipantModel.challenge_id == challenge_id)
+            .order_by(ChallengeParticipantModel.joined_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        ).all()
+
+        participants = []
+        for part, user in results:
+            participants.append({
+                "participant_id": part.id,
+                "user_id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "student_id": user.student_id,
+                "is_approved": part.is_approved,
+                "joined_at": part.joined_at
+            })
+            
+        return participants, total
+
+    def add_participants(self, challenge_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+        """UC10 - Thêm danh sách user vào whitelist. Trả về số lượng thêm thành công."""
+        from app.adapters.database.models import ChallengeParticipantModel
+        
+        # Bỏ qua những user đã có trong whitelist
+        existing = self.db.execute(
+            select(ChallengeParticipantModel.user_id)
+            .where(
+                ChallengeParticipantModel.challenge_id == challenge_id,
+                ChallengeParticipantModel.user_id.in_(user_ids)
+            )
+        ).scalars().all()
+        
+        existing_set = set(existing)
+        new_users = [uid for uid in user_ids if uid not in existing_set]
+        
+        if not new_users:
+            return 0
+            
+        for uid in new_users:
+            self.db.add(ChallengeParticipantModel(
+                challenge_id=challenge_id,
+                user_id=uid,
+                is_approved=True # Admin add luôn được approved
+            ))
+            
+        self.db.flush()
+        return len(new_users)

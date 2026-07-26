@@ -195,6 +195,35 @@ class SQLSubmissionRepository(ISubmissionRepository):
 
         return [self._to_entity(m) for m in models], total
 
+    def list_all_by_challenge(
+        self, challenge_id: uuid.UUID, page: int, size: int
+    ) -> tuple[list[SubmissionEntity], int]:
+        """UC11 — Lấy tất cả bài nộp trong 1 Challenge cho Admin (phân trang)."""
+        from sqlalchemy import func
+
+        total = (
+            self.db.execute(
+                select(func.count(SubmissionModel.id)).where(
+                    SubmissionModel.challenge_id == challenge_id
+                )
+            )
+            .scalar_one()
+        )
+
+        models = (
+            self.db.execute(
+                select(SubmissionModel)
+                .where(SubmissionModel.challenge_id == challenge_id)
+                .order_by(SubmissionModel.submitted_at.desc())
+                .offset((page - 1) * size)
+                .limit(size)
+            )
+            .scalars()
+            .all()
+        )
+
+        return [self._to_entity(m) for m in models], total
+
     def list_stale_processing(self, older_than: datetime) -> list[SubmissionEntity]:
         """
         UC15 — Lấy danh sách Submission bị kẹt trạng thái PROCESSING quá lâu.

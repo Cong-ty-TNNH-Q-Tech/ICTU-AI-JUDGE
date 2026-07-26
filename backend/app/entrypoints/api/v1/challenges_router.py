@@ -17,7 +17,7 @@ from app.application.dtos.submission_dtos import (
     SubmitResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
-from app.entrypoints.dependencies import get_current_user_id, get_db
+from app.entrypoints.dependencies import get_current_user_id, get_db, require_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -105,17 +105,41 @@ async def list_participants(
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
 ):
     """UC10 — Xem Whitelist (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.admin_use_case import AdminUseCase
+    from app.adapters.database.user_repository import SQLUserRepository
+    
+    use_case = AdminUseCase(
+        user_repo=SQLUserRepository(db),
+        challenge_repo=SQLChallengeRepository(db),
+        submission_repo=SQLSubmissionRepository(db),
+    )
+    return use_case.get_whitelist(challenge_id=challenge_id, page=page, size=size)
 
 
 @router.post("/{challenge_id}/participants")
-async def add_participants(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+async def add_participants(
+    challenge_id: uuid.UUID,
+    request: dict, # expect {"user_ids": ["uuid"]}
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
+):
     """UC10 — Thêm sinh viên vào Whitelist (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.admin_dtos import WhitelistAddRequestDTO
+    from app.application.use_cases.admin_use_case import AdminUseCase
+    from app.adapters.database.user_repository import SQLUserRepository
+    
+    dto = WhitelistAddRequestDTO(**request)
+    use_case = AdminUseCase(
+        user_repo=SQLUserRepository(db),
+        challenge_repo=SQLChallengeRepository(db),
+        submission_repo=SQLSubmissionRepository(db),
+    )
+    result = use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
+    db.commit()
+    return result
 
 
 # ==========================================
