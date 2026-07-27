@@ -34,6 +34,7 @@ from app.entrypoints.api.v1 import (
     teams_router,
     users_router,
     admin_router,
+    tags_router,
 )
 
 logging.basicConfig(
@@ -143,6 +144,7 @@ app.include_router(teams_router.router, prefix=f"{settings.API_V1_PREFIX}/teams"
 app.include_router(submissions_router.router, prefix=f"{settings.API_V1_PREFIX}/submissions", tags=["Submissions"])
 app.include_router(leaderboard_router.router, prefix=f"{settings.API_V1_PREFIX}/leaderboard", tags=["Leaderboard"])
 app.include_router(admin_router.router, prefix=f"{settings.API_V1_PREFIX}/admin", tags=["Admin"])
+app.include_router(tags_router.router, prefix=f"{settings.API_V1_PREFIX}/tags", tags=["Tags"])
 
 
 @app.get("/health", tags=["Health"])

@@ -10,8 +10,9 @@ from app.application.dtos.challenge_dtos import (
     ChallengeResponseDTO,
     ChallengeUpdateRequestDTO,
 )
-from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository
+from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
+from app.application.dtos.tag_dtos import TagResponseDTO
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,11 @@ class ChallengeUseCase:
         self,
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
+        tag_repo: ITagRepository,
     ):
         self.challenge_repo = challenge_repo
         self.storage_repo = storage_repo
+        self.tag_repo = tag_repo
 
     def _to_dto(
         self, entity: ChallengeEntity, is_admin: bool = False
@@ -47,6 +50,7 @@ class ChallengeUseCase:
             max_team_size=entity.max_team_size,
             ground_truth_url=entity.ground_truth_url if is_admin else None,
             custom_metric_url=entity.custom_metric_url if is_admin else None,
+            tags=[TagResponseDTO.model_validate(t) for t in entity.tags]
         )
         return dto
 
@@ -72,7 +76,15 @@ class ChallengeUseCase:
             team_lock_deadline=data.team_lock_deadline,
             max_team_size=data.max_team_size,
             created_at=datetime.utcnow(),
+            tags=[]
         )
+        
+        if data.tag_ids:
+            tags = self.tag_repo.get_by_ids(data.tag_ids)
+            if len(tags) != len(data.tag_ids):
+                raise ValueError("Một số tags không tồn tại.")
+            new_entity.tags = tags
+
         saved = self.challenge_repo.save(new_entity)
         return self._to_dto(saved, is_admin=True)
 
@@ -88,9 +100,18 @@ class ChallengeUseCase:
             raise ValueError("Không thể sửa bài thi đã có sinh viên nộp bài thành công.")
 
         # Update fields
-        update_data = data.dict(exclude_unset=True)
+        update_data = data.dict(exclude_unset=True, exclude={"tag_ids"})
         for key, value in update_data.items():
             setattr(challenge, key, value)
+            
+        if data.tag_ids is not None:
+            if not data.tag_ids:
+                challenge.tags = []
+            else:
+                tags = self.tag_repo.get_by_ids(data.tag_ids)
+                if len(tags) != len(data.tag_ids):
+                    raise ValueError("Một số tags không tồn tại.")
+                challenge.tags = tags
 
         updated = self.challenge_repo.update(challenge)
         return self._to_dto(updated, is_admin=True)
@@ -104,10 +125,10 @@ class ChallengeUseCase:
         return self._to_dto(challenge, is_admin=is_admin)
 
     def list_challenges(
-        self, page: int, size: int, status_filter: str | None = None, is_admin: bool = False
+        self, page: int, size: int, status_filter: str | None = None, is_admin: bool = False, tag_id: uuid.UUID | None = None
     ) -> ChallengeListResponseDTO:
         entities, total = self.challenge_repo.list_all(
-            page=page, size=size, status_filter=status_filter
+            page=page, size=size, status_filter=status_filter, tag_id=tag_id
         )
         dtos = [self._to_dto(c, is_admin=is_admin) for c in entities]
         return ChallengeListResponseDTO(items=dtos, total=total, page=page, size=size)

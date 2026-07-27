@@ -18,6 +18,7 @@ from app.domain.entities.entities import (
     MetricDirection,
     InviteStatus,
     SolutionEntity,
+    TagEntity,
 )
 
 
@@ -64,7 +65,7 @@ class IChallengeRepository(ABC):
 
     @abstractmethod
     def list_all(
-        self, page: int, size: int, status_filter: str | None = None
+        self, page: int, size: int, status_filter: str | None = None, tag_id: uuid.UUID | None = None
     ) -> tuple[list[ChallengeEntity], int]: ...
 
     @abstractmethod
@@ -224,3 +225,26 @@ class ISolutionRepository(ABC):
         Raises ValueError nếu user đã upvote rồi.
         """
         ...
+
+class ITagRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, tag_id: uuid.UUID) -> TagEntity | None: ...
+
+    @abstractmethod
+    def get_by_name(self, name: str) -> TagEntity | None: ...
+
+    @abstractmethod
+    def get_by_ids(self, tag_ids: list[uuid.UUID]) -> list[TagEntity]: ...
+
+    @abstractmethod
+    def save(self, tag: TagEntity) -> TagEntity: ...
+
+    @abstractmethod
+    def update(self, tag: TagEntity) -> TagEntity: ...
+
+    @abstractmethod
+    def delete(self, tag_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def list_all(self) -> list[TagEntity]: ...
+

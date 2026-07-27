@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.domain.entities.entities import ChallengeStatus, ChallengeType, MetricDirection
+from app.application.dtos.tag_dtos import TagResponseDTO
 
 
 class ChallengeCreateRequestDTO(BaseModel):
@@ -20,7 +21,7 @@ class ChallengeCreateRequestDTO(BaseModel):
     dataset_url: Optional[str] = None
     team_lock_deadline: Optional[datetime] = None
     max_team_size: int = Field(default=5, ge=1)
-
+    tag_ids: Optional[list[uuid.UUID]] = None
 class ChallengeUpdateRequestDTO(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
@@ -34,7 +35,7 @@ class ChallengeUpdateRequestDTO(BaseModel):
     dataset_url: Optional[str] = None
     team_lock_deadline: Optional[datetime] = None
     max_team_size: Optional[int] = Field(None, ge=1)
-
+    tag_ids: Optional[list[uuid.UUID]] = None
 class ChallengeResponseDTO(BaseModel):
     id: uuid.UUID
     title: str
@@ -55,7 +56,7 @@ class ChallengeResponseDTO(BaseModel):
     custom_metric_url: Optional[str] = None
     team_lock_deadline: Optional[datetime] = None
     max_team_size: int
-
+    tags: list[TagResponseDTO] = []
     class Config:
         orm_mode = True
 
