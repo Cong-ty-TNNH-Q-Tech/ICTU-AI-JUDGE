@@ -42,7 +42,8 @@ from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.use_cases.tag_use_case import TagUseCase
-from app.domain.entities.entities import UserEntity
+from app.application.use_cases.auth_use_case import AuthUseCase
+from app.domain.entities.entities import UserEntity, UserRole
 
 settings = get_settings()
 
@@ -316,14 +317,13 @@ def get_tag_use_case(
 def get_auth_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
     google_client: IGoogleAuthClient = Depends(get_google_auth_client),
-) -> "AuthUseCase":
+) -> AuthUseCase:
     """
     Factory inject AuthUseCase với root_admin_email từ Settings.
     Entrypoint layer chịu trách nhiệm đọc config và truyền vào Use Case
     (tuân thủ Hexagonal Architecture — Use Case không import get_settings).
     """
-    from app.application.use_cases.auth_use_case import AuthUseCase as _AuthUseCase
-    return _AuthUseCase(
+    return AuthUseCase(
         user_repo=user_repo,
         google_client=google_client,
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
