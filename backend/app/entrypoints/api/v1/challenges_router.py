@@ -5,10 +5,9 @@ Challenges Router — UC03 (enroll), UC04 (submit), UC09 (CRUD), UC10 (participa
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
@@ -17,26 +16,27 @@ from app.application.dtos.submission_dtos import (
     SubmitResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
-from app.entrypoints.dependencies import get_current_user_id, get_db, require_admin
+from app.application.use_cases.challenge_use_case import ChallengeUseCase
+from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.use_cases.admin_use_case import AdminUseCase
+from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
+from app.domain.entities.entities import UserEntity
+from app.entrypoints.dependencies import (
+    get_current_user_id,
+    get_current_user,
+    get_db,
+    get_solution_use_case,
+    get_challenge_use_case,
+    get_submission_use_case,
+    get_admin_use_case,
+    require_admin,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# ==========================================
-# Helper: khởi tạo SubmissionUseCase
-# ==========================================
 
-def _get_submission_use_case(db: Session) -> SubmissionUseCase:
-    return SubmissionUseCase(
-        submission_repo=SQLSubmissionRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        team_repo=SQLTeamRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
-
-
-# ==========================================
 # Existing endpoints (skeleton — chưa implement)
 # ==========================================
 
@@ -45,11 +45,10 @@ async def list_challenges(
     status_filter: str | None = None,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case),
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    return use_case.list_challenges(page=page, size=size, status_filter=status_filter)
 
 
 @router.post("")
@@ -60,10 +59,12 @@ async def create_challenge(db: Session = Depends(get_db)):
 
 
 @router.get("/{challenge_id}")
-async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+async def get_challenge(challenge_id: uuid.UUID, use_case: ChallengeUseCase = Depends(get_challenge_use_case)):
     """Chi tiết bài thi."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    challenge = use_case.get_challenge(challenge_id)
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    return challenge
 
 
 @router.patch("/{challenge_id}")
@@ -124,18 +125,10 @@ async def list_participants(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Xem Whitelist (Admin only)."""
-    from app.application.use_cases.admin_use_case import AdminUseCase
-    from app.adapters.database.user_repository import SQLUserRepository
-    
-    use_case = AdminUseCase(
-        user_repo=SQLUserRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        submission_repo=SQLSubmissionRepository(db),
-    )
     return use_case.get_whitelist(challenge_id=challenge_id, page=page, size=size)
 
 
@@ -143,23 +136,14 @@ async def list_participants(
 async def add_participants(
     challenge_id: uuid.UUID,
     request: dict, # expect {"user_ids": ["uuid"]}
-    db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Thêm sinh viên vào Whitelist (Admin only)."""
     from app.application.dtos.admin_dtos import WhitelistAddRequestDTO
-    from app.application.use_cases.admin_use_case import AdminUseCase
-    from app.adapters.database.user_repository import SQLUserRepository
     
     dto = WhitelistAddRequestDTO(**request)
-    use_case = AdminUseCase(
-        user_repo=SQLUserRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        submission_repo=SQLSubmissionRepository(db),
-    )
-    result = use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
-    db.commit()
-    return result
+    return use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
 
 
 # ==========================================
@@ -171,11 +155,10 @@ async def list_submissions(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
     """UC04 — Lịch sử nộp bài của Đội (cần auth)."""
-    use_case = _get_submission_use_case(db)
     return use_case.list_team_submissions(
         challenge_id=challenge_id,
         user_id=user_id,
@@ -198,6 +181,7 @@ async def submit(
     file: UploadFile = File(..., description="File CSV dự đoán, tối đa max_file_size_mb"),
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
     """
     UC04 — Nộp bài dự thi.
@@ -219,7 +203,6 @@ async def submit(
     filename = file.filename or "submission.csv"
     content_type = file.content_type or "text/csv"
 
-    use_case = _get_submission_use_case(db)
 
     # Use Case thực hiện toàn bộ pipeline validate + S3 + DB lưu
     result = use_case.submit_prediction(
@@ -231,9 +214,10 @@ async def submit(
     )
 
     # [CRITICAL] Commit DB TRƯỚC khi Celery Worker consume job từ Redis.
-    # _enqueue_scoring_task() trong use_case đã được gọi — Worker sẽ
-    # tìm record trong DB và sẽ thấy nó vì commit xảy ra trước.
+    # Đã di chuyển việc enqueue ra controller sau khi commit để fix Race Condition.
     db.commit()
+    
+    use_case.trigger_scoring(str(result.submission_id))
 
     return result
 
@@ -242,15 +226,79 @@ async def submit(
 # UC07 — Bảng xếp hạng
 # ==========================================
 
-@router.get("/{challenge_id}/leaderboard")
-async def get_leaderboard(
+
+
+
+# ==========================================
+# Feature: Kernels / Solutions
+# ==========================================
+
+@router.get("/{challenge_id}/solutions", response_model=SolutionListResponseDTO)
+async def list_solutions(
     challenge_id: uuid.UUID,
-    type: str = "public",
-    page: int = 1,
-    size: int = 20,
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+):
+    """Lấy danh sách Solutions của một bài thi."""
+    try:
+        return use_case.list_solutions(challenge_id)
+    except ValueError:
+        # Challenge không tồn tại — trả về danh sách rỗng thay vì 404
+        return SolutionListResponseDTO(items=[], total=0)
+
+
+@router.post(
+    "/{challenge_id}/solutions",
+    response_model=SolutionResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_solution(
+    challenge_id: uuid.UUID,
+    title: str = Form(...),
+    content: str = Form(...),
+    file: UploadFile = File(...),
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
     db: Session = Depends(get_db),
 ):
-    """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
 
+    """Chia sẻ file notebook (Upload lên S3/MinIO và tạo bản ghi vào DB)."""
+    file_bytes = await file.read()
+    filename = file.filename or "solution.ipynb"
+
+    try:
+        result = use_case.publish_solution(
+            user=user,
+            challenge_id=challenge_id,
+            title=title,
+            content=content,
+            file_bytes=file_bytes,
+            filename=filename,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    db.commit()
+    return result
+
+
+@router.post(
+    "/{challenge_id}/solutions/{solution_id}/upvote",
+    response_model=SolutionResponseDTO,
+)
+async def upvote_solution(
+    challenge_id: uuid.UUID,
+    solution_id: uuid.UUID,
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+    db: Session = Depends(get_db),
+):
+    """Upvote một solution (+1). Yêu cầu đăng nhập. Mỗi user chỉ vote được 1 lần."""
+    try:
+        result = use_case.upvote_solution(solution_id, user.id)
+    except LookupError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solution không tồn tại.")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+    db.commit()
+    return result

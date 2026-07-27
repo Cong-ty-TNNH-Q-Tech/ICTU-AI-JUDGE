@@ -167,7 +167,7 @@ class SubmissionModel(Base):
     challenge_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("challenges.id"), nullable=False, index=True)
     team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id"), nullable=False, index=True)
     submitted_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    file_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    file_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     file_md5_hash: Mapped[str] = mapped_column(String(32), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     source_code_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
@@ -227,3 +227,38 @@ class LeaderboardModel(Base):
     best_private_submission: Mapped["SubmissionModel | None"] = relationship(
         "SubmissionModel", foreign_keys=[best_private_submission_id]
     )
+
+
+class SolutionModel(Base):
+    __tablename__ = "solutions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    challenge_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("challenges.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    notebook_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    upvotes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    challenge: Mapped["ChallengeModel"] = relationship("ChallengeModel")
+    user: Mapped["UserModel"] = relationship("UserModel")
+    upvote_records: Mapped[list["SolutionUpvoteModel"]] = relationship("SolutionUpvoteModel", back_populates="solution")
+
+
+class SolutionUpvoteModel(Base):
+    """Bảng trung gian theo dõi user nào đã upvote solution nào — chống double-vote."""
+    __tablename__ = "solution_upvotes"
+
+    solution_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("solutions.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    solution: Mapped["SolutionModel"] = relationship("SolutionModel", back_populates="upvote_records")
+    user: Mapped["UserModel"] = relationship("UserModel")

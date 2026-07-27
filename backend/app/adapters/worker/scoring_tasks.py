@@ -128,8 +128,6 @@ def score_submission(self, submission_id: str) -> dict:
                 )
                 leaderboard_repo.upsert_with_lock(entry)
 
-            # 6. Recalculate rank cho toàn bộ leaderboard
-            leaderboard_repo.recalculate_ranks(challenge.id, challenge.metric_direction)
 
             # Commit the transaction explicitly if using a standalone session
             db.commit()
