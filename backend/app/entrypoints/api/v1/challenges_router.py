@@ -45,10 +45,9 @@ async def list_challenges(
     status_filter: str | None = None,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case),
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    use_case = _get_challenge_use_case(db)
     return use_case.list_challenges(page=page, size=size, status_filter=status_filter)
 
 
@@ -60,9 +59,8 @@ async def create_challenge(db: Session = Depends(get_db)):
 
 
 @router.get("/{challenge_id}")
-async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+async def get_challenge(challenge_id: uuid.UUID, use_case: ChallengeUseCase = Depends(get_challenge_use_case)):
     """Chi tiết bài thi."""
-    use_case = _get_challenge_use_case(db)
     challenge = use_case.get_challenge(challenge_id)
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
