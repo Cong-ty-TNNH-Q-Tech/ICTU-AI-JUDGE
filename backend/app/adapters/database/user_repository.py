@@ -3,6 +3,7 @@ User Repository implementation based on SQLAlchemy.
 """
 import uuid
 from typing import Optional
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
@@ -63,29 +64,36 @@ class UserRepository(IUserRepository):
         return self._to_entity(merged_model)
 
     def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
-        stmt = select(UserModel).where(UserModel.deleted_at.is_(None))
+        stmt = select(UserModel)
         if query:
             stmt = stmt.where(
                 (UserModel.email.ilike(f"%{query}%")) | 
-                (UserModel.full_name.ilike(f"%{query}%"))
+                (UserModel.full_name.ilike(f"%{query}%")) |
+                (UserModel.student_id.ilike(f"%{query}%"))
             )
         
-        # count
+        # count using func.count (fixes memory leak issue #1)
         from sqlalchemy import func
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = self._session.execute(count_stmt).scalar() or 0
 
         # paginate
-        stmt = stmt.offset((page - 1) * size).limit(size)
+        stmt = stmt.order_by(UserModel.created_at.desc()).offset((page - 1) * size).limit(size)
         models = self._session.execute(stmt).scalars().all()
         return [self._to_entity(m) for m in models], total
 
-    def soft_delete(self, user_id: uuid.UUID) -> None:
-        from datetime import datetime, timezone
-        stmt = (
-            update(UserModel)
-            .where(UserModel.id == user_id)
-            .values(deleted_at=datetime.now(tz=timezone.utc))
-        )
-        self._session.execute(stmt)
+    def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        user = self._session.execute(stmt).scalar_one_or_none()
+        if not user:
+            return False
+            
+        if is_active:
+            user.deleted_at = None
+        else:
+            if not user.deleted_at:
+                user.deleted_at = datetime.now(tz=timezone.utc)
+                
+        self._session.add(user)
         self._session.commit()
+        return True

@@ -8,3 +8,7 @@
 *.pyc
 __pycache__/
 __pycache__/  
+
+# Command Code
+.commandcode/
+*.pyc

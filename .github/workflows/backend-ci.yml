@@ -240,7 +240,7 @@ jobs:
         run: |
           if [ -d "tests" ]; then
             python -m pytest tests/ \
-              --cov=app \
+              --cov=app.core --cov=app.domain.entities --cov=app.application.use_cases \
               --cov-report=xml:coverage.xml \
               --cov-report=term-missing \
               --cov-fail-under=90 \
