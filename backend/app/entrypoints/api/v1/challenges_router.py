@@ -90,16 +90,11 @@ async def create_challenge(
 async def get_challenge(
     challenge_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_optional_current_user_id)  # Public — optional auth
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — optional auth
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Chi tiết bài thi."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
     from app.adapters.database.user_repository import SQLUserRepository
-    
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     
     is_admin = False
     if user_id:

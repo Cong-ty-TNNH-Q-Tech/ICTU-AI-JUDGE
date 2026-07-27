@@ -20,6 +20,7 @@ class LeaderboardEntryDTO(BaseModel):
     team_name: str
     best_public_score: float
     best_private_score: Optional[float] = None
+    entries: int = 0
     last_submission_time: datetime
     is_selected_for_private: bool = False
 

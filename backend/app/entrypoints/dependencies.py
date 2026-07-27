@@ -267,3 +267,6 @@ def get_tag_use_case(
     uow: IUnitOfWork = Depends(get_uow)
 ) -> TagUseCase:
     return TagUseCase(uow, tag_repo)
+
+get_current_admin = require_admin
+

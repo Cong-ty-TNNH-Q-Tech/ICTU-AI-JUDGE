@@ -43,9 +43,9 @@ const MOCK_CHALLENGES: Challenge[] = [
 ];
 
 const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, team_id: 'a1111111-1111-1111-1111-111111111111', team_name: 'AI Club Team A', best_public_score: 0.985, best_private_score: null, last_submission_time: new Date().toISOString(), is_selected_for_private: true },
-  { rank: 2, team_id: 'b2222222-2222-2222-2222-222222222222', team_name: 'DHKTPM K20', best_public_score: 0.950, best_private_score: null, last_submission_time: new Date(Date.now() - 3600000).toISOString(), is_selected_for_private: false },
-  { rank: 3, team_id: 'c3333333-3333-3333-3333-333333333333', team_name: 'The Underdogs', best_public_score: 0.890, best_private_score: null, last_submission_time: new Date(Date.now() - 7200000).toISOString(), is_selected_for_private: true },
+  { rank: 1, team_id: 'a1111111-1111-1111-1111-111111111111', team_name: 'AI Club Team A', best_public_score: 0.985, best_private_score: null, entries: 5, last_submission_time: new Date().toISOString(), is_selected_for_private: true },
+  { rank: 2, team_id: 'b2222222-2222-2222-2222-222222222222', team_name: 'DHKTPM K20', best_public_score: 0.950, best_private_score: null, entries: 3, last_submission_time: new Date(Date.now() - 3600000).toISOString(), is_selected_for_private: false },
+  { rank: 3, team_id: 'c3333333-3333-3333-3333-333333333333', team_name: 'The Underdogs', best_public_score: 0.890, best_private_score: null, entries: 1, last_submission_time: new Date(Date.now() - 7200000).toISOString(), is_selected_for_private: true },
 ];
 
 const MOCK_SUBMISSIONS: Submission[] = [
@@ -136,28 +136,50 @@ export function useLeaderboardVM(challengeId: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('public');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const size = 20;
 
   const fetchLeaderboard = useCallback(async () => {
     if (!challengeId) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await challengeService.getLeaderboard(challengeId, { type: leaderboardType });
-      setEntries(result?.items ?? []);
-    } catch {
-      console.warn('API get leaderboard failed, using mock data');
-      setEntries(MOCK_LEADERBOARD);
-      // setError(err instanceof Error ? err.message : 'Lỗi tải bảng xếp hạng');
+      const result = await challengeService.getLeaderboard(challengeId, { 
+        type: leaderboardType,
+        page,
+        size
+      });
+      setEntries(result?.data ?? []);
+      setTotalCount(result?.total_count ?? 0);
+    } catch (err: any) {
+      if (err?.response?.status === 403 && leaderboardType === 'private') {
+        setError('Bảng xếp hạng Private chỉ hiển thị sau khi cuộc thi kết thúc.');
+        setEntries([]);
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn('API get leaderboard failed, using mock data');
+          setEntries(MOCK_LEADERBOARD);
+          setTotalCount(MOCK_LEADERBOARD.length);
+        } else {
+          setError(err instanceof Error ? err.message : 'Lỗi tải bảng xếp hạng');
+        }
+      }
     } finally {
       setLoading(false);
     }
-  }, [challengeId, leaderboardType]);
+  }, [challengeId, leaderboardType, page, size]);
 
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  return { entries, loading, error, leaderboardType, setLeaderboardType, refetch: fetchLeaderboard };
+  // Reset page to 1 when changing leaderboard type
+  useEffect(() => {
+    setPage(1);
+  }, [leaderboardType]);
+
+  return { entries, loading, error, leaderboardType, setLeaderboardType, page, setPage, totalCount, size, refetch: fetchLeaderboard };
 }
 
 export function useSubmissionsVM(challengeId: string) {

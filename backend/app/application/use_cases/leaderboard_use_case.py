@@ -64,6 +64,7 @@ class LeaderboardUseCase:
                 team_name=team_name,
                 best_public_score=entity.best_public_score,
                 best_private_score=entity.best_private_score if lb_type == LeaderboardType.PRIVATE else None,
+                entries=entity.entries,
                 last_submission_time=entity.last_submission_time,
                 is_selected_for_private=entity.best_private_submission_id is not None
             )

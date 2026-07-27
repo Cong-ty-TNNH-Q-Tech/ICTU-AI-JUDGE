@@ -22,7 +22,7 @@ const ChallengeDetailPage = () => {
   
 
   const { challenge, loading: detailLoading, error: detailError, enroll } = useChallengeDetailVM(id || '');
-  const { entries, loading: lbLoading, leaderboardType, setLeaderboardType } = useLeaderboardVM(id || '');
+  const { entries, loading: lbLoading, error: lbError, leaderboardType, setLeaderboardType, page, setPage, totalCount, size } = useLeaderboardVM(id || '');
   const { 
     submissions, 
     loading: subLoading,
@@ -115,7 +115,7 @@ const ChallengeDetailPage = () => {
                 disabled={enrolling}
                 className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-colors shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-70"
               >
-                {enrolling ? '─Éang xß╗¡ l├╜...' : 'Ghi danh ngay'}
+                {enrolling ? 'Đang xử lý...' : 'Ghi danh ngay'}
               </button>
               {challenge.dataset_url && (
                 <a 
@@ -127,14 +127,14 @@ const ChallengeDetailPage = () => {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Tß║úi Dataset
+                  Tải Dataset
                 </a>
               )}
             </div>
           </div>
 
           <div className="lg:w-auto bg-bg-dark/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm self-start">
-            <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Thß╗¥i gian c├▓n lß║íi</h3>
+            <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Thời gian còn lại</h3>
             <ChallengeTimer endTime={challenge.end_time} variant="full" />
           </div>
         </div>
@@ -143,10 +143,10 @@ const ChallengeDetailPage = () => {
       {/* Tabs */}
       <div className="flex border-b border-slate-800 mb-8 sticky top-16 bg-bg-dark/80 backdrop-blur-md z-40">
         {[
-          { id: 'description', label: 'M├┤ tß║ú' },
+          { id: 'description', label: 'Mô tả' },
           { id: 'leaderboard', label: 'Leaderboard' },
-          { id: 'submit', label: 'Nß╗Öp b├ái' },
-          { id: 'history', label: 'Lß╗ïch sß╗¡ nß╗Öp' },
+          { id: 'submit', label: 'Nộp bài' },
+          { id: 'history', label: 'Lịch sử nộp' },
           { id: 'solutions', label: 'Solutions' },
         ].map(tab => (
           <button
@@ -167,27 +167,27 @@ const ChallengeDetailPage = () => {
       {/* Tab Content Area */}
       <div className="min-h-[400px]">
         
-        {/* TAB 1: M├ö Tß║ó */}
+        {/* TAB 1: MÔ TẢ */}
         {activeTab === 'description' && (
           <div className="prose prose-invert prose-slate max-w-none bg-surface-dark border border-slate-800 rounded-2xl p-8">
             {challenge.description ? (
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{challenge.description}</ReactMarkdown>
             ) : (
-              <p className="text-slate-500 italic">Kh├┤ng c├│ m├┤ tß║ú chi tiß║┐t.</p>
+              <p className="text-slate-500 italic">Không có mô tả chi tiết.</p>
             )}
           </div>
         )}
 
         {/* TAB 2: LEADERBOARD */}
         {activeTab === 'leaderboard' && (
-          <div className="bg-surface-dark border border-slate-800 rounded-2xl p-6">
+          <div className="card p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white">Bß║úng Xß║┐p Hß║íng</h3>
-              <div className="bg-bg-dark p-1 rounded-lg border border-slate-800 flex">
+              <h3 className="text-lg font-bold text-content-primary">Bảng Xếp Hạng</h3>
+              <div className="bg-surface-50 dark:bg-bg-dark p-1 rounded-lg border border-surface-200 dark:border-slate-800 flex">
                 <button
                   onClick={() => setLeaderboardType('public')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    leaderboardType === 'public' ? 'bg-primary/20 text-primary' : 'text-slate-400 hover:text-white'
+                    leaderboardType === 'public' ? 'bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-400' : 'text-content-tertiary hover:text-content-primary'
                   }`}
                 >
                   Public
@@ -195,7 +195,7 @@ const ChallengeDetailPage = () => {
                 <button
                   onClick={() => setLeaderboardType('private')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    leaderboardType === 'private' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'
+                    leaderboardType === 'private' ? 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400' : 'text-content-tertiary hover:text-content-primary'
                   }`}
                 >
                   Private
@@ -203,44 +203,83 @@ const ChallengeDetailPage = () => {
               </div>
             </div>
 
-            {lbLoading ? (
-              <div className="text-center py-12 text-slate-400">─Éang tß║úi bß║úng xß║┐p hß║íng...</div>
+            {lbError ? (
+              <div className="text-center py-12 text-red-500 bg-red-50 dark:bg-red-500/10 rounded-xl border border-red-200 dark:border-red-500/20">
+                <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                {lbError}
+              </div>
+            ) : lbLoading ? (
+              <div className="text-center py-12 text-content-tertiary flex flex-col items-center">
+                <div className="w-8 h-8 border-4 border-surface-200 dark:border-slate-700 border-t-primary-500 rounded-full animate-spin mb-4"></div>
+                Đang tải bảng xếp hạng...
+              </div>
             ) : entries.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">Ch╞░a c├│ dß╗» liß╗çu bß║úng xß║┐p hß║íng.</div>
+              <div className="text-center py-12 text-content-tertiary">Chưa có dữ liệu bảng xếp hạng.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500">
-                      <th className="py-4 px-4 font-medium">Hß║íng</th>
-                      <th className="py-4 px-4 font-medium">─Éß╗Öi thi</th>
-                      <th className="py-4 px-4 font-medium text-right">─Éiß╗âm sß╗æ</th>
-                      <th className="py-4 px-4 font-medium text-right">Lß║ºn nß╗Öp cuß╗æi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entries.map((entry) => (
-                      <tr key={entry.team_id} className="border-b border-slate-800/50 hover:bg-white/5 transition-colors">
-                        <td className="py-4 px-4">
-                          {entry.rank === 1 ? '≡ƒÑç' : entry.rank === 2 ? '≡ƒÑê' : entry.rank === 3 ? '≡ƒÑë' : <span className="text-slate-400">#{entry.rank}</span>}
-                        </td>
-                        <td className="py-4 px-4 font-medium text-white">{entry.team_name}</td>
-                        <td className="py-4 px-4 text-right font-bold text-primary">
-                          {leaderboardType === 'public' ? entry.best_public_score?.toFixed(4) : entry.best_private_score?.toFixed(4)}
-                        </td>
-                        <td className="py-4 px-4 text-right text-sm text-slate-400">
-                          {new Date(entry.last_submission_time).toLocaleString('vi-VN')}
-                        </td>
+              <div className="flex flex-col gap-4">
+                <div className="overflow-x-auto rounded-xl border border-surface-200 dark:border-slate-800">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-surface-50 dark:bg-bg-dark">
+                      <tr className="border-b border-surface-200 dark:border-slate-800 text-xs uppercase tracking-wider text-content-tertiary">
+                        <th className="py-4 px-4 font-medium">Hạng</th>
+                        <th className="py-4 px-4 font-medium">Đội thi</th>
+                        <th className="py-4 px-4 font-medium text-center">Entries</th>
+                        <th className="py-4 px-4 font-medium text-right">Điểm số</th>
+                        <th className="py-4 px-4 font-medium text-right">Lần nộp cuối</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {entries.map((entry) => (
+                        <tr key={entry.team_id} className="border-b border-surface-200 dark:border-slate-800/50 hover:bg-surface-50 dark:hover:bg-white/5 transition-colors">
+                          <td className="py-4 px-4">
+                            {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : <span className="text-content-tertiary">#{entry.rank}</span>}
+                          </td>
+                          <td className="py-4 px-4 font-medium text-content-primary">{entry.team_name}</td>
+                          <td className="py-4 px-4 text-center text-content-secondary font-mono text-sm">{entry.entries}</td>
+                          <td className="py-4 px-4 text-right font-bold text-primary-600 dark:text-primary-400">
+                            {leaderboardType === 'public' ? entry.best_public_score?.toFixed(4) : entry.best_private_score?.toFixed(4)}
+                          </td>
+                          <td className="py-4 px-4 text-right text-sm text-content-tertiary">
+                            {new Date(entry.last_submission_time).toLocaleString('vi-VN')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalCount > 0 && (
+                  <div className="flex justify-between items-center mt-2 px-2">
+                    <span className="text-sm text-content-tertiary">
+                      Hiển thị <strong className="text-content-primary">{(page - 1) * size + 1} - {Math.min(page * size, totalCount)}</strong> trên tổng số <strong className="text-content-primary">{totalCount}</strong> đội
+                    </span>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-4 py-2 bg-surface border border-surface-200 dark:bg-bg-dark dark:border-slate-700 rounded-lg hover:bg-surface-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors text-content-secondary"
+                      >
+                        Trước
+                      </button>
+                      <button 
+                        onClick={() => setPage(p => p + 1)}
+                        disabled={page * size >= totalCount}
+                        className="px-4 py-2 bg-surface border border-surface-200 dark:bg-bg-dark dark:border-slate-700 rounded-lg hover:bg-surface-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors text-content-secondary"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 3: Nß╗ÿP B├ÇI */}
+        {/* TAB 3: NỘP BÀI */}
         {activeTab === 'submit' && (
           <SubmitFileZone 
             maxFileSizeMb={challenge.max_file_size_mb || 50}
@@ -254,7 +293,7 @@ const ChallengeDetailPage = () => {
           />
         )}
 
-        {/* TAB 4: Lß╗èCH Sß╗¼ Nß╗ÿP */}
+        {/* TAB 4: LỊCH SỬ NỘP */}
         {activeTab === 'history' && (
           <SubmissionHistoryTable 
             submissions={submissions}
