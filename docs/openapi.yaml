@@ -992,3 +992,145 @@ components:
         size:
           type: integer
           default: 100
+
+  # ==========================================
+  # Feature: User Profile (Issue #30)
+  # ==========================================
+  /users/{user_id}/profile:
+    get:
+      tags: [Users]
+      summary: Xem h? so ngu?i dùng (công khai)
+      description: |
+        Tr? v? thông tin h? so + th?ng kê thi d?u c?a user.
+        Bao g?m: t?ng s? bài n?p, t?ng gi?i pháp dã dang, rank t?t nh?t.
+        Endpoint công khai, không yêu c?u dang nh?p.
+      security: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: H? so ngu?i dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/me/profile:
+    patch:
+      tags: [Users]
+      summary: C?p nh?t h? so cá nhân
+      description: |
+        Cho phép user dã dang nh?p c?p nh?t Github URL, LinkedIn URL.
+        Ch? ?nh hu?ng d?n các tru?ng du?c g?i lên (partial update).
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: H? so sau khi c?p nh?t
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: D? li?u không h?p l? (URL sai format)
+
+  /users/me/avatar:
+    post:
+      tags: [Users]
+      summary: Upload ?nh d?i di?n
+      description: |
+        Upload file ?nh (jpg, png, webp) làm avatar. ?nh du?c luu vào MinIO.
+        Gi?i h?n dung lu?ng 2MB. Tr? v? presigned URL d? hi?n th? ngay.
+        Khi nh?n URL m?i, Frontend c?p nh?t Zustand store d? Header t? d?ng refresh.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File ?nh (jpg/png/webp, max 2MB)
+      responses:
+        "200":
+          description: URL ?nh m?i (presigned URL, TTL 1h)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatar_url:
+                    type: string
+                    description: Presigned URL d? hi?n th? avatar
+                    example: "http://localhost:9000/bucket/avatars/..."
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: File vu?t quá 2MB
+        "422":
+          description: Ð?nh d?ng file không h? tr? (ch? jpg/png/webp)
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        full_name:
+          type: string
+        github_url:
+          type: string
+          nullable: true
+          example: "https://github.com/username"
+        linkedin_url:
+          type: string
+          nullable: true
+          example: "https://linkedin.com/in/username"
+        avatar_url:
+          type: string
+          nullable: true
+          description: Presigned URL d? hi?n th? avatar
+        total_submissions:
+          type: integer
+          description: T?ng s? bài n?p c?a user
+        total_solutions:
+          type: integer
+          description: T?ng s? gi?i pháp dã chia s?
+        best_rank:
+          type: integer
+          nullable: true
+          description: H?ng t?t nh?t trên t?t c? challenges
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        github_url:
+          type: string
+          nullable: true
+          example: "https://github.com/username"
+        linkedin_url:
+          type: string
+          nullable: true
+          example: "https://linkedin.com/in/username"

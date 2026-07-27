@@ -8,6 +8,7 @@ import LoginPage from './views/pages/LoginPage';
 import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
 import AdminPage from './views/pages/AdminPage';
+import ProfilePage from './views/pages/ProfilePage';
 
 // Route Guard
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -60,7 +61,21 @@ function App() {
           </MainLayout>
         </AdminRoute>
       } />
-      
+
+      {/* Profile page — /profile/me redirects to own profile */}
+      <Route path="/profile/me" element={
+        <ProtectedRoute>
+          <Navigate to={`/profile/${useAuthStore.getState().user?.id ?? ''}`} replace />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/:userId" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <ProfilePage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
       <Route path="*" element={<Navigate to="/challenges" replace />} />
     </Routes>
   );

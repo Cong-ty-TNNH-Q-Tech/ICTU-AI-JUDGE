@@ -24,6 +24,7 @@ from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.clients import IGoogleAuthClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.domain.entities.entities import UserEntity
 
 settings = get_settings()
@@ -148,3 +149,11 @@ def get_solution_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> SolutionUseCase:
     return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
+
+
+def get_profile_use_case(
+    user_repo: IUserRepository = Depends(get_user_repository),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+) -> ProfileUseCase:
+    """Dependency: inject ProfileUseCase cho 3 endpoints profile."""
+    return ProfileUseCase(user_repo, storage_repo)

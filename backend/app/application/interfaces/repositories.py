@@ -35,6 +35,36 @@ class IUserRepository(ABC):
     @abstractmethod
     def soft_delete(self, user_id: uuid.UUID) -> None: ...
 
+    @abstractmethod
+    def update_profile(
+        self,
+        user_id: uuid.UUID,
+        github_url: str | None,
+        linkedin_url: str | None,
+        avatar_url: str | None = ...,  # type: ignore[assignment]
+    ) -> UserEntity | None:
+        """
+        Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
+        Dùng atomic SQL UPDATE — an toàn đồng thời.
+        Trả về entity sau khi cập nhật, None nếu user không tồn tại.
+        """
+        ...
+
+    @abstractmethod
+    def get_profile_stats(self, user_id: uuid.UUID) -> dict:
+        """
+        Lấy thống kê tổng hợp của user:
+        { total_submissions, total_solutions, best_rank }
+        Thực hiện trong 3 COUNT query riêng biệt (đơn giản, dễ index).
+        """
+        ...
+
+    @abstractmethod
+    def update_avatar(self, user_id: uuid.UUID, avatar_s3_key: str) -> "UserEntity | None":
+        """Atomic update chỉ trường avatar_url — dùng sau khi upload thành công."""
+        ...
+
+
 
 class IChallengeRepository(ABC):
     @abstractmethod

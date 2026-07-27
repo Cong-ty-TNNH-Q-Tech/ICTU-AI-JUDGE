@@ -62,12 +62,17 @@ class UserEntity:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    # Profile fields (Issue #30)
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    avatar_url: str | None = None   # Lưu S3 key — URL generate on-the-fly
 
     def is_admin(self) -> bool:
         return self.role == UserRole.ADMIN
 
     def is_active(self) -> bool:
         return self.deleted_at is None
+
 
 
 @dataclass

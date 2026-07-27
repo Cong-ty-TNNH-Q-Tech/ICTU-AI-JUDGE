@@ -33,6 +33,28 @@ export interface UserResponse {
   role: UserRole;
   is_active: boolean;
   student_id?: string;
+  // Profile fields (Issue #30)
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  avatar_url?: string | null;  // Presigned URL (generated on-the-fly)
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  avatar_url?: string | null;  // Presigned URL
+  // Stats
+  total_submissions: number;
+  total_solutions: number;
+  best_rank?: number | null;
+}
+
+export interface UpdateProfileRequest {
+  github_url?: string | null;
+  linkedin_url?: string | null;
 }
 
 export interface Team {
