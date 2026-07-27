@@ -47,6 +47,7 @@ def test_challenge_entity():
         max_file_size_mb=50,
         metric_name="accuracy",
         metric_direction=MetricDirection.HIGHER_IS_BETTER,
+        max_team_size=3,
         created_by=uuid.uuid4(),
         created_at=now,
     )
