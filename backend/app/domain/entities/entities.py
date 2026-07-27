@@ -71,6 +71,14 @@ class UserEntity:
 
 
 @dataclass
+class TagEntity:
+    id: uuid.UUID
+    name: str
+    color_hex: str
+    created_at: datetime
+
+
+@dataclass
 class ChallengeEntity:
     id: uuid.UUID
     title: str
@@ -91,6 +99,7 @@ class ChallengeEntity:
     custom_metric_url: str = ""
     team_lock_deadline: datetime | None = None
     deleted_at: datetime | None = None
+    tags: list[TagEntity] = field(default_factory=list)
 
     def is_accepting_submissions(self, now: datetime) -> bool:
         """
@@ -183,6 +192,7 @@ class LeaderboardEntryEntity:
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None
+    is_source_code_submitted: bool = False
 
 
 @dataclass

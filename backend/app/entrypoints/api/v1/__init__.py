@@ -10,6 +10,7 @@ from app.entrypoints.api.v1 import (
     submissions_router,
     teams_router,
     users_router,
+    tags_router,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "submissions_router",
     "leaderboard_router",
     "admin_router",
+    "tags_router",
 ]

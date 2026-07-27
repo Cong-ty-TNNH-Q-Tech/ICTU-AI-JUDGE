@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
+from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
+    SourceCodeUploadResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -42,57 +44,147 @@ router = APIRouter()
 # Existing endpoints (skeleton — chưa implement)
 # ==========================================
 
-@router.get("")
+@router.get("", response_model=dict)
 async def list_challenges(
     status_filter: str | None = None,
+    tag_id: uuid.UUID | None = None,
     page: int = 1,
     size: int = 20,
-    use_case: ChallengeUseCase = Depends(get_challenge_use_case),
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID | None = Depends(get_current_user_id), # Optional cho Public endpoint, nhưng ở đây cứ check nếu có auth thì maybe coi là admin
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    return use_case.list_challenges(page=page, size=size, status_filter=status_filter)
+    from app.adapters.database.user_repository import SQLUserRepository
+    
+    # Check nếu user là Admin thì is_admin=True, nếu ko có thì False
+    is_admin = False
+    if user_id:
+        user_repo = SQLUserRepository(db)
+        user = user_repo.get_by_id(user_id)
+        if user and user.role.value == "ADMIN":
+            is_admin = True
+
+    result = use_case.list_challenges(page=page, size=size, status_filter=status_filter, is_admin=is_admin, tag_id=tag_id)
+    return result.dict()
 
 
-@router.post("")
-async def create_challenge(db: Session = Depends(get_db)):
+@router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def create_challenge(
+    request: dict,
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
+):
     """UC09 — Tạo bài thi mới (Admin only)."""
-    # TODO: Validate Admin role từ JWT cookie
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.challenge_dtos import ChallengeCreateRequestDTO
+    
+    dto = ChallengeCreateRequestDTO(**request)
+    
+    result = use_case.create_challenge(admin_id=admin_id, data=dto)
+    db.commit()
+    return result.dict()
 
 
-@router.get("/{challenge_id}")
-async def get_challenge(challenge_id: uuid.UUID, use_case: ChallengeUseCase = Depends(get_challenge_use_case)):
+@router.get("/{challenge_id}", response_model=dict)
+async def get_challenge(
+    challenge_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user_id: uuid.UUID | None = Depends(get_current_user_id)
+):
     """Chi tiết bài thi."""
-    challenge = use_case.get_challenge(challenge_id)
-    if not challenge:
-        raise HTTPException(status_code=404, detail="Challenge not found")
-    return challenge
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    from app.adapters.database.user_repository import SQLUserRepository
+    
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    
+    is_admin = False
+    if user_id:
+        user_repo = SQLUserRepository(db)
+        user = user_repo.get_by_id(user_id)
+        if user and user.role.value == "ADMIN":
+            is_admin = True
+            
+    try:
+        result = use_case.get_challenge(challenge_id=challenge_id, is_admin=is_admin)
+        return result.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.patch("/{challenge_id}")
-async def update_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.patch("/{challenge_id}", response_model=dict)
+async def update_challenge(
+    challenge_id: uuid.UUID,
+    request: dict,
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
+):
     """UC09 — Cập nhật bài thi (Admin only). Bị khóa nếu đã có Submission."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.challenge_dtos import ChallengeUpdateRequestDTO
+    
+    dto = ChallengeUpdateRequestDTO(**request)
+    
+    try:
+        result = use_case.update_challenge(challenge_id=challenge_id, data=dto)
+        db.commit()
+        return result.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/{challenge_id}")
-async def delete_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.delete("/{challenge_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_challenge(
+    challenge_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
+):
     """UC09 — Soft delete bài thi (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    use_case.delete_challenge(challenge_id)
+    db.commit()
+    return None
 
 
-@router.post("/{challenge_id}/upload-secrets")
+@router.post("/{challenge_id}/upload-secrets", response_model=dict)
 async def upload_secrets(
     challenge_id: uuid.UUID,
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
     db: Session = Depends(get_db),
+    admin_id: uuid.UUID = Depends(require_admin)
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.use_cases.challenge_use_case import ChallengeUseCase
+    
+    use_case = ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db),
+        storage_repo=S3StorageRepository(),
+    )
+    
+    gt_bytes = await ground_truth_csv.read()
+    metric_bytes = await metric_script_py.read() if metric_script_py else None
+    
+    try:
+        result = use_case.upload_secrets(
+            challenge_id=challenge_id,
+            ground_truth_bytes=gt_bytes,
+            metric_script_bytes=metric_bytes
+        )
+        db.commit()
+        return result.dict()
+    except ValueError as e:
+        if "Usage" in str(e):
+            raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{challenge_id}/enroll", response_model=dict)
@@ -207,6 +299,36 @@ async def submit(
     use_case.trigger_scoring(str(result.submission_id))
 
     return result
+
+# ==========================================
+# UC06 — Nộp Source Code
+# ==========================================
+
+@router.post(
+    "/{challenge_id}/submissions/{submission_id}/source-code",
+    response_model=SourceCodeUploadResponseDTO,
+)
+async def upload_source_code(
+    challenge_id: uuid.UUID,
+    submission_id: uuid.UUID,
+    files: list[UploadFile] = File(...),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
+):
+    """
+    UC06 — Nộp Source Code (chống gian lận).
+    Upload nhiều files, sẽ được nén in-memory và đưa lên S3.
+    """
+    file_tuples = []
+    for f in files:
+        data = await f.read()
+        file_tuples.append((f.filename, data, f.content_type))
+        
+    return use_case.upload_source_code(
+        submission_id=submission_id,
+        user_id=user_id,
+        files=file_tuples
+    )
 
 
 # ==========================================

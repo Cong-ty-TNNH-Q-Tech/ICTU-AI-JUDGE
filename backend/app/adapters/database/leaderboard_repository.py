@@ -28,6 +28,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             best_private_score=model.best_private_score,
             best_public_submission_id=model.best_public_submission_id,
             best_private_submission_id=model.best_private_submission_id,
+            is_source_code_submitted=model.is_source_code_submitted,
         )
 
     def get_by_team_and_challenge(
@@ -64,6 +65,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             best_private_submission_id=entry.best_private_submission_id,
             last_submission_time=entry.last_submission_time,
             rank=entry.rank,
+            is_source_code_submitted=entry.is_source_code_submitted,
         )
 
         update_dict = {
@@ -159,4 +161,15 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
 
         return items, total
 
-
+    def update_source_code_submitted(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID, submitted: bool = True
+    ) -> None:
+        stmt = (
+            update(LeaderboardModel)
+            .where(
+                LeaderboardModel.team_id == team_id,
+                LeaderboardModel.challenge_id == challenge_id,
+            )
+            .values(is_source_code_submitted=submitted)
+        )
+        self.db.execute(stmt)
