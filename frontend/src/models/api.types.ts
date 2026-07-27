@@ -31,6 +31,8 @@ export interface UserResponse {
   email: string;
   full_name: string;
   role: UserRole;
+  is_active: boolean;
+  student_id?: string;
 }
 
 export interface Team {
@@ -46,11 +48,13 @@ export interface Challenge {
   description?: string;
   type: ChallengeType;
   status: ChallengeStatus;
+  is_public: boolean;
   start_time: string;  // ISO 8601
   end_time: string;
   team_lock_deadline?: string;
   rate_limit_minutes: number;
   max_file_size_mb: number;
+  max_team_size: number;
   metric_name: string;
   metric_direction: MetricDirection;
   dataset_url: string;
@@ -59,7 +63,6 @@ export interface Challenge {
 export interface Submission {
   id: string;
   public_score: number | null;
-  private_score?: number | null;
   status: SubmissionStatus;
   is_selected_for_private: boolean;
   file_size_bytes: number;
@@ -86,6 +89,18 @@ export interface Participant {
   joined_at: string;
 }
 
+export interface Solution {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  author_name?: string;
+  title: string;
+  content: string;
+  notebook_url: string;
+  upvotes: number;
+  created_at: string;
+}
+
 // ==========================================
 // REQUEST PAYLOADS
 // ==========================================
@@ -104,12 +119,13 @@ export interface ChallengeCreateRequest {
   team_lock_deadline?: string;
   rate_limit_minutes?: number;
   max_file_size_mb?: number;
+  max_team_size?: number;
   metric_name: string;
   metric_direction: MetricDirection;
   dataset_url?: string;
 }
 
-export interface ChallengeUpdateRequest extends Partial<ChallengeCreateRequest> {}
+export type ChallengeUpdateRequest = Partial<ChallengeCreateRequest>;
 
 export interface SelectForPrivateRequest {
   is_selected_for_private: boolean;
@@ -143,7 +159,7 @@ export interface PaginatedResponse<T> extends PaginationMeta {
 // ==========================================
 
 export interface ApiError {
-  detail: string;
+  detail: string | Array<{ msg: string; loc: string[]; type: string }>;
   wait_minutes?: number;
   max_mb?: number;
 }

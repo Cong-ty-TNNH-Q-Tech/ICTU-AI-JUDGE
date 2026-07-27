@@ -164,3 +164,16 @@ class LeaderboardEntryEntity:
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None
+
+
+@dataclass
+class SolutionEntity:
+    id: uuid.UUID
+    challenge_id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    content: str
+    notebook_url: str
+    upvotes: int
+    created_at: datetime
+

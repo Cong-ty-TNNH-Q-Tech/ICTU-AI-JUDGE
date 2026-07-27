@@ -35,14 +35,12 @@ flowchart LR
         UC05(UC05: Chọn bài tính điểm cuối kỳ)
         UC06(UC06: Nộp Source Code)
         UC07(UC07: Xem Bảng xếp hạng)
-        UC08(UC08: Thảo luận Q&A)
         
         %% Nhóm Admin
         UC09(UC09: Quản lý Bài thi & Metric)
         UC10(UC10: Duyệt danh sách thi đấu)
         UC11(UC11: Giám sát lịch sử nộp bài)
         UC12(UC12: Quản lý Sinh viên)
-        UC13(UC13: Quản lý Thảo luận)
         
         %% Nhóm Hệ thống
         UC14(UC14: Chấm điểm tự động)
@@ -56,7 +54,6 @@ flowchart LR
     SV --> UC05
     SV --> UC06
     SV --> UC07
-    SV --> UC08
 
     GV --> UC01
     GV --> UC09
@@ -80,14 +77,12 @@ flowchart LR
 - **UC05. Chọn bài tính điểm Private:** Đánh dấu chọn (Đánh dấu V) tối đa 1-2 file nộp tốt nhất để chấm điểm chung cuộc (chống Overfitting).
 - **UC06. Nộp Source Code:** Upload file Code (Jupyter/Python) + `requirements.txt` vào cuối kỳ.
 - **UC07. Xem Bảng xếp hạng:** Xem rank thay đổi theo thời gian thực (Public).
-- **UC08. Thảo luận (Q&A):** Viết bình luận/hỏi đáp trong trang chi tiết bài thi.
 
 ### 3.2. Phân hệ Quản trị (Admin)
 - **UC09. Quản lý Bài thi:** Thêm, Sửa, Xuất bản, Cài đặt luật thi (Rate Limit, Số thành viên đội).
 - **UC10. Quản lý Quyền thi đấu (Whitelist):** Gán quyền tham gia (Approve) cho kỳ thi `COMPETITION`.
 - **UC11. Giám sát Nộp bài:** Tải về các file `.csv` hoặc file Code của các Đội đạt giải để hậu kiểm (Reproduce).
 - **UC12. Quản lý Sinh viên:** Khóa tài khoản, mở khóa.
-- **UC13. Quản lý Thảo luận:** Giải đáp các bình luận thắc mắc của sinh viên.
 
 ### 3.3. Phân hệ Hệ thống (System Worker)
 - **UC14. Chấm điểm tự động:** Celery Worker lấy job từ Redis, khởi tạo Docker Sandbox chấm bài, cập nhật Leaderboard.
