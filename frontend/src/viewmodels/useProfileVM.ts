@@ -23,7 +23,6 @@ export function useProfileVM(userId: string) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const { updateAvatar } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProfile = useCallback(async () => {
@@ -85,10 +84,11 @@ export function useProfileVM(userId: string) {
       setAvatarError(null);
       try {
         const { avatar_url } = await userService.uploadAvatar(file);
-        // Cập nhật local state ngay lập tức
+        // Cập nhật local state ngay lập tức (hiện avatar mới trên ProfilePage)
         setProfile((prev) => (prev ? { ...prev, avatar_url } : prev));
-        // Cập nhật Zustand store → Header tự re-render ngay lập tức
-        updateAvatar(avatar_url);
+        // Cập nhật Zustand store — dùng getState() để chắc chắn không bị stale closure
+        // trong async context → Header re-render ngay
+        useAuthStore.getState().updateAvatar(avatar_url);
       } catch (err: unknown) {
         const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
         setAvatarError(detail || 'Upload ảnh thất bại.');
@@ -98,7 +98,7 @@ export function useProfileVM(userId: string) {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [updateAvatar],
+    [],  // Không cần dependencies vì dùng getState()
   );
 
   return {
