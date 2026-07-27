@@ -61,7 +61,7 @@ class SQLSubmissionRepository(ISubmissionRepository):
             ))
         return entities
 
-    def get_stale_submissions(self, older_than: datetime) -> list[SubmissionModel]:
+    def get_stale_submissions(self, older_than: datetime) -> list[SubmissionEntity]:
         """
         Lấy danh sách các file nộp thoả mãn: 
         1. Không phải là best_public_submission_id 
@@ -108,7 +108,19 @@ class SQLSubmissionRepository(ISubmissionRepository):
                 )
             )
         )
-        return list(self.db.execute(stmt).scalars().all())
+        models = self.db.execute(stmt).scalars().all()
+        entities = []
+        for m in models:
+            entities.append(SubmissionEntity(
+                id=m.id, challenge_id=m.challenge_id, team_id=m.team_id,
+                submitted_by=m.submitted_by, file_url=m.file_url,
+                file_md5_hash=m.file_md5_hash, file_size_bytes=m.file_size_bytes,
+                status=SubmissionStatus(m.status), submitted_at=m.submitted_at,
+                public_score=m.public_score, private_score=m.private_score,
+                source_code_url=m.source_code_url, is_selected_for_private=m.is_selected_for_private,
+                execution_time_ms=m.execution_time_ms, error_message=m.error_message
+            ))
+        return entities
 
     def nullify_file_urls(self, submission_ids: list[uuid.UUID]) -> None:
         if not submission_ids:

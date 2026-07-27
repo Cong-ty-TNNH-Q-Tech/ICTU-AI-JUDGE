@@ -60,6 +60,7 @@ def cleanup_s3_storage() -> dict:
     và không phải file mới nhất, nộp cách đây hơn 1 ngày.
     """
     from app.adapters.database.submission_repository import SQLSubmissionRepository
+    from app.application.use_cases.cleanup_use_case import CleanupStaleStorageUseCase
     
     # Try to import MinIO storage or use a mock if not implemented yet (Issue #14)
     try:
@@ -73,25 +74,11 @@ def cleanup_s3_storage() -> dict:
     
     with SessionLocal() as db:
         repo = SQLSubmissionRepository(db)
-        stale_subs = repo.get_stale_submissions(older_than=cutoff)
+        use_case = CleanupStaleStorageUseCase(
+            submission_repo=repo,
+            storage_repo=storage_repo,
+        )
         
-        if not stale_subs:
-            logger.info("Storage Cleanup: No stale files found to clean.")
-            return {"deleted": 0}
+        deleted_count = use_case.execute(older_than=cutoff)
             
-        deleted_ids = []
-        for sub in stale_subs:
-            try:
-                if storage_repo:
-                    storage_repo.delete(sub.file_url)
-                else:
-                    logger.info("MOCK DELETE S3 file: %s", sub.file_url)
-                deleted_ids.append(sub.id)
-            except Exception as e:
-                logger.error("Failed to delete file %s from S3: %s", sub.file_url, e)
-                
-        if deleted_ids:
-            repo.nullify_file_urls(deleted_ids)
-            logger.info("Storage Cleanup: nullified file_urls for %d submissions.", len(deleted_ids))
-            
-        return {"deleted": len(deleted_ids)}
+        return {"deleted": deleted_count}

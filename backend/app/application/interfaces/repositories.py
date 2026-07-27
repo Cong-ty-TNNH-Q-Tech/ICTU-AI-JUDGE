@@ -110,6 +110,16 @@ class ISubmissionRepository(ABC):
         self, older_than: datetime
     ) -> list[SubmissionEntity]: ...
 
+    @abstractmethod
+    def get_stale_submissions(
+        self, older_than: datetime
+    ) -> list[SubmissionEntity]: ...
+
+    @abstractmethod
+    def nullify_file_urls(
+        self, submission_ids: list[uuid.UUID]
+    ) -> None: ...
+
 
 class ILeaderboardRepository(ABC):
     @abstractmethod

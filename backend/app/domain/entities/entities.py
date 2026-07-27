@@ -139,11 +139,11 @@ class SubmissionEntity:
     challenge_id: uuid.UUID
     team_id: uuid.UUID
     submitted_by: uuid.UUID
-    file_url: str
     file_md5_hash: str
     file_size_bytes: int
     status: SubmissionStatus
     submitted_at: datetime
+    file_url: str | None = None
     public_score: float | None = None
     private_score: float | None = None
     source_code_url: str | None = None
