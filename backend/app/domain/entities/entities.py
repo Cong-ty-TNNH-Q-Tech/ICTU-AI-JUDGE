@@ -139,11 +139,11 @@ class SubmissionEntity:
     challenge_id: uuid.UUID
     team_id: uuid.UUID
     submitted_by: uuid.UUID
-    file_url: str
     file_md5_hash: str
     file_size_bytes: int
     status: SubmissionStatus
     submitted_at: datetime
+    file_url: str | None = None
     public_score: float | None = None
     private_score: float | None = None
     source_code_url: str | None = None
@@ -164,3 +164,16 @@ class LeaderboardEntryEntity:
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None
+
+
+@dataclass
+class SolutionEntity:
+    id: uuid.UUID
+    challenge_id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    content: str
+    notebook_url: str
+    upvotes: int
+    created_at: datetime
+

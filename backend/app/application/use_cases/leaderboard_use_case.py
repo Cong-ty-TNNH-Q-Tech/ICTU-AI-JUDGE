@@ -60,6 +60,7 @@ class LeaderboardUseCase:
         for entity, team_name in items:
             dto = LeaderboardEntryDTO(
                 rank=entity.rank,
+                team_id=entity.team_id,
                 team_name=team_name,
                 best_public_score=entity.best_public_score,
                 best_private_score=entity.best_private_score if lb_type == LeaderboardType.PRIVATE else None,

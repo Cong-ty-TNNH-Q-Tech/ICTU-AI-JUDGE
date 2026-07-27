@@ -10,6 +10,11 @@ RUN npm install || echo "Bỏ qua npm install vì chưa có package.json"
 
 # Copy mã nguồn và build
 COPY . .
+
+# Nhận build argument từ docker-compose và dùng để build Vite
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+
 # Tạo thư mục dist tạm thời nếu chưa có mã nguồn (giúp Nginx stage không bị lỗi)
 RUN npm run build || mkdir -p dist
 
