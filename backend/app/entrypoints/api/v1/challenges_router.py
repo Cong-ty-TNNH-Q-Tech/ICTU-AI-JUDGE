@@ -15,7 +15,6 @@ from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
-    SourceCodeUploadResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -26,6 +25,7 @@ from app.application.dtos.solution_dtos import SolutionListResponseDTO, Solution
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
     get_current_user_id,
+    get_optional_current_user_id,
     get_current_user,
     get_db,
     get_solution_use_case,
@@ -51,7 +51,7 @@ async def list_challenges(
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_current_user_id), # Optional cho Public endpoint, nhưng ở đây cứ check nếu có auth thì maybe coi là admin
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — trả None nếu chưa login
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
@@ -90,7 +90,7 @@ async def create_challenge(
 async def get_challenge(
     challenge_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_current_user_id)
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id)  # Public — optional auth
 ):
     """Chi tiết bài thi."""
     from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -299,36 +299,6 @@ async def submit(
     use_case.trigger_scoring(str(result.submission_id))
 
     return result
-
-# ==========================================
-# UC06 — Nộp Source Code
-# ==========================================
-
-@router.post(
-    "/{challenge_id}/submissions/{submission_id}/source-code",
-    response_model=SourceCodeUploadResponseDTO,
-)
-async def upload_source_code(
-    challenge_id: uuid.UUID,
-    submission_id: uuid.UUID,
-    files: list[UploadFile] = File(...),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-    use_case: SubmissionUseCase = Depends(get_submission_use_case),
-):
-    """
-    UC06 — Nộp Source Code (chống gian lận).
-    Upload nhiều files, sẽ được nén in-memory và đưa lên S3.
-    """
-    file_tuples = []
-    for f in files:
-        data = await f.read()
-        file_tuples.append((f.filename, data, f.content_type))
-        
-    return use_case.upload_source_code(
-        submission_id=submission_id,
-        user_id=user_id,
-        files=file_tuples
-    )
 
 
 # ==========================================

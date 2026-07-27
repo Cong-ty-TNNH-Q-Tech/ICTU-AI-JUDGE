@@ -49,6 +49,36 @@ class IUserRepository(ABC):
     @abstractmethod
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
 
+    @abstractmethod
+    def update_profile(
+        self,
+        user_id: uuid.UUID,
+        github_url: str | None,
+        linkedin_url: str | None,
+        avatar_url: str | None = ...,  # type: ignore[assignment]
+    ) -> UserEntity | None:
+        """
+        Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
+        Dùng atomic SQL UPDATE — an toàn đồng thời.
+        Trả về entity sau khi cập nhật, None nếu user không tồn tại.
+        """
+        ...
+
+    @abstractmethod
+    def get_profile_stats(self, user_id: uuid.UUID) -> dict:
+        """
+        Lấy thống kê tổng hợp của user:
+        { total_submissions, total_solutions, best_rank }
+        Thực hiện trong 3 COUNT query riêng biệt (đơn giản, dễ index).
+        """
+        ...
+
+    @abstractmethod
+    def update_avatar(self, user_id: uuid.UUID, avatar_s3_key: str) -> "UserEntity | None":
+        """Atomic update chỉ trường avatar_url — dùng sau khi upload thành công."""
+        ...
+
+
 
 class IChallengeRepository(ABC):
     @abstractmethod
@@ -154,6 +184,34 @@ class ISubmissionRepository(ABC):
         self, submission_ids: list[uuid.UUID]
     ) -> None: ...
 
+    @abstractmethod
+    def clear_selected_for_private(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID
+    ) -> None:
+        """UC05 — Bỏ chọn tất cả submission trước đó của team trong challenge."""
+        ...
+
+    @abstractmethod
+    def set_selected_for_private(
+        self, submission_id: uuid.UUID, value: bool
+    ) -> None:
+        """UC05 — Set is_selected_for_private cho một submission cụ thể."""
+        ...
+
+    @abstractmethod
+    def update_source_code_url(
+        self, submission_id: uuid.UUID, source_code_url: str
+    ) -> None:
+        """UC06 — Cập nhật đường dẫn source code sau khi upload."""
+        ...
+
+    @abstractmethod
+    def list_all_by_challenge(
+        self, challenge_id: uuid.UUID, page: int, size: int
+    ) -> tuple[list[SubmissionEntity], int]:
+        """UC11 (Admin) — Lấy tất cả bài nộp trong một Challenge."""
+        ...
+
 
 class ILeaderboardRepository(ABC):
     @abstractmethod
@@ -224,6 +282,11 @@ class ISolutionRepository(ABC):
         Trả về entity đã cập nhật, None nếu không tồn tại.
         Raises ValueError nếu user đã upvote rồi.
         """
+        ...
+
+    @abstractmethod
+    def list_by_user(self, user_id: uuid.UUID) -> list[dict]:
+        """Lấy danh sách solutions của user kèm challenge_title (JOIN)."""
         ...
 
 class ITagRepository(ABC):
