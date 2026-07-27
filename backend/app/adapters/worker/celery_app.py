@@ -5,6 +5,7 @@ Worker được mount từ app/adapters/worker/ để chấm điểm bất đồ
 import logging
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import get_settings
 
@@ -37,6 +38,10 @@ celery_app.conf.update(
         "cleanup-stale-submissions": {
             "task": "app.adapters.worker.cleanup_tasks.cleanup_stale_submissions",
             "schedule": 300.0,  # Chạy mỗi 5 phút
+        },
+        "cleanup-s3-storage": {
+            "task": "app.adapters.worker.cleanup_tasks.cleanup_s3_storage",
+            "schedule": crontab(hour=2, minute=0),  # Chạy mỗi đêm lúc 2h sáng
         },
     },
 )

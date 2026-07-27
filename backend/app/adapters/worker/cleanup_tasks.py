@@ -52,3 +52,33 @@ def cleanup_stale_submissions() -> dict:
 
         logger.info("Cleanup: marked %d stale submissions as FAILED", len(stale))
         return {"cleaned": len(stale)}
+
+@celery_app.task(name="app.adapters.worker.cleanup_tasks.cleanup_s3_storage")
+def cleanup_s3_storage() -> dict:
+    """
+    Auto-clean S3 files: Xóa các file nộp cũ, không phải là kỷ lục (public/private),
+    và không phải file mới nhất, nộp cách đây hơn 1 ngày.
+    """
+    from app.adapters.database.submission_repository import SQLSubmissionRepository
+    from app.application.use_cases.cleanup_use_case import CleanupStaleStorageUseCase
+    
+    # Try to import MinIO storage or use a mock if not implemented yet (Issue #14)
+    try:
+        from app.adapters.storage.minio_storage import MinIOStorageRepository
+        storage_repo = MinIOStorageRepository()
+    except ImportError:
+        logger.warning("MinIOStorageRepository chưa được implement (Issue #14). Bỏ qua xóa vật lý thực sự.")
+        storage_repo = None
+
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=1)
+    
+    with SessionLocal() as db:
+        repo = SQLSubmissionRepository(db)
+        use_case = CleanupStaleStorageUseCase(
+            submission_repo=repo,
+            storage_repo=storage_repo,
+        )
+        
+        deleted_count = use_case.execute(older_than=cutoff)
+            
+        return {"deleted": deleted_count}
