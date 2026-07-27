@@ -22,14 +22,16 @@ def dummy_challenge():
         metric_direction=MetricDirection.HIGHER_IS_BETTER,
         created_by=uuid.uuid4(),
         max_team_size=1,
-        created_at=datetime.now()
+        created_at=datetime.now(),
+        tags=[]
     )
 
 @pytest.fixture
 def challenge_use_case():
     repo = MagicMock()
     storage_repo = MagicMock()
-    return ChallengeUseCase(challenge_repo=repo, storage_repo=storage_repo)
+    tag_repo = MagicMock()
+    return ChallengeUseCase(challenge_repo=repo, storage_repo=storage_repo, tag_repo=tag_repo)
 
 def test_list_challenges(challenge_use_case, dummy_challenge):
     challenge_use_case.challenge_repo.list_all.return_value = ([dummy_challenge], 1)
@@ -38,7 +40,7 @@ def test_list_challenges(challenge_use_case, dummy_challenge):
     assert res.total == 1
     assert len(res.items) == 1
     assert res.items[0].title == "Test Challenge"
-    challenge_use_case.challenge_repo.list_all.assert_called_once_with(page=1, size=10, status_filter="PUBLISHED")
+    challenge_use_case.challenge_repo.list_all.assert_called_once_with(page=1, size=10, status_filter="PUBLISHED", tag_id=None)
 
 def test_get_challenge(challenge_use_case, dummy_challenge):
     cid = dummy_challenge.id

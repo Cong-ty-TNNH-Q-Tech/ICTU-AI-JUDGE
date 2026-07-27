@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.adapters.database.models import ChallengeModel, SubmissionModel
 from app.application.interfaces.repositories import IChallengeRepository
@@ -15,6 +15,7 @@ from app.domain.entities.entities import (
     ChallengeStatus,
     ChallengeType,
     MetricDirection,
+    TagEntity,
 )
 
 
@@ -44,12 +45,20 @@ class SQLChallengeRepository(IChallengeRepository):
             team_lock_deadline=model.team_lock_deadline,
             max_team_size=model.max_team_size,
             deleted_at=model.deleted_at,
+            tags=[TagEntity(
+                id=t.id,
+                name=t.name,
+                color_hex=t.color_hex,
+                created_at=t.created_at
+            ) for t in getattr(model, "tags", [])]
         )
 
     def get_by_id(self, challenge_id: uuid.UUID) -> ChallengeEntity | None:
         model = (
             self.db.execute(
-                select(ChallengeModel).where(
+                select(ChallengeModel)
+                .options(selectinload(ChallengeModel.tags))
+                .where(
                     ChallengeModel.id == challenge_id,
                     ChallengeModel.deleted_at == None,  # noqa: E711
                 )
@@ -89,7 +98,9 @@ class SQLChallengeRepository(IChallengeRepository):
     def update(self, challenge: ChallengeEntity) -> ChallengeEntity:
         model = (
             self.db.execute(
-                select(ChallengeModel).where(ChallengeModel.id == challenge.id)
+                select(ChallengeModel)
+                .options(selectinload(ChallengeModel.tags))
+                .where(ChallengeModel.id == challenge.id)
             )
             .scalars()
             .first()
@@ -124,11 +135,13 @@ class SQLChallengeRepository(IChallengeRepository):
         self.db.flush()
 
     def list_all(
-        self, page: int, size: int, status_filter: str | None = None
+        self, page: int, size: int, status_filter: str | None = None, tag_id: uuid.UUID | None = None
     ) -> tuple[list[ChallengeEntity], int]:
         query = select(ChallengeModel).where(ChallengeModel.deleted_at == None)  # noqa: E711
         if status_filter:
             query = query.where(ChallengeModel.status == status_filter)
+        if tag_id:
+            query = query.filter(ChallengeModel.tags.any(id=tag_id))
 
         total = self.db.execute(
             select(func.count()).select_from(query.subquery())
@@ -136,7 +149,8 @@ class SQLChallengeRepository(IChallengeRepository):
 
         models = (
             self.db.execute(
-                query.order_by(ChallengeModel.created_at.desc())
+                query.options(selectinload(ChallengeModel.tags))
+                .order_by(ChallengeModel.created_at.desc())
                 .offset((page - 1) * size)
                 .limit(size)
             )

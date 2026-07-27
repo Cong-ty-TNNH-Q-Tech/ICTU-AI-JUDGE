@@ -19,12 +19,14 @@ from app.application.interfaces.repositories import (
     ISubmissionRepository,
     ITeamRepository,
     IUnitOfWork,
+    ITagRepository,
 )
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
 from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
+from app.adapters.database.tag_repository import SQLTagRepository
 from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
@@ -36,6 +38,7 @@ from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
+from app.application.use_cases.tag_use_case import TagUseCase
 from app.domain.entities.entities import UserEntity
 
 settings = get_settings()
@@ -161,6 +164,9 @@ def get_submission_repository(db: Session = Depends(get_db)) -> ISubmissionRepos
 def get_team_repository(db: Session = Depends(get_db)) -> ITeamRepository:
     return SQLTeamRepository(db)
 
+def get_tag_repository(db: Session = Depends(get_db)) -> ITagRepository:
+    return SQLTagRepository(db)
+
 def get_uow(db: Session = Depends(get_db)) -> IUnitOfWork:
     return SQLUnitOfWork(db)
 
@@ -191,8 +197,10 @@ def get_submission_use_case(
 
 def get_challenge_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+    tag_repo: ITagRepository = Depends(get_tag_repository),
 ) -> ChallengeUseCase:
-    return ChallengeUseCase(challenge_repo)
+    return ChallengeUseCase(challenge_repo, storage_repo, tag_repo)
 
 
 def get_admin_use_case(
@@ -209,3 +217,9 @@ def get_team_use_case(
     uow: IUnitOfWork = Depends(get_uow),
 ) -> TeamUseCase:
     return TeamUseCase(team_repo, challenge_repo, user_repo, uow)
+
+def get_tag_use_case(
+    tag_repo: ITagRepository = Depends(get_tag_repository),
+    uow: IUnitOfWork = Depends(get_uow)
+) -> TagUseCase:
+    return TagUseCase(uow, tag_repo)
