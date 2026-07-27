@@ -89,6 +89,18 @@ export interface Participant {
   joined_at: string;
 }
 
+export interface Solution {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  author_name?: string;
+  title: string;
+  content: string;
+  notebook_url: string;
+  upvotes: number;
+  created_at: string;
+}
+
 // ==========================================
 // REQUEST PAYLOADS
 // ==========================================

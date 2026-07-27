@@ -15,6 +15,7 @@ from app.domain.entities.entities import (
     TeamEntity,
     UserEntity,
     MetricDirection,
+    SolutionEntity,
 )
 
 
@@ -156,3 +157,11 @@ class IStorageRepository(ABC):
 
     @abstractmethod
     def delete(self, key: str) -> None: ...
+
+
+class ISolutionRepository(ABC):
+    @abstractmethod
+    def save(self, solution: SolutionEntity) -> SolutionEntity: ...
+
+    @abstractmethod
+    def list_by_challenge(self, challenge_id: uuid.UUID) -> list[SolutionEntity]: ...

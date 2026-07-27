@@ -5,7 +5,7 @@ Challenges Router — UC03 (enroll), UC04 (submit), UC09 (CRUD), UC10 (participa
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.adapters.database.challenge_repository import SQLChallengeRepository
@@ -18,7 +18,12 @@ from app.application.dtos.submission_dtos import (
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
-from app.entrypoints.dependencies import get_current_user_id, get_db
+from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
+from app.adapters.database.user_repository import UserRepository
+from app.domain.entities.entities import UserEntity
+from app.application.interfaces.repositories import IStorageRepository
+from app.entrypoints.dependencies import get_current_user_id, get_current_user, get_db, get_solution_use_case, get_storage_repository
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -226,4 +231,133 @@ async def get_leaderboard(
         "page": page,
         "size": size,
     }
+
+
+# ==========================================
+# Feature: Kernels / Solutions
+# ==========================================
+
+@router.get("/{challenge_id}/solutions", response_model=SolutionListResponseDTO)
+async def list_solutions(
+    challenge_id: uuid.UUID,
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+    db: Session = Depends(get_db),
+):
+    """Lấy danh sách Solutions của một bài thi."""
+    try:
+        solutions = use_case.get_solutions_for_challenge(challenge_id)
+    except ValueError:
+        # Challenge không tồn tại — trả về danh sách rỗng thay vì 404 để tránh crash frontend
+        return SolutionListResponseDTO(items=[], total=0)
+    user_repo = UserRepository(db)
+    items = []
+    for s in solutions:
+        user = user_repo.get_by_id(s.user_id)
+        author_name = user.full_name if user and user.full_name else str(s.user_id)
+        # Generate presigned URL on-the-fly từ S3 key lưu trong DB
+        # Tránh lưu presigned URL đã expire trong DB
+        try:
+            notebook_url = storage_repo.get_presigned_url(
+                s.notebook_url,
+                expires_in=3600,
+                filename=s.notebook_url.split("/")[-1],
+            ).replace("http://minio:9000", "http://localhost:9000")
+        except Exception:
+            notebook_url = s.notebook_url  # fallback nếu generate thất bại
+        items.append(SolutionResponseDTO(
+            id=s.id,
+            challenge_id=s.challenge_id,
+            user_id=s.user_id,
+            title=s.title,
+            content=s.content,
+            notebook_url=notebook_url,
+            upvotes=s.upvotes,
+            created_at=s.created_at,
+            author_name=author_name,
+        ))
+    return SolutionListResponseDTO(items=items, total=len(items))
+
+
+
+@router.post(
+    "/{challenge_id}/solutions",
+    response_model=SolutionResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_solution(
+    challenge_id: uuid.UUID,
+    title: str = Form(...),
+    content: str = Form(...),
+    file: UploadFile = File(...),
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+    db: Session = Depends(get_db),
+):
+    """Chia sẻ file notebook (Upload lên S3/MinIO và tạo bản ghi vào DB)."""
+    file_bytes = await file.read()
+    filename = file.filename or "solution.ipynb"
+
+    result = use_case.publish_solution(
+        user=user,
+        challenge_id=challenge_id,
+        title=title,
+        content=content,
+        file_bytes=file_bytes,
+        filename=filename,
+    )
+    db.commit()
+    # Generate presigned URL for response (S3 key đã lưu trong result.notebook_url)
+    try:
+        notebook_url = storage_repo.get_presigned_url(
+            result.notebook_url,
+            expires_in=3600,
+            filename=filename,
+        ).replace("http://minio:9000", "http://localhost:9000")
+    except Exception:
+        notebook_url = result.notebook_url
+    return SolutionResponseDTO(
+        id=result.id,
+        challenge_id=result.challenge_id,
+        user_id=result.user_id,
+        title=result.title,
+        content=result.content,
+        notebook_url=notebook_url,
+        upvotes=result.upvotes,
+        created_at=result.created_at,
+        author_name=user.full_name or str(user.id),
+    )
+
+
+
+@router.post(
+    "/{challenge_id}/solutions/{solution_id}/upvote",
+    response_model=SolutionResponseDTO,
+)
+async def upvote_solution(
+    challenge_id: uuid.UUID,
+    solution_id: uuid.UUID,
+    user: UserEntity = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upvote một solution (+1). Yêu cầu đăng nhập. Mỗi user chỉ vote được 1 lần."""
+    from app.adapters.database.solution_repository import PostgresSolutionRepository
+    from app.adapters.database.user_repository import UserRepository
+
+    solution_repo = PostgresSolutionRepository(db)
+    try:
+        updated = solution_repo.upvote(solution_id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="Solution không tồn tại")
+    db.commit()
+
+    user_repo = UserRepository(db)
+    author = user_repo.get_by_id(updated.user_id)
+    author_name = author.full_name if author and author.full_name else str(updated.user_id)
+    return SolutionResponseDTO(**updated.__dict__, author_name=author_name)
+
 

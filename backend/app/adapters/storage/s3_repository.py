@@ -77,15 +77,20 @@ class S3StorageRepository(IStorageRepository):
         except ClientError as e:
             logger.warning("S3 delete FAILED — key=%s error=%s", key, e)
 
-    def get_presigned_url(self, key: str, expires_in: int = 3600) -> str:
+    def get_presigned_url(self, key: str, expires_in: int = 3600, filename: str | None = None) -> str:
         """
         Tạo presigned URL cho phép Frontend download trực tiếp (không qua API).
         expires_in: thời gian hiệu lực (giây).
+        filename: nếu cung cấp, sẽ thêm Content-Disposition để force download.
         """
         try:
+            params: dict = {"Bucket": self._bucket, "Key": key}
+            if filename:
+                params["ResponseContentDisposition"] = f'attachment; filename="{filename}"'
+                params["ResponseContentType"] = "application/x-ipynb+json"
             url = self._client.generate_presigned_url(
                 "get_object",
-                Params={"Bucket": self._bucket, "Key": key},
+                Params=params,
                 ExpiresIn=expires_in,
             )
             return url
