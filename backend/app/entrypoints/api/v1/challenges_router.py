@@ -216,25 +216,7 @@ async def submit(
     return result
 
 
-# ==========================================
-# UC07 — Bảng xếp hạng
-# ==========================================
 
-@router.get("/{challenge_id}/leaderboard")
-async def get_leaderboard(
-    challenge_id: uuid.UUID,
-    type: str = "public",
-    page: int = 1,
-    size: int = 20,
-    db: Session = Depends(get_db),
-):
-    """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    return {
-        "items": [],
-        "total": 0,
-        "page": page,
-        "size": size,
-    }
 
 
 # ==========================================
