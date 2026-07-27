@@ -1,0 +1,67 @@
+import uuid
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+from app.domain.entities.entities import ChallengeStatus, ChallengeType, MetricDirection
+
+
+class ChallengeCreateRequestDTO(BaseModel):
+    title: str = Field(..., max_length=255)
+    description: str = Field(..., min_length=1)
+    type: ChallengeType
+    start_time: datetime
+    end_time: datetime
+    rate_limit_minutes: int = Field(default=30, ge=1)
+    max_file_size_mb: int = Field(default=5, ge=1, le=50)
+    metric_name: str = Field(..., max_length=50)
+    metric_direction: MetricDirection
+    dataset_url: Optional[str] = None
+    team_lock_deadline: Optional[datetime] = None
+    max_team_size: int = Field(default=5, ge=1)
+
+class ChallengeUpdateRequestDTO(BaseModel):
+    title: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
+    status: Optional[ChallengeStatus] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    rate_limit_minutes: Optional[int] = Field(None, ge=1)
+    max_file_size_mb: Optional[int] = Field(None, ge=1, le=50)
+    metric_name: Optional[str] = Field(None, max_length=50)
+    metric_direction: Optional[MetricDirection] = None
+    dataset_url: Optional[str] = None
+    team_lock_deadline: Optional[datetime] = None
+    max_team_size: Optional[int] = Field(None, ge=1)
+
+class ChallengeResponseDTO(BaseModel):
+    id: uuid.UUID
+    title: str
+    description: str
+    type: ChallengeType
+    status: ChallengeStatus
+    start_time: datetime
+    end_time: datetime
+    rate_limit_minutes: int
+    max_file_size_mb: int
+    metric_name: str
+    metric_direction: MetricDirection
+    created_by: uuid.UUID
+    created_at: datetime
+    dataset_url: str
+    # ground_truth_url sẽ bị None nếu là sinh viên
+    ground_truth_url: Optional[str] = None
+    custom_metric_url: Optional[str] = None
+    team_lock_deadline: Optional[datetime] = None
+    max_team_size: int
+
+    class Config:
+        orm_mode = True
+
+
+class ChallengeListResponseDTO(BaseModel):
+    items: list[ChallengeResponseDTO]
+    total: int
+    page: int
+    size: int
