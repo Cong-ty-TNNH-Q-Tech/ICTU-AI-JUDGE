@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
+from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
