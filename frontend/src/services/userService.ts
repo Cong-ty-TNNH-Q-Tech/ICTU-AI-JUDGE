@@ -1,8 +1,5 @@
-/**
- * User Service — Gọi API Profile endpoints (Issue #30).
- */
 import { apiClient } from '../core/apiClient';
-import type { UserProfile, UpdateProfileRequest } from '../models/api.types';
+import type { UserProfile, UpdateProfileRequest, UserSolution } from '../models/api.types';
 
 export const userService = {
   /** GET /users/{id}/profile — Xem hồ sơ công khai */
@@ -31,6 +28,12 @@ export const userService = {
         transformRequest: (data) => data, // bypass axios JSON serialization
       },
     );
+    return data;
+  },
+
+  /** GET /users/{id}/solutions — Danh sách solutions đã đăng */
+  async getUserSolutions(userId: string): Promise<UserSolution[]> {
+    const { data } = await apiClient.get<UserSolution[]>(`/users/${userId}/solutions`);
     return data;
   },
 };

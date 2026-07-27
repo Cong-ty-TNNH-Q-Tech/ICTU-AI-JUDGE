@@ -32,6 +32,8 @@ const ProfilePage: React.FC = () => {
     fileInputRef,
     handleAvatarClick,
     handleAvatarChange,
+    solutions,
+    loadingSolutions,
   } = useProfileVM(userId ?? '');
 
   // Show toast khi avatar error
@@ -248,6 +250,69 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ======== Solutions List ======== */}
+      <div className="bg-surface dark:bg-surface-dark rounded-2xl border border-surface-200 dark:border-gray-800 shadow-elevated p-6 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-content-primary dark:text-content-dark-primary flex items-center gap-2">
+            <span className="text-lg">💡</span>
+            Giải pháp đã chia sẻ
+            {solutions.length > 0 && (
+              <span className="ml-1.5 px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-bold">
+                {solutions.length}
+              </span>
+            )}
+          </h2>
+        </div>
+
+        {loadingSolutions ? (
+          <div className="flex justify-center py-8">
+            <div className="w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : solutions.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <div className="w-14 h-14 rounded-full bg-surface-100 dark:bg-gray-800 flex items-center justify-center">
+              <svg className="w-7 h-7 text-content-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.116A6 6 0 0112 21a6 6 0 01-4.243-1.757l-.348-.116z" />
+              </svg>
+            </div>
+            <p className="text-sm text-content-secondary dark:text-content-dark-secondary">
+              {isOwner ? 'Bạn chưa chia sẻ giải pháp nào.' : 'Chưa có giải pháp nào được chia sẻ.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {solutions.map((sol) => (
+              <div
+                key={sol.id}
+                className="group flex items-start justify-between gap-4 p-4 rounded-xl border border-surface-100 dark:border-gray-800 hover:border-primary-200 dark:hover:border-primary-800/50 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-all"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1 truncate">
+                    🏆 {sol.challenge_title}
+                  </p>
+                  <p className="text-sm font-semibold text-content-primary dark:text-content-dark-primary group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors truncate">
+                    {sol.title}
+                  </p>
+                  <p className="text-xs text-content-tertiary mt-1">
+                    {new Date(sol.created_at).toLocaleDateString('vi-VN', {
+                      year: 'numeric', month: 'long', day: 'numeric'
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0 text-amber-500">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-content-secondary dark:text-content-dark-secondary">
+                    {sol.upvotes}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ======== Edit Profile Modal ======== */}

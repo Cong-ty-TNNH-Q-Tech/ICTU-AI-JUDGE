@@ -57,6 +57,15 @@ export interface UpdateProfileRequest {
   linkedin_url?: string | null;
 }
 
+export interface UserSolution {
+  id: string;
+  challenge_id: string;
+  challenge_title: string;
+  title: string;
+  upvotes: number;
+  created_at: string;  // ISO datetime string
+}
+
 export interface Team {
   id: string;
   name: string;

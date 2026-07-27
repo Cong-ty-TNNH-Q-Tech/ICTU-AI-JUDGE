@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { userService } from '../services/userService';
 import { useAuthStore } from '../store';
-import type { UserProfile, UpdateProfileRequest } from '../models/api.types';
+import type { UserProfile, UpdateProfileRequest, UserSolution } from '../models/api.types';
 
 export function useProfileVM(userId: string) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -22,6 +22,10 @@ export function useProfileVM(userId: string) {
   // Avatar upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  // Solutions list state
+  const [solutions, setSolutions] = useState<UserSolution[]>([]);
+  const [loadingSolutions, setLoadingSolutions] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +46,25 @@ export function useProfileVM(userId: string) {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Fetch solutions sau khi có userId
+  const fetchSolutions = useCallback(async () => {
+    if (!userId) return;
+    setLoadingSolutions(true);
+    try {
+      const data = await userService.getUserSolutions(userId);
+      setSolutions(data);
+    } catch {
+      // Không báo lỗi — danh sách trống là bình thường
+      setSolutions([]);
+    } finally {
+      setLoadingSolutions(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchSolutions();
+  }, [fetchSolutions]);
 
   // Mở Edit modal và fill form từ profile hiện tại
   const openEdit = useCallback(() => {
@@ -121,5 +144,8 @@ export function useProfileVM(userId: string) {
     fileInputRef,
     handleAvatarClick,
     handleAvatarChange,
+    // Solutions list
+    solutions,
+    loadingSolutions,
   };
 }

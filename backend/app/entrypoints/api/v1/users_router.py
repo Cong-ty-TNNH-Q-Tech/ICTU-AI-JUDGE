@@ -13,6 +13,7 @@ from app.application.dtos.profile_dtos import (
     AvatarUploadResponseDTO,
     UpdateProfileRequest,
     UserProfileDTO,
+    UserSolutionDTO,
 )
 from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.domain.entities.entities import UserEntity
@@ -141,3 +142,17 @@ async def upload_avatar(
 
     db.commit()
     return result
+
+
+@router.get("/{user_id}/solutions", response_model=list[UserSolutionDTO])
+def get_user_solutions(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    Danh sách Solutions đã đăng của user (kèm tên cuộc thi). Public endpoint.
+    """
+    from app.adapters.database.solution_repository import PostgresSolutionRepository
+    repo = PostgresSolutionRepository(db)
+    rows = repo.list_by_user(user_id)
+    return [UserSolutionDTO(**row) for row in rows]

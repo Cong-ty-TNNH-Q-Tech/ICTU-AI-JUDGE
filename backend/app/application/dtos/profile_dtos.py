@@ -41,3 +41,13 @@ class UpdateProfileRequest(BaseModel):
 class AvatarUploadResponseDTO(BaseModel):
     """Trả về từ POST /users/me/avatar."""
     avatar_url: str  # Presigned URL để hiển thị ngay trên Frontend
+
+
+class UserSolutionDTO(BaseModel):
+    """Mỗi solution trong danh sách hồ sơ — GET /users/{id}/solutions."""
+    id: uuid.UUID
+    challenge_id: uuid.UUID
+    challenge_title: str          # Join từ bảng challenges
+    title: str
+    upvotes: int
+    created_at: datetime.datetime
