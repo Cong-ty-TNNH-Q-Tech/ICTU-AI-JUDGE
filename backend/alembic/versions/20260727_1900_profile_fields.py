@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = "20260727_profile_fields"
-down_revision = "3f8a1c2e9d45"
+down_revision = "173a4b9c8d2e"
 branch_labels = None
 depends_on = None
 
