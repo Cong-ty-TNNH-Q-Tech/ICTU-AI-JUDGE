@@ -8,7 +8,6 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
@@ -19,6 +18,7 @@ from app.application.dtos.submission_dtos import (
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
@@ -26,6 +26,9 @@ from app.entrypoints.dependencies import (
     get_current_user,
     get_db,
     get_solution_use_case,
+    get_challenge_use_case,
+    get_submission_use_case,
+    get_admin_use_case,
     require_admin,
 )
 
@@ -33,28 +36,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-
-# ==========================================
-# Helper: khởi tạo SubmissionUseCase
-# ==========================================
-
-def _get_submission_use_case(db: Session) -> SubmissionUseCase:
-    return SubmissionUseCase(
-        submission_repo=SQLSubmissionRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        team_repo=SQLTeamRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
-
-
-# ==========================================
-# Helper: khởi tạo ChallengeUseCase
-# ==========================================
-
-def _get_challenge_use_case(db: Session) -> ChallengeUseCase:
-    return ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db)
-    )
 
 # ==========================================
 # Existing endpoints (skeleton — chưa implement)
@@ -127,18 +108,10 @@ async def list_participants(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Xem Whitelist (Admin only)."""
-    from app.application.use_cases.admin_use_case import AdminUseCase
-    from app.adapters.database.user_repository import SQLUserRepository
-    
-    use_case = AdminUseCase(
-        user_repo=SQLUserRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        submission_repo=SQLSubmissionRepository(db),
-    )
     return use_case.get_whitelist(challenge_id=challenge_id, page=page, size=size)
 
 
@@ -146,23 +119,14 @@ async def list_participants(
 async def add_participants(
     challenge_id: uuid.UUID,
     request: dict, # expect {"user_ids": ["uuid"]}
-    db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Thêm sinh viên vào Whitelist (Admin only)."""
     from app.application.dtos.admin_dtos import WhitelistAddRequestDTO
-    from app.application.use_cases.admin_use_case import AdminUseCase
-    from app.adapters.database.user_repository import SQLUserRepository
     
     dto = WhitelistAddRequestDTO(**request)
-    use_case = AdminUseCase(
-        user_repo=SQLUserRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        submission_repo=SQLSubmissionRepository(db),
-    )
-    result = use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
-    db.commit()
-    return result
+    return use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
 
 
 # ==========================================
@@ -174,11 +138,10 @@ async def list_submissions(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
     """UC04 — Lịch sử nộp bài của Đội (cần auth)."""
-    use_case = _get_submission_use_case(db)
     return use_case.list_team_submissions(
         challenge_id=challenge_id,
         user_id=user_id,
@@ -201,6 +164,7 @@ async def submit(
     file: UploadFile = File(..., description="File CSV dự đoán, tối đa max_file_size_mb"),
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
     """
     UC04 — Nộp bài dự thi.
@@ -220,8 +184,6 @@ async def submit(
     file_bytes = await file.read()
     filename = file.filename or "submission.csv"
     content_type = file.content_type or "text/csv"
-
-    use_case = _get_submission_use_case(db)
 
     # Use Case thực hiện toàn bộ pipeline validate + S3 + DB lưu
     result = use_case.submit_prediction(

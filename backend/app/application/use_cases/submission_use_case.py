@@ -23,6 +23,7 @@ from app.application.interfaces.repositories import (
     ISubmissionRepository,
     ITeamRepository,
 )
+from app.application.interfaces.message_queue import IMessageQueue
 from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
 from app.domain.exceptions.exceptions import (
     DuplicateSubmissionError,
@@ -50,11 +51,13 @@ class SubmissionUseCase:
         challenge_repo: IChallengeRepository,
         team_repo: ITeamRepository,
         storage_repo: IStorageRepository,
+        message_queue: IMessageQueue,
     ):
         self.submission_repo = submission_repo
         self.challenge_repo = challenge_repo
         self.team_repo = team_repo
         self.storage_repo = storage_repo
+        self.message_queue = message_queue
 
     # ==========================================
     # UC04 — Nộp bài dự thi
@@ -159,9 +162,9 @@ class SubmissionUseCase:
         logger.info("UC04 — DB save OK: submission_id=%s status=PENDING", saved.id)
 
         # ---- Step 9: Push Redis Queue SAU khi DB đã commit ----
-        # [NOTE] Gọi .delay() của Celery task — sẽ serialize submission_id và đẩy vào Redis.
+        # [NOTE] Đẩy vào queue (ví dụ Celery sẽ gọi .delay()).
         # DB phải được commit trước bước này (commit được thực hiện ở router layer).
-        _enqueue_scoring_task(str(saved.id))
+        self.message_queue.enqueue_scoring_task(str(saved.id))
         logger.info("UC04 — Redis push OK: submission_id=%s", saved.id)
 
         return SubmitResponseDTO(

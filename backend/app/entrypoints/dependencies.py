@@ -16,14 +16,23 @@ from app.application.interfaces.repositories import (
     ISolutionRepository,
     IStorageRepository,
     IChallengeRepository,
+    ISubmissionRepository,
+    ITeamRepository,
 )
+from app.application.interfaces.message_queue import IMessageQueue
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
 from app.adapters.database.challenge_repository import SQLChallengeRepository
+from app.adapters.database.submission_repository import SQLSubmissionRepository
+from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
+from app.adapters.message_queue.celery_queue import CeleryMessageQueue
 from app.application.interfaces.clients import IGoogleAuthClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.use_cases.submission_use_case import SubmissionUseCase
+from app.application.use_cases.challenge_use_case import ChallengeUseCase
+from app.application.use_cases.admin_use_case import AdminUseCase
 from app.domain.entities.entities import UserEntity
 
 settings = get_settings()
@@ -144,6 +153,18 @@ def get_challenge_repository(db: Session = Depends(get_db)) -> IChallengeReposit
     return SQLChallengeRepository(db)
 
 
+def get_submission_repository(db: Session = Depends(get_db)) -> ISubmissionRepository:
+    return SQLSubmissionRepository(db)
+
+
+def get_team_repository(db: Session = Depends(get_db)) -> ITeamRepository:
+    return SQLTeamRepository(db)
+
+
+def get_message_queue() -> IMessageQueue:
+    return CeleryMessageQueue()
+
+
 def get_solution_use_case(
     solution_repo: ISolutionRepository = Depends(get_solution_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
@@ -151,3 +172,27 @@ def get_solution_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> SolutionUseCase:
     return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
+
+
+def get_submission_use_case(
+    submission_repo: ISubmissionRepository = Depends(get_submission_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    team_repo: ITeamRepository = Depends(get_team_repository),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+    message_queue: IMessageQueue = Depends(get_message_queue),
+) -> SubmissionUseCase:
+    return SubmissionUseCase(submission_repo, challenge_repo, team_repo, storage_repo, message_queue)
+
+
+def get_challenge_use_case(
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+) -> ChallengeUseCase:
+    return ChallengeUseCase(challenge_repo)
+
+
+def get_admin_use_case(
+    user_repo: IUserRepository = Depends(get_user_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    submission_repo: ISubmissionRepository = Depends(get_submission_repository),
+) -> AdminUseCase:
+    return AdminUseCase(user_repo, challenge_repo, submission_repo)
