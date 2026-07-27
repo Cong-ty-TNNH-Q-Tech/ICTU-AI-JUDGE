@@ -5,16 +5,13 @@ TODO: Implement các endpoint bên dưới
 """
 import logging
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
-from app.entrypoints.dependencies import get_user_repository, get_google_auth_client
+from app.entrypoints.dependencies import get_user_repository, get_auth_use_case
 from app.application.interfaces.repositories import IUserRepository
-from app.application.interfaces.clients import IGoogleAuthClient
 from app.application.use_cases.auth_use_case import AuthUseCase
-from app.domain.entities.entities import UserEntity
 from app.core.config import get_settings
 from app.core.security import create_access_token
 
@@ -36,13 +33,11 @@ class UserResponse(BaseModel):
 def google_login(
     request: GoogleLoginRequest,
     response: Response,
-    user_repo: IUserRepository = Depends(get_user_repository),
-    google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+    auth_use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
     """
     UC01 — Đăng nhập bằng Google OAuth.
     """
-    auth_use_case = AuthUseCase(user_repo, google_client)
     user = auth_use_case.login_with_google(request.google_token)
     
     # Tạo JWT access token

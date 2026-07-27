@@ -152,6 +152,50 @@ def get_current_user(
     return user
 
 
+def get_current_admin_user(
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+) -> uuid.UUID:
+    """
+    Dependency bảo vệ Admin API (stateless — đọc role từ JWT payload, không cần DB query).
+    Raises HTTP 401 nếu token thiếu/hết hạn/không hợp lệ.
+    Raises HTTP 403 nếu role không phải ADMIN.
+    """
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.",
+        )
+    try:
+        payload = jwt.decode(
+            access_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        user_id_str: str | None = payload.get("sub")
+        role: str | None = payload.get("role")
+        if not user_id_str:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token không hợp lệ: thiếu subject.",
+            )
+        if role != UserRole.ADMIN.value:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Không có quyền thực hiện thao tác này.",
+            )
+        return uuid.UUID(user_id_str)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token đã hết hạn. Vui lòng đăng nhập lại.",
+        )
+    except (jwt.InvalidTokenError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không hợp lệ.",
+        )
+
+
 def require_admin(user: UserEntity = Depends(get_current_user)) -> UserEntity:
     """
     Dependency: kiểm tra quyền ADMIN.
@@ -267,3 +311,20 @@ def get_tag_use_case(
     uow: IUnitOfWork = Depends(get_uow)
 ) -> TagUseCase:
     return TagUseCase(uow, tag_repo)
+
+
+def get_auth_use_case(
+    user_repo: IUserRepository = Depends(get_user_repository),
+    google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+) -> "AuthUseCase":
+    """
+    Factory inject AuthUseCase với root_admin_email từ Settings.
+    Entrypoint layer chịu trách nhiệm đọc config và truyền vào Use Case
+    (tuân thủ Hexagonal Architecture — Use Case không import get_settings).
+    """
+    from app.application.use_cases.auth_use_case import AuthUseCase as _AuthUseCase
+    return _AuthUseCase(
+        user_repo=user_repo,
+        google_client=google_client,
+        root_admin_email=settings.ROOT_ADMIN_EMAIL,
+    )
