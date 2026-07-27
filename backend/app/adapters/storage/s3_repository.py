@@ -29,8 +29,23 @@ class S3StorageRepository(IStorageRepository):
             aws_secret_access_key=settings.S3_SECRET_KEY,
         )
         self._bucket = settings.S3_BUCKET_NAME
+        self._ensure_bucket()
 
+    # ==========================================
+    # Private helpers
+    # ==========================================
 
+    def _ensure_bucket(self) -> None:
+        """Tạo bucket nếu chưa tồn tại (idempotent, dùng khi startup)."""
+        try:
+            self._client.head_bucket(Bucket=self._bucket)
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code in ("404", "NoSuchBucket"):
+                self._client.create_bucket(Bucket=self._bucket)
+                logger.info("S3 bucket '%s' created.", self._bucket)
+            else:
+                logger.warning("S3 bucket check failed: %s", e)
 
     # ==========================================
     # IStorageRepository interface
@@ -57,8 +72,8 @@ class S3StorageRepository(IStorageRepository):
 
     def download(self, key: str) -> bytes:
         """
-        Download bytes từ S3/MinIO theo key.
-        Được Worker dùng để tải submission CSV + ground truth.
+        Tải file từ S3/MinIO trả về mảng bytes.
+        Phục vụ Worker tải Ground Truth và Submission CSV để chấm.
         """
         try:
             response = self._client.get_object(Bucket=self._bucket, Key=key)
@@ -66,8 +81,8 @@ class S3StorageRepository(IStorageRepository):
             logger.debug("S3 download OK — key=%s size=%d", key, len(data))
             return data
         except ClientError as e:
-            logger.error("S3 download FAILED — key=%s error=%s", key, e)
-            raise RuntimeError(f"Không thể tải file từ storage: {e}") from e
+            logger.error("S3 Download error (key=%s): %s", key, e)
+            raise FileNotFoundError(f"Lỗi tải file {key} từ hệ thống lưu trữ.") from e
 
     def delete(self, key: str) -> None:
         """Xóa object khỏi S3/MinIO (dùng trong cleanup task UC15)."""

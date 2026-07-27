@@ -84,6 +84,7 @@ def get_current_user_id(
         )
 
 
+
 def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     """Dependency: inject UserRepository."""
     return UserRepository(db)

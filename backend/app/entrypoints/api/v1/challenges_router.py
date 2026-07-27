@@ -37,12 +37,14 @@ router = APIRouter()
 # Helper: khởi tạo SubmissionUseCase
 # ==========================================
 
+from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
 def _get_submission_use_case(db: Session) -> SubmissionUseCase:
     return SubmissionUseCase(
         submission_repo=SQLSubmissionRepository(db),
         challenge_repo=SQLChallengeRepository(db),
         team_repo=SQLTeamRepository(db),
         storage_repo=S3StorageRepository(),
+        message_broker=CeleryMessageBroker(),
     )
 
 
@@ -180,6 +182,7 @@ async def submit(
     """
     UC04 — Nộp bài dự thi.
 
+
     Pipeline (theo đúng thứ tự bắt buộc):
     1. JWT Cookie → user_id → team_id
     2. Kiểm tra challenge PUBLISHED + trong cửa sổ start→end
@@ -209,12 +212,17 @@ async def submit(
     )
 
     # [CRITICAL] Commit DB TRƯỚC khi Celery Worker consume job từ Redis.
-    # _enqueue_scoring_task() trong use_case đã được gọi — Worker sẽ
-    # tìm record trong DB và sẽ thấy nó vì commit xảy ra trước.
+    # Đã di chuyển việc enqueue ra controller sau khi commit để fix Race Condition.
     db.commit()
+    
+    use_case.trigger_scoring(str(result.submission_id))
 
     return result
 
+
+# ==========================================
+# UC07 — Bảng xếp hạng
+# ==========================================
 
 
 
@@ -250,6 +258,7 @@ async def publish_solution(
     use_case: SolutionUseCase = Depends(get_solution_use_case),
     db: Session = Depends(get_db),
 ):
+
     """Chia sẻ file notebook (Upload lên S3/MinIO và tạo bản ghi vào DB)."""
     file_bytes = await file.read()
     filename = file.filename or "solution.ipynb"
