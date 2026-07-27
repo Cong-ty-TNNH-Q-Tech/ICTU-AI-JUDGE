@@ -180,6 +180,11 @@ class ILeaderboardRepository(ABC):
         self, challenge_id: uuid.UUID, page: int, size: int, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
     ) -> tuple[list[tuple[LeaderboardEntryEntity, str]], int]: ...
 
+    @abstractmethod
+    def update_source_code_submitted(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID, submitted: bool = True
+    ) -> None: ...
+
 
 
 class IStorageRepository(ABC):

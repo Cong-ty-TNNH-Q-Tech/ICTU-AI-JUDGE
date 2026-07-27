@@ -183,6 +183,7 @@ class LeaderboardEntryEntity:
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None
+    is_source_code_submitted: bool = False
 
 
 @dataclass
