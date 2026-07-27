@@ -29,6 +29,7 @@ const DevLoginPage: React.FC = () => {
         full_name: data.full_name,
         role: data.role,
         avatar_url: null,
+        is_active: true,
       });
       navigate('/challenges');
     } catch (e: unknown) {
