@@ -22,6 +22,8 @@ from app.application.interfaces.repositories import (
     IStorageRepository,
     ISubmissionRepository,
     ITeamRepository,
+    IUnitOfWork,
+    ILeaderboardRepository,
 )
 from app.application.interfaces.message_broker import IMessageBroker
 from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
@@ -51,13 +53,17 @@ class SubmissionUseCase:
         challenge_repo: IChallengeRepository,
         team_repo: ITeamRepository,
         storage_repo: IStorageRepository,
+        leaderboard_repo: ILeaderboardRepository = None,
         message_broker: IMessageBroker = None, # Make it optional for backward compatibility in tests
+        uow: IUnitOfWork = None,
     ):
         self.submission_repo = submission_repo
         self.challenge_repo = challenge_repo
         self.team_repo = team_repo
         self.storage_repo = storage_repo
+        self.leaderboard_repo = leaderboard_repo
         self.message_broker = message_broker
+        self.uow = uow
 
     # ==========================================
     # UC04 — Nộp bài dự thi
@@ -159,6 +165,8 @@ class SubmissionUseCase:
             submitted_at=now,
         )
         saved = self.submission_repo.save(entity)
+        if self.uow:
+            self.uow.commit()
         logger.info("UC04 — DB save OK: submission_id=%s status=PENDING", saved.id)
 
         # ---- Step 9: Controller sẽ chịu trách nhiệm Push Redis Queue ----
@@ -226,6 +234,9 @@ class SubmissionUseCase:
 
         # Chọn submission mới
         self.submission_repo.set_selected_for_private(submission_id, True)
+        if self.uow:
+            self.uow.commit()
+            
         logger.info(
             "UC05 — Selected for private: submission_id=%s team_id=%s",
             submission_id,
@@ -246,14 +257,15 @@ class SubmissionUseCase:
         self,
         submission_id: uuid.UUID,
         user_id: uuid.UUID,
-        file_bytes: bytes,
-        filename: str,
-        content_type: str,
+        files: list[tuple[str, bytes, str]],
     ) -> SourceCodeUploadResponseDTO:
         """
-        UC06 — Upload file ZIP/ipynb làm source code.
+        UC06 — Upload source code (nhiều files).
         Chỉ cho phép sau khi challenge kết thúc.
         """
+        import zipfile
+        import io
+        
         now = datetime.now(tz=timezone.utc)
 
         submission = self.submission_repo.get_by_id(submission_id)
@@ -278,20 +290,44 @@ class SubmissionUseCase:
                 "Chỉ được nộp Source Code sau khi challenge kết thúc."
             )
 
-        # Validate file extension
-        lower_name = filename.lower()
-        if not (lower_name.endswith(".zip") or lower_name.endswith(".ipynb")):
-            raise ValueError(
-                "File source code phải có định dạng .zip hoặc .ipynb."
-            )
+        # Validate file extensions and calculate size
+        total_size = 0
+        for name, data, _ in files:
+            total_size += len(data)
+            lower_name = name.lower()
+            if not (lower_name.endswith(".zip") or lower_name.endswith(".ipynb") or lower_name.endswith(".py") or lower_name.endswith(".txt") or lower_name == "dockerfile"):
+                raise ValueError(
+                    "File source code phải có định dạng .zip, .ipynb, .py, .txt hoặc Dockerfile."
+                )
+                
+        if total_size > 50 * 1024 * 1024:
+            # Fixed: Only raise FileSizeExceededError, removed undefined FileSizeExceed typo
+            raise FileSizeExceededError("Tổng dung lượng source code không được vượt quá 50MB.")
+            
+        # Nén thành 1 file zip in-memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+            for name, data, _ in files:
+                zip_file.writestr(name, data)
+        
+        file_bytes = zip_buffer.getvalue()
+        content_type = "application/zip"
+        filename = "source_code.zip"
 
         # Upload S3
         s3_key = f"source_codes/{submission.challenge_id}/{submission.team_id}/{submission_id}/{filename}"
-        self.storage_repo.upload(s3_key, file_bytes, content_type=content_type or "application/octet-stream")
+        self.storage_repo.upload(s3_key, file_bytes, content_type=content_type)
         logger.info("UC06 — Source code S3 upload OK: key=%s", s3_key)
 
         # Cập nhật DB
         self.submission_repo.update_source_code_url(submission_id, s3_key)
+        
+        if self.leaderboard_repo:
+            self.leaderboard_repo.update_source_code_submitted(submission.team_id, submission.challenge_id, True)
+            
+        if self.uow:
+            self.uow.commit()
+            
         logger.info("UC06 — DB source_code_url updated: submission_id=%s", submission_id)
 
         return SourceCodeUploadResponseDTO(

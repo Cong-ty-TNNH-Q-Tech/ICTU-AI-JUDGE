@@ -16,15 +16,29 @@ from app.application.interfaces.repositories import (
     ISolutionRepository,
     IStorageRepository,
     IChallengeRepository,
+    ISubmissionRepository,
+    ITeamRepository,
+    IUnitOfWork,
+    ILeaderboardRepository,
 )
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
 from app.adapters.database.challenge_repository import SQLChallengeRepository
+from app.adapters.database.submission_repository import SQLSubmissionRepository
+from app.adapters.database.team_repository import SQLTeamRepository
+from app.adapters.database.leaderboard_repository import SQLLeaderboardRepository
+from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
+from app.application.interfaces.message_broker import IMessageBroker
+from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
 from app.application.interfaces.clients import IGoogleAuthClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
 from app.application.use_cases.profile_use_case import ProfileUseCase
+from app.application.use_cases.submission_use_case import SubmissionUseCase
+from app.application.use_cases.challenge_use_case import ChallengeUseCase
+from app.application.use_cases.team_use_case import TeamUseCase
+from app.application.use_cases.admin_use_case import AdminUseCase
 from app.domain.entities.entities import UserEntity
 
 settings = get_settings()
@@ -85,7 +99,6 @@ def get_current_user_id(
         )
 
 
-
 def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     """Dependency: inject UserRepository."""
     return UserRepository(db)
@@ -142,6 +155,26 @@ def get_challenge_repository(db: Session = Depends(get_db)) -> IChallengeReposit
     return SQLChallengeRepository(db)
 
 
+def get_submission_repository(db: Session = Depends(get_db)) -> ISubmissionRepository:
+    return SQLSubmissionRepository(db)
+
+
+def get_team_repository(db: Session = Depends(get_db)) -> ITeamRepository:
+    return SQLTeamRepository(db)
+
+
+def get_uow(db: Session = Depends(get_db)) -> IUnitOfWork:
+    return SQLUnitOfWork(db)
+
+
+def get_leaderboard_repository(db: Session = Depends(get_db)) -> ILeaderboardRepository:
+    return SQLLeaderboardRepository(db)
+
+
+def get_message_broker() -> IMessageBroker:
+    return CeleryMessageBroker()
+
+
 def get_solution_use_case(
     solution_repo: ISolutionRepository = Depends(get_solution_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
@@ -157,3 +190,42 @@ def get_profile_use_case(
 ) -> ProfileUseCase:
     """Dependency: inject ProfileUseCase cho 3 endpoints profile."""
     return ProfileUseCase(user_repo, storage_repo)
+
+
+def get_submission_use_case(
+    submission_repo: ISubmissionRepository = Depends(get_submission_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    team_repo: ITeamRepository = Depends(get_team_repository),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+    leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
+    message_broker: IMessageBroker = Depends(get_message_broker),
+    uow: IUnitOfWork = Depends(get_uow),
+) -> SubmissionUseCase:
+    return SubmissionUseCase(
+        submission_repo, challenge_repo, team_repo,
+        storage_repo, leaderboard_repo, message_broker, uow
+    )
+
+
+def get_challenge_use_case(
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+) -> ChallengeUseCase:
+    return ChallengeUseCase(challenge_repo, storage_repo)
+
+
+def get_admin_use_case(
+    user_repo: IUserRepository = Depends(get_user_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    submission_repo: ISubmissionRepository = Depends(get_submission_repository),
+) -> AdminUseCase:
+    return AdminUseCase(user_repo, challenge_repo, submission_repo)
+
+
+def get_team_use_case(
+    team_repo: ITeamRepository = Depends(get_team_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    user_repo: IUserRepository = Depends(get_user_repository),
+    uow: IUnitOfWork = Depends(get_uow),
+) -> TeamUseCase:
+    return TeamUseCase(team_repo, challenge_repo, user_repo, uow)

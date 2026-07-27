@@ -79,6 +79,7 @@ class ChallengeModel(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     team_lock_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rate_limit_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    max_team_size: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     max_file_size_mb: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False)
     metric_direction: Mapped[str] = mapped_column(
@@ -216,6 +217,7 @@ class LeaderboardModel(Base):
     )
     last_submission_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_source_code_submitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

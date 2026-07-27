@@ -72,8 +72,8 @@ class S3StorageRepository(IStorageRepository):
 
     def download(self, key: str) -> bytes:
         """
-        Tải file từ S3/MinIO trả về mảng bytes.
-        Phục vụ Worker tải Ground Truth và Submission CSV để chấm.
+        Download bytes từ S3/MinIO theo key.
+        Được Worker dùng để tải submission CSV + ground truth.
         """
         try:
             response = self._client.get_object(Bucket=self._bucket, Key=key)
@@ -81,8 +81,8 @@ class S3StorageRepository(IStorageRepository):
             logger.debug("S3 download OK — key=%s size=%d", key, len(data))
             return data
         except ClientError as e:
-            logger.error("S3 Download error (key=%s): %s", key, e)
-            raise FileNotFoundError(f"Lỗi tải file {key} từ hệ thống lưu trữ.") from e
+            logger.error("S3 download FAILED — key=%s error=%s", key, e)
+            raise RuntimeError(f"Không thể tải file từ storage: {e}") from e
 
     def delete(self, key: str) -> None:
         """Xóa object khỏi S3/MinIO (dùng trong cleanup task UC15)."""

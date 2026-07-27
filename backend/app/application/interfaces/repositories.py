@@ -13,10 +13,23 @@ from app.domain.entities.entities import (
     SubmissionEntity,
     SubmissionStatus,
     TeamEntity,
+    TeamInviteEntity,
     UserEntity,
     MetricDirection,
+    InviteStatus,
     SolutionEntity,
 )
+
+
+class IUnitOfWork(ABC):
+    """
+    Unit of Work pattern cho quản lý transaction.
+    """
+    @abstractmethod
+    def commit(self) -> None: ...
+
+    @abstractmethod
+    def rollback(self) -> None: ...
 
 
 class IUserRepository(ABC):
@@ -33,7 +46,7 @@ class IUserRepository(ABC):
     def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]: ...
 
     @abstractmethod
-    def soft_delete(self, user_id: uuid.UUID) -> None: ...
+    def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
 
     @abstractmethod
     def update_profile(
@@ -102,6 +115,24 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def has_submissions(self, team_id: uuid.UUID) -> bool: ...
+
+    @abstractmethod
+    def create_invite(self, team_id: uuid.UUID, inviter_id: uuid.UUID, token: str, expires_at: datetime) -> str: ...
+
+    @abstractmethod
+    def get_invite_by_token(self, token: str) -> "TeamInviteEntity | None": ...
+
+    @abstractmethod
+    def update_invite_status(self, token: str, status: "InviteStatus") -> None: ...
+
+    @abstractmethod
+    def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def delete(self, team_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def invalidate_invites(self, team_id: uuid.UUID) -> None: ...
 
 
 class ISubmissionRepository(ABC):
@@ -178,6 +209,11 @@ class ILeaderboardRepository(ABC):
     def list_private(
         self, challenge_id: uuid.UUID, page: int, size: int, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
     ) -> tuple[list[tuple[LeaderboardEntryEntity, str]], int]: ...
+
+    @abstractmethod
+    def update_source_code_submitted(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID, submitted: bool = True
+    ) -> None: ...
 
 
 

@@ -1,7 +1,7 @@
 """
 User Repository — Adapter/Database layer.
 Implements IUserRepository — CRUD + Profile operations.
-Issue #30: Thêm update_profile và get_profile_stats.
+Issue #30: Thêm update_profile, update_avatar, get_profile_stats.
 """
 import logging
 import uuid
@@ -90,10 +90,11 @@ class UserRepository(IUserRepository):
             stmt = stmt.where(
                 (UserModel.email.ilike(f"%{query}%"))
                 | (UserModel.full_name.ilike(f"%{query}%"))
+                | (UserModel.student_id.ilike(f"%{query}%"))
             )
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = self._session.execute(count_stmt).scalar() or 0
-        stmt = stmt.offset((page - 1) * size).limit(size)
+        stmt = stmt.order_by(UserModel.created_at.desc()).offset((page - 1) * size).limit(size)
         models = self._session.execute(stmt).scalars().all()
         return [self._to_entity(m) for m in models], total
 
@@ -105,6 +106,21 @@ class UserRepository(IUserRepository):
         )
         self._session.execute(stmt)
         self._session.commit()
+
+    def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
+        """Kích hoạt / vô hiệu hóa tài khoản (Admin feature)."""
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        user = self._session.execute(stmt).scalar_one_or_none()
+        if not user:
+            return False
+        if is_active:
+            user.deleted_at = None
+        else:
+            if not user.deleted_at:
+                user.deleted_at = datetime.now(tz=timezone.utc)
+        self._session.add(user)
+        self._session.commit()
+        return True
 
     # ==========================================
     # Profile methods (Issue #30)
@@ -126,7 +142,6 @@ class UserRepository(IUserRepository):
             "linkedin_url": linkedin_url,
             "updated_at": datetime.now(tz=timezone.utc),
         }
-        # Chỉ cập nhật avatar_url nếu tường minh được truyền vào
         if avatar_url is not _SENTINEL:
             values["avatar_url"] = avatar_url
 
@@ -177,7 +192,6 @@ class UserRepository(IUserRepository):
         ).scalar() or 0
 
         # 3. Best rank: tìm qua team membership → leaderboard
-        # Subquery: lấy tất cả team_id mà user là thành viên
         team_ids_sub = (
             select(TeamMemberModel.team_id)
             .join(TeamModel, TeamModel.id == TeamMemberModel.team_id)
@@ -203,3 +217,7 @@ class UserRepository(IUserRepository):
             "total_solutions": total_solutions,
             "best_rank": best_rank,
         }
+
+
+# Alias để tương thích ngược với admin_router.py (dùng SQLUserRepository)
+SQLUserRepository = UserRepository

@@ -1,20 +1,3 @@
-import uuid
-from datetime import datetime
-from sqlalchemy import select, and_, or_, func, update
-from sqlalchemy.orm import Session
-from app.application.interfaces.repositories import ISubmissionRepository
-from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
-from app.adapters.database.models import SubmissionModel, LeaderboardModel
-
-class SQLSubmissionRepository(ISubmissionRepository):
-    def __init__(self, db: Session):
-        self.db = db
-
-    def get_by_id(self, submission_id: uuid.UUID) -> SubmissionEntity | None:
-        raise NotImplementedError
-
-    def save(self, submission: SubmissionEntity) -> SubmissionEntity:
-        raise NotImplementedError
 """
 Submission Repository Adapter (SQLAlchemy).
 Implements ISubmissionRepository — CRUD và queries cho bảng SUBMISSION.
@@ -22,10 +5,10 @@ Implements ISubmissionRepository — CRUD và queries cho bảng SUBMISSION.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_, or_, func
 from sqlalchemy.orm import Session
 
-from app.adapters.database.models import SubmissionModel
+from app.adapters.database.models import SubmissionModel, LeaderboardModel
 from app.application.interfaces.repositories import ISubmissionRepository
 from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
 
@@ -101,25 +84,7 @@ class SQLSubmissionRepository(ISubmissionRepository):
         self.db.refresh(model)
         return self._to_entity(model)
 
-    def update_status(
-        self,
-        submission_id: uuid.UUID,
-        status: SubmissionStatus,
-        public_score: float | None = None,
-        private_score: float | None = None,
-        execution_time_ms: int | None = None,
-        error_message: str | None = None,
-    ) -> None:
-        stmt = (
-            update(SubmissionModel)
-            .where(SubmissionModel.id == submission_id)
-            .values(
-                status=status.value,
-                error_message=error_message,
-            )
-        )
-        self.db.execute(stmt)
-        self.db.commit()
+
 
     def get_last_submission_time(self, team_id: uuid.UUID, challenge_id: uuid.UUID) -> datetime | None:
         raise NotImplementedError
@@ -227,6 +192,7 @@ class SQLSubmissionRepository(ISubmissionRepository):
         execution_time_ms: int | None = None,
         error_message: str | None = None,
     ) -> None:
+
         """
         Cập nhật status (và các trường tùy chọn) của Submission.
         Được Worker gọi sau khi chấm xong hoặc gặp lỗi.
@@ -328,6 +294,36 @@ class SQLSubmissionRepository(ISubmissionRepository):
         )
 
         return [self._to_entity(m) for m in models], total
+
+    def list_all_by_challenge(
+        self, challenge_id: uuid.UUID, page: int, size: int
+    ) -> tuple[list[SubmissionEntity], int]:
+        """UC11 — Lấy tất cả bài nộp trong 1 Challenge cho Admin (phân trang)."""
+        from sqlalchemy import func
+
+        total = (
+            self.db.execute(
+                select(func.count(SubmissionModel.id)).where(
+                    SubmissionModel.challenge_id == challenge_id
+                )
+            )
+            .scalar_one()
+        )
+
+        models = (
+            self.db.execute(
+                select(SubmissionModel)
+                .where(SubmissionModel.challenge_id == challenge_id)
+                .order_by(SubmissionModel.submitted_at.desc())
+                .offset((page - 1) * size)
+                .limit(size)
+            )
+            .scalars()
+            .all()
+        )
+
+        return [self._to_entity(m) for m in models], total
+
 
     def list_stale_processing(self, older_than: datetime) -> list[SubmissionEntity]:
         """
