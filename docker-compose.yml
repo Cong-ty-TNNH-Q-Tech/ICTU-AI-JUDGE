@@ -69,7 +69,7 @@ services:
       minio:
         condition: service_healthy
     command: >
-      bash -c "alembic upgrade head && uvicorn app.entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload"
+      bash -c "python -m app.adapters.storage.minio_init && alembic upgrade head && uvicorn app.entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload"
 
   worker:
     build: 
@@ -90,6 +90,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     container_name: ictu_ai_judge_frontend
     restart: always
     ports:

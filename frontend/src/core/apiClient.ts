@@ -8,6 +8,17 @@ import type { ApiError } from '../models/api.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
 
+function extractErrorMessage(apiErr: ApiError | undefined, error: unknown): string {
+  if (apiErr?.detail) {
+    if (typeof apiErr.detail === 'string') return apiErr.detail;
+    if (Array.isArray(apiErr.detail) && apiErr.detail.length > 0) {
+      return apiErr.detail.map((e: { msg?: string }) => e.msg || '').join('; ');
+    }
+  }
+  if (error instanceof Error) return error.message;
+  return 'Đã có lỗi xảy ra';
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,     // [SECURITY] Tự động gửi HttpOnly Cookie
@@ -23,14 +34,12 @@ apiClient.interceptors.response.use(
   (error) => {
     const apiErr = error.response?.data as ApiError | undefined;
 
-    if (error.response?.status === 401) {
-      // Token hết hạn — redirect về trang login
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
       window.location.href = '/login';
       return Promise.reject(error);
     }
 
-    // Bubble up lỗi với message từ backend
-    const message = apiErr?.detail ?? error.message ?? 'Đã có lỗi xảy ra';
+    const message = extractErrorMessage(apiErr, error);
     return Promise.reject(new Error(message));
   }
 );
