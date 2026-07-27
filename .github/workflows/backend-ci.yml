@@ -77,12 +77,9 @@ jobs:
 
     services:
       postgres:
-        image: pgvector/pgvector:pg16
-        # Docker Hub credentials — thêm DOCKERHUB_USERNAME & DOCKERHUB_TOKEN vào repo Secrets
-        # để tránh rate limit (60 pulls/hr anon vs 200/hr authenticated)
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        # postgres:16 la Docker Official Image - khong bi rate limit, khong can DockerHub token
+        # pgvector se duoc cai them qua apt trong step 'Enable PostgreSQL extensions'
+        image: postgres:16
         env:
           POSTGRES_USER: ictu_ai_judge_test
           POSTGRES_PASSWORD: ictu_ai_judge_test_password
@@ -117,9 +114,11 @@ jobs:
 
       - name: Enable PostgreSQL extensions
         run: |
-          # vector extension chỉ có trong pgvector image — dùng || true để không fail nếu thiếu
+          # Cai pgvector tu apt (tuong thich voi postgres:16 official image)
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-16-pgvector
+          # Load extension vao DB
           PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "CREATE EXTENSION IF NOT EXISTS vector;" \
-            || echo "::warning::pgvector extension not available — skipping (not required for core migrations)"
+            || echo "::warning::pgvector extension not available - skipping"
           PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "
             CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
             CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -169,10 +168,7 @@ jobs:
 
     services:
       postgres:
-        image: pgvector/pgvector:pg16
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        image: postgres:16
         env:
           POSTGRES_USER: ictu_ai_judge_test
           POSTGRES_PASSWORD: ictu_ai_judge_test_password
@@ -187,9 +183,6 @@ jobs:
 
       redis:
         image: redis:7-alpine
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
         ports:
           - 6379:6379
         options: >-
@@ -220,8 +213,9 @@ jobs:
 
       - name: Enable PostgreSQL extensions
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-16-pgvector
           PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "CREATE EXTENSION IF NOT EXISTS vector;" \
-            || echo "::warning::pgvector extension not available — skipping"
+            || echo "::warning::pgvector extension not available - skipping"
           PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "
             CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
             CREATE EXTENSION IF NOT EXISTS pgcrypto;
