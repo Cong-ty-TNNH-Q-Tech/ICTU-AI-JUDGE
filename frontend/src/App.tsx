@@ -9,6 +9,7 @@ import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
 import AdminPage from './views/pages/AdminPage';
 import ProfilePage from './views/pages/ProfilePage';
+import DevLoginPage from './views/pages/DevLoginPage';
 
 // Route Guard
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -37,7 +38,10 @@ function App() {
           <LoginPage />
         </AuthLayout>
       } />
-      
+
+      {/* DEV ONLY — Đăng nhập không cần Google OAuth */}
+      <Route path="/dev-login" element={<DevLoginPage />} />
+
       <Route path="/challenges" element={
         <ProtectedRoute>
           <MainLayout>
