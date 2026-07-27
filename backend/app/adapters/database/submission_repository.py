@@ -217,6 +217,16 @@ class SQLSubmissionRepository(ISubmissionRepository):
         )
         self.db.execute(stmt)
         self.db.commit()
+
+    def update_status(
+        self,
+        submission_id: uuid.UUID,
+        status: SubmissionStatus,
+        public_score: float | None = None,
+        private_score: float | None = None,
+        execution_time_ms: int | None = None,
+        error_message: str | None = None,
+    ) -> None:
         """
         Cập nhật status (và các trường tùy chọn) của Submission.
         Được Worker gọi sau khi chấm xong hoặc gặp lỗi.
