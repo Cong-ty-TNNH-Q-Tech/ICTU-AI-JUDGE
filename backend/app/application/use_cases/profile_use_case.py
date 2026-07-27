@@ -11,7 +11,7 @@ from app.application.dtos.profile_dtos import (
     UpdateProfileRequest,
     UserProfileDTO,
 )
-from app.application.interfaces.repositories import IStorageRepository, IUserRepository
+from app.application.interfaces.repositories import IStorageRepository, IUserRepository, IUnitOfWork
 from app.domain.entities.entities import UserEntity
 
 logger = logging.getLogger(__name__)
@@ -27,9 +27,11 @@ class ProfileUseCase:
         self,
         user_repo: IUserRepository,
         storage_repo: IStorageRepository,
+        uow: IUnitOfWork,
     ):
         self._user_repo = user_repo
         self._storage_repo = storage_repo
+        self._uow = uow
 
     # ==========================================
     # Private helpers
@@ -94,6 +96,7 @@ class ProfileUseCase:
             "Profile updated: user=%s github=%s linkedin=%s",
             current_user.id, payload.github_url, payload.linkedin_url,
         )
+        self._uow.commit()
         return self._build_profile_dto(updated)
 
     def upload_avatar(
@@ -135,6 +138,7 @@ class ProfileUseCase:
 
         # 5. Cập nhật DB (chỉ avatar_url — atomic UPDATE)
         self._user_repo.update_avatar(current_user.id, s3_key)
+        self._uow.commit()
         logger.info("Avatar DB updated: user=%s s3_key=%s", current_user.id, s3_key)
 
         # 6. Trả về presigned URL để Frontend cập nhật Zustand store ngay lập tức

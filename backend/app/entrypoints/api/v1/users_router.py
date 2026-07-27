@@ -93,7 +93,6 @@ async def update_profile(
     payload: UpdateProfileRequest,
     user: UserEntity = Depends(get_current_user),
     use_case: ProfileUseCase = Depends(get_profile_use_case),
-    db: Session = Depends(get_db),
 ):
     """
     Cập nhật hồ sơ cá nhân (Github URL, LinkedIn URL).
@@ -106,7 +105,6 @@ async def update_profile(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e),
         )
-    db.commit()
     return result
 
 
@@ -115,7 +113,6 @@ async def upload_avatar(
     file: UploadFile = File(...),
     user: UserEntity = Depends(get_current_user),
     use_case: ProfileUseCase = Depends(get_profile_use_case),
-    db: Session = Depends(get_db),
 ):
     """
     Upload ảnh đại diện (jpg/png/webp, max 2MB).
@@ -140,7 +137,6 @@ async def upload_avatar(
         )
         raise HTTPException(status_code=status_code, detail=str(e))
 
-    db.commit()
     return result
 
 

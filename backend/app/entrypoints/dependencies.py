@@ -216,9 +216,10 @@ def get_solution_use_case(
 def get_profile_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
+    uow: IUnitOfWork = Depends(get_uow),
 ) -> ProfileUseCase:
     """Dependency: inject ProfileUseCase cho 3 endpoints profile."""
-    return ProfileUseCase(user_repo, storage_repo)
+    return ProfileUseCase(user_repo, storage_repo, uow)
 
 
 def get_submission_use_case(
