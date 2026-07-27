@@ -32,6 +32,7 @@ def mock_repos():
         "team_repo": MagicMock(),
         "storage_repo": MagicMock(),
         "message_broker": MagicMock(),
+        "uow": MagicMock(),
     }
 
 @pytest.fixture
@@ -52,6 +53,8 @@ def mock_challenge():
         status=ChallengeStatus.PUBLISHED,
         max_file_size_mb=10,
         rate_limit_minutes=5,
+        team_lock_deadline=datetime.now(timezone.utc) + timedelta(days=1),
+        max_team_size=3,
         created_by=uuid.uuid4(),
         created_at=datetime.now(timezone.utc),
     )

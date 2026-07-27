@@ -19,6 +19,7 @@ from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.solution_use_case import SolutionUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
+from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
@@ -29,6 +30,7 @@ from app.entrypoints.dependencies import (
     get_challenge_use_case,
     get_submission_use_case,
     get_admin_use_case,
+    get_team_use_case,
     require_admin,
 )
 
@@ -96,22 +98,11 @@ async def upload_secrets(
 @router.post("/{challenge_id}/enroll", response_model=dict)
 async def enroll(
     challenge_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    use_case: TeamUseCase = Depends(get_team_use_case),
     user_id: uuid.UUID = Depends(get_current_user_id)
 ):
     """UC03 — Ghi danh vào Public Challenge (tự động tạo Team of 1)."""
-    from app.application.use_cases.team_use_case import TeamUseCase
-    from app.adapters.database.user_repository import SQLUserRepository
-    from app.adapters.database.team_repository import SQLTeamRepository
-
-    use_case = TeamUseCase(
-        team_repo=SQLTeamRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        user_repo=SQLUserRepository(db)
-    )
-    
     result = use_case.auto_create_team_if_not_exists(user_id=user_id, challenge_id=challenge_id)
-    db.commit()
     
     return {
         "detail": "Ghi danh thành công",
@@ -179,7 +170,6 @@ async def list_submissions(
 async def submit(
     challenge_id: uuid.UUID,
     file: UploadFile = File(..., description="File CSV dự đoán, tối đa max_file_size_mb"),
-    db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
     use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
@@ -213,10 +203,7 @@ async def submit(
         content_type=content_type,
     )
 
-    # [CRITICAL] Commit DB TRƯỚC khi Celery Worker consume job từ Redis.
-    # Đã di chuyển việc enqueue ra controller sau khi commit để fix Race Condition.
-    db.commit()
-    
+    # Trigger quá trình chấm điểm sau khi use case đã commit
     use_case.trigger_scoring(str(result.submission_id))
 
     return result

@@ -21,6 +21,17 @@ from app.domain.entities.entities import (
 )
 
 
+class IUnitOfWork(ABC):
+    """
+    Unit of Work pattern cho quản lý transaction.
+    """
+    @abstractmethod
+    def commit(self) -> None: ...
+
+    @abstractmethod
+    def rollback(self) -> None: ...
+
+
 class IUserRepository(ABC):
     @abstractmethod
     def get_by_id(self, user_id: uuid.UUID) -> UserEntity | None: ...
@@ -86,6 +97,12 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def delete(self, team_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def invalidate_invites(self, team_id: uuid.UUID) -> None: ...
 
 
 class ISubmissionRepository(ABC):

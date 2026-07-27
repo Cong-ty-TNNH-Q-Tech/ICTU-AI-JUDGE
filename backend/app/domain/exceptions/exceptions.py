@@ -73,3 +73,8 @@ class PermissionDeniedError(DomainException):
 class AuthenticationError(DomainException):
     """Thông tin xác thực không hợp lệ."""
     pass
+
+
+class InvalidTokenError(DomainException):
+    """Mã xác nhận hoặc token không hợp lệ hoặc đã hết hạn."""
+    pass
