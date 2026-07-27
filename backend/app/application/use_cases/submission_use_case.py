@@ -22,7 +22,9 @@ from app.application.interfaces.repositories import (
     IStorageRepository,
     ISubmissionRepository,
     ITeamRepository,
+    IUnitOfWork,
 )
+from app.application.interfaces.message_broker import IMessageBroker
 from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
 from app.domain.exceptions.exceptions import (
     DuplicateSubmissionError,
@@ -50,11 +52,15 @@ class SubmissionUseCase:
         challenge_repo: IChallengeRepository,
         team_repo: ITeamRepository,
         storage_repo: IStorageRepository,
+        message_broker: IMessageBroker = None, # Make it optional for backward compatibility in tests
+        uow: IUnitOfWork = None,
     ):
         self.submission_repo = submission_repo
         self.challenge_repo = challenge_repo
         self.team_repo = team_repo
         self.storage_repo = storage_repo
+        self.message_broker = message_broker
+        self.uow = uow
 
     # ==========================================
     # UC04 — Nộp bài dự thi
@@ -156,13 +162,13 @@ class SubmissionUseCase:
             submitted_at=now,
         )
         saved = self.submission_repo.save(entity)
+        if self.uow:
+            self.uow.commit()
         logger.info("UC04 — DB save OK: submission_id=%s status=PENDING", saved.id)
 
-        # ---- Step 9: Push Redis Queue SAU khi DB đã commit ----
-        # [NOTE] Gọi .delay() của Celery task — sẽ serialize submission_id và đẩy vào Redis.
-        # DB phải được commit trước bước này (commit được thực hiện ở router layer).
-        _enqueue_scoring_task(str(saved.id))
-        logger.info("UC04 — Redis push OK: submission_id=%s", saved.id)
+        # ---- Step 9: Controller sẽ chịu trách nhiệm Push Redis Queue ----
+        # UC chỉ trả về ID. Controller sẽ gọi message_broker.enqueue_scoring_task sau db.commit().
+        logger.info("UC04 — DB save OK (awaiting Redis push in controller): submission_id=%s", saved.id)
 
         return SubmitResponseDTO(
             submission_id=saved.id,
@@ -170,6 +176,15 @@ class SubmissionUseCase:
             message="Nộp bài thành công. Kết quả sẽ được cập nhật sau vài giây.",
         )
 
+    def trigger_scoring(self, submission_id: str) -> None:
+        """
+        Trigger quá trình chấm điểm. Phương thức này phải được gọi
+        SAU KHI db.commit() đã thành công ở Controller.
+        """
+        if self.message_broker:
+            self.message_broker.enqueue_scoring_task(submission_id)
+        else:
+            logger.warning("No message_broker injected, scoring task not enqueued.")
     # ==========================================
     # UC05 — Chọn bài tính điểm Private
     # ==========================================
@@ -216,6 +231,9 @@ class SubmissionUseCase:
 
         # Chọn submission mới
         self.submission_repo.set_selected_for_private(submission_id, True)
+        if self.uow:
+            self.uow.commit()
+            
         logger.info(
             "UC05 — Selected for private: submission_id=%s team_id=%s",
             submission_id,
@@ -282,6 +300,9 @@ class SubmissionUseCase:
 
         # Cập nhật DB
         self.submission_repo.update_source_code_url(submission_id, s3_key)
+        if self.uow:
+            self.uow.commit()
+            
         logger.info("UC06 — DB source_code_url updated: submission_id=%s", submission_id)
 
         return SourceCodeUploadResponseDTO(
@@ -386,20 +407,4 @@ def _build_s3_key(
     return f"submissions/{challenge_id}/{team_id}/{submission_id}/{filename}"
 
 
-def _enqueue_scoring_task(submission_id: str) -> None:
-    """
-    Push submission_id vào Redis Queue để Celery Worker consume.
-    [BẮTBUỘC] Chỉ gọi SAU khi DB đã commit (đã có record).
-    """
-    try:
-        from app.adapters.worker.scoring_tasks import score_submission
-        score_submission.delay(submission_id)
-        logger.info("Celery task dispatched: submission_id=%s", submission_id)
-    except Exception as exc:
-        # Nếu push Redis thất bại: log lỗi nhưng KHÔNG rollback DB.
-        # Cronjob cleanup (UC15) sẽ phát hiện và retry các PENDING quá hạn.
-        logger.error(
-            "Failed to enqueue scoring task for submission %s: %s",
-            submission_id,
-            exc,
-        )
+

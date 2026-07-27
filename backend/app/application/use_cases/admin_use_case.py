@@ -3,16 +3,16 @@ import uuid
 from fastapi import HTTPException, status
 from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
-from app.adapters.database.user_repository import SQLUserRepository
+from app.adapters.database.user_repository import UserRepository
 from app.application.dtos.admin_dtos import UserDTO, UserListResponseDTO
-from app.application.dtos.submission_dtos import SubmissionListResponseDTO, SubmissionDTO
+from app.application.dtos.submission_dtos import SubmissionListResponseDTO, SubmissionResponseDTO
 from app.domain.entities.entities import ChallengeType
 
 
 class AdminUseCase:
     def __init__(
         self,
-        user_repo: SQLUserRepository,
+        user_repo: UserRepository,
         challenge_repo: SQLChallengeRepository,
         submission_repo: SQLSubmissionRepository,
     ):
@@ -72,10 +72,10 @@ class AdminUseCase:
             raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
             
         entities, total = self.submission_repo.list_all_by_challenge(challenge_id, page, size)
-        dtos = [SubmissionDTO.model_validate(e) for e in entities]
+        dtos = [SubmissionResponseDTO.model_validate(e) for e in entities]
         return SubmissionListResponseDTO(
             data=dtos,
-            total=total,
+            total_count=total,
             page=page,
             size=size
         )

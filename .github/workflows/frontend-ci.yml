@@ -3,14 +3,8 @@ name: Frontend CI
 on:
   push:
     branches: [main, develop]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
   pull_request:
     branches: [main, develop]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
 
 jobs:
   lint:
@@ -110,3 +104,11 @@ jobs:
           name: frontend-build
           path: frontend/dist/
           retention-days: 3
+
+  frontend-ci:
+    name: frontend-ci
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    steps:
+      - name: All frontend checks passed
+        run: echo "All frontend checks passed successfully"

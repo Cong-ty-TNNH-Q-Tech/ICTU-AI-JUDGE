@@ -221,3 +221,4 @@ class SQLChallengeRepository(IChallengeRepository):
             
         self.db.flush()
         return len(new_users)
+

@@ -160,3 +160,32 @@ class SQLTeamRepository(ITeamRepository):
         )
         self.db.add(model)
         self.db.flush()
+
+    def delete(self, team_id: uuid.UUID) -> None:
+        from datetime import timezone
+        
+        model = (
+            self.db.execute(select(TeamModel).where(TeamModel.id == team_id))
+            .scalars()
+            .first()
+        )
+        if model:
+            model.deleted_at = datetime.now(timezone.utc)
+            self.db.flush()
+
+    def invalidate_invites(self, team_id: uuid.UUID) -> None:
+        from app.adapters.database.models import TeamInviteModel
+        
+        invites = (
+            self.db.execute(
+                select(TeamInviteModel).where(
+                    TeamInviteModel.team_id == team_id,
+                    TeamInviteModel.status == InviteStatus.PENDING
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for invite in invites:
+            invite.status = InviteStatus.EXPIRED
+        self.db.flush()
