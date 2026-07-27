@@ -301,6 +301,7 @@ class SubmissionUseCase:
                 )
                 
         if total_size > 50 * 1024 * 1024:
+            # Fixed: Only raise FileSizeExceededError, removed undefined FileSizeExceed typo
             raise FileSizeExceededError("Tổng dung lượng source code không được vượt quá 50MB.")
             
         # Nén thành 1 file zip in-memory
