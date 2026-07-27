@@ -1,0 +1,8 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+__pycache__/  
+
+# Command Code
+.commandcode/

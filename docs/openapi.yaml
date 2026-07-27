@@ -622,6 +622,12 @@ components:
         role:
           type: string
           enum: [STUDENT, ADMIN]
+        is_active:
+          type: boolean
+          default: true
+        student_id:
+          type: string
+          nullable: true
 
     Team:
       type: object
@@ -648,12 +654,18 @@ components:
           type: string
         status:
           type: string
+        is_public:
+          type: boolean
+          description: true náº¿u lÃ  PUBLIC, false náº¿u lÃ  COMPETITION
         start_time:
           type: string
           format: date-time
         end_time:
           type: string
           format: date-time
+        max_team_size:
+          type: integer
+          default: 1
         metric_direction:
           type: string
         dataset_url:
@@ -702,6 +714,10 @@ components:
           type: integer
           default: 50
           description: Giá»›i háº¡n dung lÆ°á»£ng file upload (MB)
+        max_team_size:
+          type: integer
+          default: 1
+          description: KÃ­ch thÆ°á»›c tá»‘i Ä‘a cá»§a má»™t Ä‘á»™i thi
         metric_name:
           type: string
           example: "Accuracy"
@@ -811,3 +827,168 @@ components:
         joined_at:
           type: string
           format: date-time
+
+  # ==========================================
+  # Feature: Kernels / Solutions (UC: #27)
+  # Ð?c t? TRU?C khi vi?t code — theo quy t?c 6.1 AGENTS.md
+  # ==========================================
+  /challenges/{challenge_id}/solutions:
+    get:
+      tags: [Solutions]
+      summary: L?y danh sách Solutions c?a m?t bài thi
+      description: Tr? v? danh sách gi?i pháp/notebook dã du?c chia s?, kèm presigned URL d? download và author_name.
+      security: []
+      parameters:
+        - name: challenge_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Danh sách Solutions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionList"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Solutions]
+      summary: Chia s? gi?i pháp (Upload notebook)
+      description: |
+        Upload file Jupyter Notebook (.ipynb) lên MinIO và t?o b?n ghi Solution trong DB.
+        Ch? kh? d?ng khi Challenge dang PUBLISHED.
+        Yêu c?u dang nh?p.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: challenge_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, content, file]
+              properties:
+                title:
+                  type: string
+                  description: Tiêu d? solution
+                  example: "Gi?i pháp LGBM d?t 0.95 Accuracy"
+                content:
+                  type: string
+                  description: Mô t?/gi?i thích gi?i pháp (Markdown)
+                  example: "## Approach\n\nDùng LightGBM v?i feature engineering..."
+                file:
+                  type: string
+                  format: binary
+                  description: File Jupyter Notebook (.ipynb)
+      responses:
+        "201":
+          description: Solution dã du?c t?o thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Solution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: File không ph?i .ipynb ho?c challenge không PUBLISHED
+
+  /challenges/{challenge_id}/solutions/{solution_id}/upvote:
+    post:
+      tags: [Solutions]
+      summary: Upvote m?t Solution
+      description: |
+        Tang upvote count lên +1. M?i user ch? du?c upvote m?i solution 1 l?n.
+        Double-vote du?c ngan b?ng UNIQUE constraint trên DB (atomic, race-condition-safe).
+        Yêu c?u dang nh?p.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: challenge_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: solution_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Solution sau khi upvote (upvotes + 1)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Solution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: User dã upvote solution này r?i (double-vote)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    Solution:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        author_name:
+          type: string
+          description: Tên hi?n th? c?a tác gi?
+          example: "Nguy?n Van A"
+        title:
+          type: string
+          example: "Gi?i pháp LGBM d?t 0.95 Accuracy"
+        content:
+          type: string
+          description: Mô t? gi?i pháp (Markdown)
+        notebook_url:
+          type: string
+          description: Presigned URL d? download Jupyter Notebook (TTL 1 gi?)
+          example: "http://localhost:9000/ictu-ai-judge-bucket/solutions/..."
+        upvotes:
+          type: integer
+          example: 42
+        created_at:
+          type: string
+          format: date-time
+
+    SolutionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Solution"
+        total:
+          type: integer
+        page:
+          type: integer
+          default: 1
+        size:
+          type: integer
+          default: 100
