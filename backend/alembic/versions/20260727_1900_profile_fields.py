@@ -1,7 +1,7 @@
 """Add github_url linkedin_url avatar_url to users
 
 Revision ID: 20260727_profile_fields
-Revises: 20260727_1400_3f8a1c2e9d45_add_solution_upvotes_table
+Revises: abcdef123456
 Create Date: 2026-07-27 19:15:00
 
 Issue #30: Feature Hồ sơ cá nhân — thêm 3 trường profile vào bảng users.
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = "20260727_profile_fields"
-down_revision = "173a4b9c8d2e"
+down_revision = "abcdef123456"  # chain sau add_is_source_code (HEAD cuũ)
 branch_labels = None
 depends_on = None
 
