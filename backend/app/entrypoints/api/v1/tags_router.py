@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.application.dtos.tag_dtos import TagCreateRequestDTO, TagUpdateRequestDTO, TagResponseDTO
 from app.application.use_cases.tag_use_case import TagUseCase
-from app.entrypoints.dependencies import get_current_admin, get_tag_use_case
+from app.entrypoints.dependencies import require_admin, get_tag_use_case
 
 router = APIRouter(prefix="/tags", tags=["Tags"])
 
@@ -17,7 +17,7 @@ def list_tags(
 @router.post("", response_model=TagResponseDTO, status_code=status.HTTP_201_CREATED)
 def create_tag(
     data: TagCreateRequestDTO,
-    _: dict = Depends(get_current_admin),
+    _: dict = Depends(require_admin),
     tag_use_case: TagUseCase = Depends(get_tag_use_case)
 ):
     return tag_use_case.create_tag(data)
@@ -26,7 +26,7 @@ def create_tag(
 def update_tag(
     tag_id: uuid.UUID,
     data: TagUpdateRequestDTO,
-    _: dict = Depends(get_current_admin),
+    _: dict = Depends(require_admin),
     tag_use_case: TagUseCase = Depends(get_tag_use_case)
 ):
     return tag_use_case.update_tag(tag_id, data)
@@ -34,7 +34,7 @@ def update_tag(
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tag(
     tag_id: uuid.UUID,
-    _: dict = Depends(get_current_admin),
+    _: dict = Depends(require_admin),
     tag_use_case: TagUseCase = Depends(get_tag_use_case)
 ):
     tag_use_case.delete_tag(tag_id)
