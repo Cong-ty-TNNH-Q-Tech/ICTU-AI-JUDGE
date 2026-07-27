@@ -114,8 +114,18 @@ export function useChallengeDetailVM(challengeId: string) {
   }, [fetchDetail]);
 
   const enroll = useCallback(async () => {
-    const result = await challengeService.enroll(challengeId);
-    return result.team_id;
+    try {
+      const result = await challengeService.enroll(challengeId);
+      return result.team_id;
+    } catch {
+      if (import.meta.env.DEV) {
+        // Mock fallback: trả về team_id tương ứng với mock challenge
+        console.warn('API enroll failed, using mock team_id');
+        await new Promise(r => setTimeout(r, 400));
+        return 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+      }
+      throw new Error('Lỗi ghi danh bài thi');
+    }
   }, [challengeId]);
 
   return { challenge, loading, error, enroll, refetch: fetchDetail };

@@ -40,8 +40,9 @@ export function useTeamVM(teamId: string | undefined) {
       };
 
       setTeam(enriched);
-    } catch (err: any) {
-      setError(err.message || 'Lỗi khi tải thông tin đội');
+    } catch (err: unknown) {
+      const errorObj = err as Error;
+      setError(errorObj.message || 'Lỗi khi tải thông tin đội');
     } finally {
       setLoading(false);
     }
@@ -59,9 +60,10 @@ export function useTeamVM(teamId: string | undefined) {
       const result = await teamService.createInvite(teamId);
       setInviteResult(result);
       showToast('Tạo link mời thành công!', 'success');
-    } catch (err: any) {
-      const status = err.response?.status;
-      const detail: string = err.response?.data?.detail ?? '';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number, data?: { detail?: string } } };
+      const status = errorObj.response?.status;
+      const detail: string = errorObj.response?.data?.detail ?? '';
       if (status === 403) showToast('Chỉ trưởng nhóm mới được tạo mã mời', 'error');
       else if (status === 400 && detail.includes('tối đa')) showToast('Đội đã đủ số lượng thành viên tối đa', 'error');
       else if (status === 400 && detail.includes('hạn')) showToast('Đã qua hạn chốt đội, không thể mời thêm', 'error');
@@ -107,9 +109,10 @@ export function useJoinTeamVM() {
       const result = await teamService.joinTeam({ token });
       setTeamInfo({ name: result.name, challenge_id: result.challenge_id });
       setJoined(true);
-    } catch (err: any) {
-      const status = err.response?.status;
-      const detail: string = err.response?.data?.detail ?? err.message ?? '';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number, data?: { detail?: string } }, message?: string };
+      const status = errorObj.response?.status;
+      const detail: string = errorObj.response?.data?.detail ?? errorObj.message ?? '';
       if (status === 400 && detail.includes('tối đa')) {
         setError('Đội đã đầy. Bạn không thể gia nhập.');
       } else if (status === 400 && detail.includes('đội khác')) {
