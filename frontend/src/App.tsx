@@ -62,18 +62,16 @@ function App() {
         </AdminRoute>
       } />
 
-      {/* Profile page — /profile/me redirects to own profile */}
+      {/* Profile page — công khai, không cần đăng nhập */}
       <Route path="/profile/me" element={
         <ProtectedRoute>
           <Navigate to={`/profile/${useAuthStore.getState().user?.id ?? ''}`} replace />
         </ProtectedRoute>
       } />
       <Route path="/profile/:userId" element={
-        <ProtectedRoute>
-          <MainLayout>
-            <ProfilePage />
-          </MainLayout>
-        </ProtectedRoute>
+        <MainLayout>
+          <ProfilePage />
+        </MainLayout>
       } />
 
       <Route path="*" element={<Navigate to="/challenges" replace />} />
