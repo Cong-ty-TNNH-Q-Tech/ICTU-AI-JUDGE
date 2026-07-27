@@ -239,7 +239,7 @@ jobs:
         working-directory: backend
         run: |
           if [ -d "tests" ]; then
-            pytest tests/ \
+            python -m pytest tests/ \
               --cov=app \
               --cov-report=xml:coverage.xml \
               --cov-report=term-missing \
