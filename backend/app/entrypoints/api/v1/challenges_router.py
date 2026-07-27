@@ -15,6 +15,7 @@ from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
+    SourceCodeUploadResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
