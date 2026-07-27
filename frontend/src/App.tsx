@@ -8,6 +8,8 @@ import LoginPage from './views/pages/LoginPage';
 import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
 import AdminPage from './views/pages/AdminPage';
+import TeamPage from './views/pages/TeamPage';
+import JoinTeamPage from './views/pages/JoinTeamPage';
 
 // Route Guard
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -59,6 +61,22 @@ function App() {
             <AdminPage />
           </MainLayout>
         </AdminRoute>
+      } />
+
+      <Route path="/teams/join" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <JoinTeamPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/teams/:teamId" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <TeamPage />
+          </MainLayout>
+        </ProtectedRoute>
       } />
       
       <Route path="*" element={<Navigate to="/challenges" replace />} />
