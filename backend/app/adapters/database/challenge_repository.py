@@ -42,6 +42,7 @@ class SQLChallengeRepository(IChallengeRepository):
             ground_truth_url=model.ground_truth_url or "",
             custom_metric_url=model.custom_metric_url or "",
             team_lock_deadline=model.team_lock_deadline,
+            max_team_size=model.max_team_size,
             deleted_at=model.deleted_at,
         )
 
@@ -78,6 +79,7 @@ class SQLChallengeRepository(IChallengeRepository):
             ground_truth_url=challenge.ground_truth_url,
             custom_metric_url=challenge.custom_metric_url,
             team_lock_deadline=challenge.team_lock_deadline,
+            max_team_size=challenge.max_team_size,
         )
         self.db.add(model)
         self.db.flush()
@@ -108,6 +110,7 @@ class SQLChallengeRepository(IChallengeRepository):
         model.ground_truth_url = challenge.ground_truth_url
         model.custom_metric_url = challenge.custom_metric_url
         model.team_lock_deadline = challenge.team_lock_deadline
+        model.max_team_size = challenge.max_team_size
         self.db.flush()
         return self._to_entity(model)
 

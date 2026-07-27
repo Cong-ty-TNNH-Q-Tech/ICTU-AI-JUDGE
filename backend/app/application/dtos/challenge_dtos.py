@@ -19,7 +19,7 @@ class ChallengeCreateRequestDTO(BaseModel):
     metric_direction: MetricDirection
     dataset_url: Optional[str] = None
     team_lock_deadline: Optional[datetime] = None
-
+    max_team_size: int = Field(default=5, ge=1)
 
 class ChallengeUpdateRequestDTO(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
@@ -33,7 +33,7 @@ class ChallengeUpdateRequestDTO(BaseModel):
     metric_direction: Optional[MetricDirection] = None
     dataset_url: Optional[str] = None
     team_lock_deadline: Optional[datetime] = None
-
+    max_team_size: Optional[int] = Field(None, ge=1)
 
 class ChallengeResponseDTO(BaseModel):
     id: uuid.UUID
@@ -54,6 +54,7 @@ class ChallengeResponseDTO(BaseModel):
     ground_truth_url: Optional[str] = None
     custom_metric_url: Optional[str] = None
     team_lock_deadline: Optional[datetime] = None
+    max_team_size: int
 
     class Config:
         orm_mode = True

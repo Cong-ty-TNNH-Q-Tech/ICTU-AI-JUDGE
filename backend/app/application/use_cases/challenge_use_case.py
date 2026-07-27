@@ -44,6 +44,7 @@ class ChallengeUseCase:
             created_at=entity.created_at,
             dataset_url=entity.dataset_url,
             team_lock_deadline=entity.team_lock_deadline,
+            max_team_size=entity.max_team_size,
             ground_truth_url=entity.ground_truth_url if is_admin else None,
             custom_metric_url=entity.custom_metric_url if is_admin else None,
         )
@@ -69,6 +70,7 @@ class ChallengeUseCase:
             ground_truth_url="",
             custom_metric_url="",
             team_lock_deadline=data.team_lock_deadline,
+            max_team_size=data.max_team_size,
             created_at=datetime.utcnow(),
         )
         saved = self.challenge_repo.save(new_entity)
