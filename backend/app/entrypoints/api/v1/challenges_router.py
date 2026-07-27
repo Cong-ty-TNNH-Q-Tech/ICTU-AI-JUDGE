@@ -5,7 +5,7 @@ Challenges Router — UC03 (enroll), UC04 (submit), UC09 (CRUD), UC10 (participa
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.adapters.database.challenge_repository import SQLChallengeRepository
@@ -17,10 +17,20 @@ from app.application.dtos.submission_dtos import (
     SubmitResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
-from app.entrypoints.dependencies import get_current_user_id, get_db
+from app.application.use_cases.challenge_use_case import ChallengeUseCase
+from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
+from app.domain.entities.entities import UserEntity
+from app.entrypoints.dependencies import (
+    get_current_user_id,
+    get_current_user,
+    get_db,
+    get_solution_use_case,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 
 # ==========================================
@@ -28,7 +38,6 @@ router = APIRouter()
 # ==========================================
 
 from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
-
 def _get_submission_use_case(db: Session) -> SubmissionUseCase:
     return SubmissionUseCase(
         submission_repo=SQLSubmissionRepository(db),
@@ -38,6 +47,15 @@ def _get_submission_use_case(db: Session) -> SubmissionUseCase:
         message_broker=CeleryMessageBroker(),
     )
 
+
+# ==========================================
+# Helper: khởi tạo ChallengeUseCase
+# ==========================================
+
+def _get_challenge_use_case(db: Session) -> ChallengeUseCase:
+    return ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db)
+    )
 
 # ==========================================
 # Existing endpoints (skeleton — chưa implement)
@@ -51,8 +69,8 @@ async def list_challenges(
     db: Session = Depends(get_db),
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    use_case = _get_challenge_use_case(db)
+    return use_case.list_challenges(page=page, size=size, status_filter=status_filter)
 
 
 @router.post("")
@@ -65,8 +83,11 @@ async def create_challenge(db: Session = Depends(get_db)):
 @router.get("/{challenge_id}")
 async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
     """Chi tiết bài thi."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    use_case = _get_challenge_use_case(db)
+    challenge = use_case.get_challenge(challenge_id)
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    return challenge
 
 
 @router.patch("/{challenge_id}")
@@ -161,6 +182,7 @@ async def submit(
     """
     UC04 — Nộp bài dự thi.
 
+
     Pipeline (theo đúng thứ tự bắt buộc):
     1. JWT Cookie → user_id → team_id
     2. Kiểm tra challenge PUBLISHED + trong cửa sổ start→end
@@ -202,15 +224,79 @@ async def submit(
 # UC07 — Bảng xếp hạng
 # ==========================================
 
-@router.get("/{challenge_id}/leaderboard")
-async def get_leaderboard(
+
+
+
+# ==========================================
+# Feature: Kernels / Solutions
+# ==========================================
+
+@router.get("/{challenge_id}/solutions", response_model=SolutionListResponseDTO)
+async def list_solutions(
     challenge_id: uuid.UUID,
-    type: str = "public",
-    page: int = 1,
-    size: int = 20,
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+):
+    """Lấy danh sách Solutions của một bài thi."""
+    try:
+        return use_case.list_solutions(challenge_id)
+    except ValueError:
+        # Challenge không tồn tại — trả về danh sách rỗng thay vì 404
+        return SolutionListResponseDTO(items=[], total=0)
+
+
+@router.post(
+    "/{challenge_id}/solutions",
+    response_model=SolutionResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_solution(
+    challenge_id: uuid.UUID,
+    title: str = Form(...),
+    content: str = Form(...),
+    file: UploadFile = File(...),
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
     db: Session = Depends(get_db),
 ):
-    """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
 
+    """Chia sẻ file notebook (Upload lên S3/MinIO và tạo bản ghi vào DB)."""
+    file_bytes = await file.read()
+    filename = file.filename or "solution.ipynb"
+
+    try:
+        result = use_case.publish_solution(
+            user=user,
+            challenge_id=challenge_id,
+            title=title,
+            content=content,
+            file_bytes=file_bytes,
+            filename=filename,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    db.commit()
+    return result
+
+
+@router.post(
+    "/{challenge_id}/solutions/{solution_id}/upvote",
+    response_model=SolutionResponseDTO,
+)
+async def upvote_solution(
+    challenge_id: uuid.UUID,
+    solution_id: uuid.UUID,
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+    db: Session = Depends(get_db),
+):
+    """Upvote một solution (+1). Yêu cầu đăng nhập. Mỗi user chỉ vote được 1 lần."""
+    try:
+        result = use_case.upvote_solution(solution_id, user.id)
+    except LookupError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solution không tồn tại.")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+    db.commit()
+    return result

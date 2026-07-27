@@ -180,7 +180,6 @@ class SubmissionUseCase:
             self.message_broker.enqueue_scoring_task(submission_id)
         else:
             logger.warning("No message_broker injected, scoring task not enqueued.")
-
     # ==========================================
     # UC05 — Chọn bài tính điểm Private
     # ==========================================

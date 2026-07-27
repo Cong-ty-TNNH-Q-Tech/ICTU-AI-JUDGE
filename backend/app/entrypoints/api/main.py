@@ -113,9 +113,16 @@ async def metric_locked_handler(request: Request, exc: MetricLockedError):
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
-@app.exception_handler(
-    (TeamAlreadyLockedError, TeamHasSubmissionsError, TeamFullError, UserAlreadyInTeamError)
-)
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Bắt mọi ValueError chưa được xử lý — trả về 400 thay vì 500 (thiếu CORS headers)."""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(TeamAlreadyLockedError)
+@app.exception_handler(TeamHasSubmissionsError)
+@app.exception_handler(TeamFullError)
+@app.exception_handler(UserAlreadyInTeamError)
 async def team_error_handler(request: Request, exc: DomainException):
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
