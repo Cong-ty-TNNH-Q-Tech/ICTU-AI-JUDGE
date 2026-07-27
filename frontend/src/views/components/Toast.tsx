@@ -1,4 +1,5 @@
-﻿/**
+/* eslint-disable react-refresh/only-export-components */
+/**
  * Toast — H? th?ng thông báo popup d?p, d?ng nh?t v?i dark theme c?a web.
  * Thay th? hoàn toàn browser alert().
  *

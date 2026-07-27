@@ -1,9 +1,10 @@
-﻿import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChallengeDetailVM, useLeaderboardVM } from '../../viewmodels/useChallengeVM';
 import { useSubmissionVM } from '../../viewmodels/useSubmissionVM';
+import { useToast } from '../components/Toast';
 
 import ChallengeTimer from '../components/ChallengeTimer';
 import MetricBadge from '../components/MetricBadge';
@@ -15,7 +16,9 @@ type Tab = 'description' | 'leaderboard' | 'submit' | 'history' | 'solutions';
 
 const ChallengeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('description');
+  const { showToast, ToastContainer } = useToast();
   
 
   const { challenge, loading: detailLoading, error: detailError, enroll } = useChallengeDetailVM(id || '');
@@ -41,10 +44,13 @@ const ChallengeDetailPage = () => {
   const handleEnroll = async () => {
     setEnrolling(true);
     try {
-      await enroll();
-      alert('Ghi danh th├ánh c├┤ng!');
+      const teamId = await enroll();
+      showToast('Ghi danh thành công!', 'success');
+      setTimeout(() => {
+        if (teamId) navigate(`/teams/${teamId}`);
+      }, 500);
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Lß╗ùi ghi danh');
+      showToast(e instanceof Error ? e.message : 'Lỗi ghi danh', 'error');
     } finally {
       setEnrolling(false);
     }
@@ -264,8 +270,8 @@ const ChallengeDetailPage = () => {
         {activeTab === 'solutions' && (
           <SolutionsTab challengeId={challenge.id} />
         )}
-
       </div>
+      <ToastContainer />
     </div>
   );
 };
