@@ -104,6 +104,29 @@ def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     return UserRepository(db)
 
 
+def get_optional_current_user_id(
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+) -> uuid.UUID | None:
+    """
+    Dependency: đọc JWT từ cookie nhưng trả None thay vì 401 khi không có token.
+    Dùng cho Public endpoints cần optional auth context (VD: list challenges).
+    """
+    if not access_token:
+        return None
+    try:
+        payload = jwt.decode(
+            access_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        user_id_str: str | None = payload.get("sub")
+        if not user_id_str:
+            return None
+        return uuid.UUID(user_id_str)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
+        return None
+
+
 def get_google_auth_client() -> IGoogleAuthClient:
     """Dependency: inject GoogleAuthClient."""
     return GoogleAuthClient()
