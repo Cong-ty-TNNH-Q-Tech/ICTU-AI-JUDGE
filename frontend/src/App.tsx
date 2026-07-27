@@ -4,6 +4,7 @@ import { useAuthStore } from './store';
 
 import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
+import LandingPage from './views/pages/LandingPage';
 import LoginPage from './views/pages/LoginPage';
 import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
@@ -35,7 +36,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/challenges" replace />} />
+      <Route path="/" element={<LandingPage />} />
 
       <Route path="/login" element={
         <AuthLayout>
