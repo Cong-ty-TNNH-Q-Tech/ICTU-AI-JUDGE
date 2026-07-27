@@ -15,6 +15,7 @@ from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
+    SourceCodeUploadResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -298,6 +299,36 @@ async def submit(
     use_case.trigger_scoring(str(result.submission_id))
 
     return result
+
+# ==========================================
+# UC06 — Nộp Source Code
+# ==========================================
+
+@router.post(
+    "/{challenge_id}/submissions/{submission_id}/source-code",
+    response_model=SourceCodeUploadResponseDTO,
+)
+async def upload_source_code(
+    challenge_id: uuid.UUID,
+    submission_id: uuid.UUID,
+    files: list[UploadFile] = File(...),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
+):
+    """
+    UC06 — Nộp Source Code (chống gian lận).
+    Upload nhiều files, sẽ được nén in-memory và đưa lên S3.
+    """
+    file_tuples = []
+    for f in files:
+        data = await f.read()
+        file_tuples.append((f.filename, data, f.content_type))
+        
+    return use_case.upload_source_code(
+        submission_id=submission_id,
+        user_id=user_id,
+        files=file_tuples
+    )
 
 
 # ==========================================

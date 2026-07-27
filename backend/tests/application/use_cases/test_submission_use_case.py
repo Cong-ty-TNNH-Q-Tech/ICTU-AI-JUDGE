@@ -290,13 +290,13 @@ def test_upload_source_code_success(use_case, mock_repos, mock_challenge, mock_t
     mock_repos['challenge_repo'].get_by_id.return_value = mock_challenge
     mock_challenge.end_time = datetime.now(timezone.utc) - timedelta(days=1)
     mock_repos['storage_repo'].upload.return_value = 'http://s3/file.zip'
-    res = use_case.upload_source_code(sub_id, uuid.uuid4(), b'abc', 'file.zip', 'application/zip')
+    res = use_case.upload_source_code(sub_id, uuid.uuid4(), [('file.zip', b'abc', 'application/zip')])
     assert res.message == "Upload source code thành công."
 
 def test_upload_source_code_not_found(use_case, mock_repos):
     mock_repos['submission_repo'].get_by_id.return_value = None
     with pytest.raises(NotFoundError):
-        use_case.upload_source_code(uuid.uuid4(), uuid.uuid4(), b'abc', 'file.zip', 'application/zip')
+        use_case.upload_source_code(uuid.uuid4(), uuid.uuid4(), [('file.zip', b'abc', 'application/zip')])
 
 def test_list_team_submissions_success(use_case, mock_repos, mock_team):
     mock_repos['team_repo'].get_by_challenge_and_user.return_value = mock_team

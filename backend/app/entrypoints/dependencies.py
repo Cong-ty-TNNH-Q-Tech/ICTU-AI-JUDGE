@@ -20,6 +20,7 @@ from app.application.interfaces.repositories import (
     ITeamRepository,
     IUnitOfWork,
     ITagRepository,
+    ILeaderboardRepository,
 )
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
@@ -27,6 +28,7 @@ from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.database.tag_repository import SQLTagRepository
+from app.adapters.database.leaderboard_repository import SQLLeaderboardRepository
 from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
@@ -171,6 +173,10 @@ def get_uow(db: Session = Depends(get_db)) -> IUnitOfWork:
     return SQLUnitOfWork(db)
 
 
+def get_leaderboard_repository(db: Session = Depends(get_db)) -> ILeaderboardRepository:
+    return SQLLeaderboardRepository(db)
+
+
 def get_message_broker() -> IMessageBroker:
     return CeleryMessageBroker()
 
@@ -189,10 +195,11 @@ def get_submission_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     team_repo: ITeamRepository = Depends(get_team_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
+    leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
     message_broker: IMessageBroker = Depends(get_message_broker),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> SubmissionUseCase:
-    return SubmissionUseCase(submission_repo, challenge_repo, team_repo, storage_repo, message_broker, uow)
+    return SubmissionUseCase(submission_repo, challenge_repo, team_repo, storage_repo, leaderboard_repo, message_broker, uow)
 
 
 def get_challenge_use_case(
@@ -201,6 +208,8 @@ def get_challenge_use_case(
     tag_repo: ITagRepository = Depends(get_tag_repository),
 ) -> ChallengeUseCase:
     return ChallengeUseCase(challenge_repo, storage_repo, tag_repo)
+) -> ChallengeUseCase:
+    return ChallengeUseCase(challenge_repo, storage_repo)
 
 
 def get_admin_use_case(
