@@ -30,18 +30,15 @@ async def select_for_private(
     body: SelectForPrivateRequestDTO,
     user_id: uuid.UUID = Depends(get_current_user_id),
     use_case: SubmissionUseCase = Depends(get_submission_use_case),
-    db: Session = Depends(get_db),
 ):
     """
     UC05 — Tick chọn bài tính điểm chung cuộc (is_selected_for_private).
     Chỉ được chọn trước deadline cuộc thi.
     """
-    result = use_case.select_for_private(
+    return use_case.select_for_private(
         submission_id=submission_id,
         user_id=user_id,
     )
-    db.commit()
-    return result
 
 
 @router.post("/{submission_id}/source-code", response_model=SourceCodeUploadResponseDTO)
@@ -50,7 +47,6 @@ async def upload_source_code(
     file: UploadFile = File(...),
     user_id: uuid.UUID = Depends(get_current_user_id),
     use_case: SubmissionUseCase = Depends(get_submission_use_case),
-    db: Session = Depends(get_db),
 ):
     """
     UC06 — Nộp Source Code cuối kỳ (Top N Teams).
@@ -60,12 +56,10 @@ async def upload_source_code(
     filename = file.filename or "source_code.zip"
     content_type = file.content_type or "application/zip"
 
-    result = use_case.upload_source_code(
+    return use_case.upload_source_code(
         submission_id=submission_id,
         user_id=user_id,
         file_bytes=file_bytes,
         filename=filename,
         content_type=content_type,
     )
-    db.commit()
-    return result

@@ -80,6 +80,7 @@ class ChallengeEntity:
     start_time: datetime
     end_time: datetime
     rate_limit_minutes: int
+    max_team_size: int
     max_file_size_mb: int
     metric_name: str
     metric_direction: MetricDirection
@@ -131,6 +132,24 @@ class TeamEntity:
 
     def is_full(self, max_size: int) -> bool:
         return len(self.member_ids) >= max_size
+
+
+@dataclass
+class TeamInviteEntity:
+    id: uuid.UUID
+    team_id: uuid.UUID
+    inviter_id: uuid.UUID
+    invitee_email: str
+    token: str
+    status: InviteStatus
+    expires_at: datetime
+    created_at: datetime
+
+    def is_expired(self, now: datetime) -> bool:
+        return now >= self.expires_at
+
+    def is_valid(self, now: datetime) -> bool:
+        return self.status == InviteStatus.PENDING and not self.is_expired(now)
 
 
 @dataclass

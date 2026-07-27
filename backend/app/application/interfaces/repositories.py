@@ -13,10 +13,23 @@ from app.domain.entities.entities import (
     SubmissionEntity,
     SubmissionStatus,
     TeamEntity,
+    TeamInviteEntity,
     UserEntity,
     MetricDirection,
+    InviteStatus,
     SolutionEntity,
 )
+
+
+class IUnitOfWork(ABC):
+    """
+    Unit of Work pattern cho quản lý transaction.
+    """
+    @abstractmethod
+    def commit(self) -> None: ...
+
+    @abstractmethod
+    def rollback(self) -> None: ...
 
 
 class IUserRepository(ABC):
@@ -72,6 +85,24 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def has_submissions(self, team_id: uuid.UUID) -> bool: ...
+
+    @abstractmethod
+    def create_invite(self, team_id: uuid.UUID, inviter_id: uuid.UUID, token: str, expires_at: datetime) -> str: ...
+
+    @abstractmethod
+    def get_invite_by_token(self, token: str) -> "TeamInviteEntity | None": ...
+
+    @abstractmethod
+    def update_invite_status(self, token: str, status: "InviteStatus") -> None: ...
+
+    @abstractmethod
+    def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def delete(self, team_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def invalidate_invites(self, team_id: uuid.UUID) -> None: ...
 
 
 class ISubmissionRepository(ABC):
