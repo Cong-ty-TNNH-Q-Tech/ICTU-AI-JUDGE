@@ -29,23 +29,8 @@ class S3StorageRepository(IStorageRepository):
             aws_secret_access_key=settings.S3_SECRET_KEY,
         )
         self._bucket = settings.S3_BUCKET_NAME
-        self._ensure_bucket()
 
-    # ==========================================
-    # Private helpers
-    # ==========================================
 
-    def _ensure_bucket(self) -> None:
-        """Tạo bucket nếu chưa tồn tại (idempotent, dùng khi startup)."""
-        try:
-            self._client.head_bucket(Bucket=self._bucket)
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            if error_code in ("404", "NoSuchBucket"):
-                self._client.create_bucket(Bucket=self._bucket)
-                logger.info("S3 bucket '%s' created.", self._bucket)
-            else:
-                logger.warning("S3 bucket check failed: %s", e)
 
     # ==========================================
     # IStorageRepository interface
