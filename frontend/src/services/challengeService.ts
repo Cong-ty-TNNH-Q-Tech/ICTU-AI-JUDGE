@@ -6,7 +6,6 @@ import type {
   Challenge,
   ChallengeCreateRequest,
   ChallengeUpdateRequest,
-  LeaderboardEntry,
   PaginatedResponse,
   Participant,
   Submission,

@@ -152,7 +152,8 @@ export function useLeaderboardVM(challengeId: string) {
       });
       setEntries(result?.data ?? []);
       setTotalCount(result?.total_count ?? 0);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number }; message?: string };
       if (err?.response?.status === 403 && leaderboardType === 'private') {
         setError('Bảng xếp hạng Private chỉ hiển thị sau khi cuộc thi kết thúc.');
         setEntries([]);
