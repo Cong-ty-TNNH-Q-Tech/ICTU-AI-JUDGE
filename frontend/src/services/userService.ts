@@ -21,10 +21,15 @@ export const userService = {
   async uploadAvatar(file: File): Promise<{ avatar_url: string }> {
     const formData = new FormData();
     formData.append('file', file);
+    // Xóa Content-Type mặc định (application/json) để browser tự set
+    // 'multipart/form-data; boundary=...' với đúng boundary
     const { data } = await apiClient.post<{ avatar_url: string }>(
       '/users/me/avatar',
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        headers: { 'Content-Type': undefined },
+        transformRequest: (data) => data, // bypass axios JSON serialization
+      },
     );
     return data;
   },

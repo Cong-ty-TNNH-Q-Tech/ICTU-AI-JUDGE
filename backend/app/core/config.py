@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # ---- Security / JWT ----
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 giờ — dev-friendly (production nên set qua .env)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     COOKIE_NAME: str = "access_token"
 
