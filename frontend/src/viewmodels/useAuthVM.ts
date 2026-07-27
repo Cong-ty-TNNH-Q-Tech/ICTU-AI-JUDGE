@@ -12,6 +12,7 @@ export function useAuthVM() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
   const loginWithGoogle = useCallback(async (googleToken: string) => {
     setLoading(true);
     setError(null);
@@ -48,6 +49,7 @@ export function useAuthVM() {
       // Cookie hết hạn — không làm gì, user chưa đăng nhập
     }
   }, [isAuthenticated, setUser]);
+
 
   return {
     user,
