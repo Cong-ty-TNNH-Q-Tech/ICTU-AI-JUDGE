@@ -37,7 +37,6 @@ router = APIRouter()
 
 
 
-# ==========================================
 # Existing endpoints (skeleton — chưa implement)
 # ==========================================
 
@@ -168,6 +167,7 @@ async def submit(
 ):
     """
     UC04 — Nộp bài dự thi.
+
     Pipeline (theo đúng thứ tự bắt buộc):
     1. JWT Cookie → user_id → team_id
     2. Kiểm tra challenge PUBLISHED + trong cửa sổ start→end
@@ -185,6 +185,7 @@ async def submit(
     filename = file.filename or "submission.csv"
     content_type = file.content_type or "text/csv"
 
+
     # Use Case thực hiện toàn bộ pipeline validate + S3 + DB lưu
     result = use_case.submit_prediction(
         challenge_id=challenge_id,
@@ -195,9 +196,10 @@ async def submit(
     )
 
     # [CRITICAL] Commit DB TRƯỚC khi Celery Worker consume job từ Redis.
-    # _enqueue_scoring_task() trong use_case đã được gọi — Worker sẽ
-    # tìm record trong DB và sẽ thấy nó vì commit xảy ra trước.
+    # Đã di chuyển việc enqueue ra controller sau khi commit để fix Race Condition.
     db.commit()
+    
+    use_case.trigger_scoring(str(result.submission_id))
 
     return result
 
@@ -282,4 +284,7 @@ async def upvote_solution(
 
     db.commit()
     return result
+<<<<<<< HEAD
 
+=======
+>>>>>>> d61a5b19a0696b2f2d45761e63fad54d5ed360fc

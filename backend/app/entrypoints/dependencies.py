@@ -19,14 +19,14 @@ from app.application.interfaces.repositories import (
     ISubmissionRepository,
     ITeamRepository,
 )
-from app.application.interfaces.message_queue import IMessageQueue
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
 from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
-from app.adapters.message_queue.celery_queue import CeleryMessageQueue
+from app.application.interfaces.message_broker import IMessageBroker
+from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
 from app.application.interfaces.clients import IGoogleAuthClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
@@ -34,8 +34,6 @@ from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.domain.entities.entities import UserEntity
-
-settings = get_settings()
 
 settings = get_settings()
 
@@ -161,8 +159,8 @@ def get_team_repository(db: Session = Depends(get_db)) -> ITeamRepository:
     return SQLTeamRepository(db)
 
 
-def get_message_queue() -> IMessageQueue:
-    return CeleryMessageQueue()
+def get_message_broker() -> IMessageBroker:
+    return CeleryMessageBroker()
 
 
 def get_solution_use_case(
@@ -179,9 +177,9 @@ def get_submission_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     team_repo: ITeamRepository = Depends(get_team_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
-    message_queue: IMessageQueue = Depends(get_message_queue),
+    message_broker: IMessageBroker = Depends(get_message_broker),
 ) -> SubmissionUseCase:
-    return SubmissionUseCase(submission_repo, challenge_repo, team_repo, storage_repo, message_queue)
+    return SubmissionUseCase(submission_repo, challenge_repo, team_repo, storage_repo, message_broker)
 
 
 def get_challenge_use_case(

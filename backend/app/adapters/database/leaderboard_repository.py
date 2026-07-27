@@ -4,7 +4,7 @@ Leaderboard Repository Adapter (SQLAlchemy).
 import uuid
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.adapters.database.models import LeaderboardModel, TeamModel
@@ -158,4 +158,5 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             items.append((self._to_entity(model, rank=computed_rank, team_name=team_name), team_name))
 
         return items, total
+
 

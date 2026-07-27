@@ -1,4 +1,3 @@
-
 """
 Submission Repository Adapter (SQLAlchemy).
 Implements ISubmissionRepository — CRUD và queries cho bảng SUBMISSION.
@@ -6,10 +5,10 @@ Implements ISubmissionRepository — CRUD và queries cho bảng SUBMISSION.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_, or_, func
 from sqlalchemy.orm import Session
 
-from app.adapters.database.models import SubmissionModel
+from app.adapters.database.models import SubmissionModel, LeaderboardModel
 from app.application.interfaces.repositories import ISubmissionRepository
 from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
 
