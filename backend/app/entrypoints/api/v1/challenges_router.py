@@ -25,6 +25,7 @@ from app.application.dtos.solution_dtos import SolutionListResponseDTO, Solution
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
     get_current_user_id,
+    get_optional_current_user_id,
     get_current_user,
     get_db,
     get_solution_use_case,
@@ -50,7 +51,7 @@ async def list_challenges(
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_current_user_id), # Optional cho Public endpoint, nhưng ở đây cứ check nếu có auth thì maybe coi là admin
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — trả None nếu chưa login
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
@@ -89,7 +90,7 @@ async def create_challenge(
 async def get_challenge(
     challenge_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_current_user_id)
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id)  # Public — optional auth
 ):
     """Chi tiết bài thi."""
     from app.application.use_cases.challenge_use_case import ChallengeUseCase

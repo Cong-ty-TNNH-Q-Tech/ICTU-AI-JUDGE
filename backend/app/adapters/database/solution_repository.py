@@ -57,6 +57,32 @@ class PostgresSolutionRepository(ISolutionRepository):
         )
         return [_to_entity(m) for m in models]
 
+    def list_by_user(self, user_id: uuid.UUID) -> list[dict]:
+        """
+        Lấy danh sách solutions của user, kèm challenge_title (JOIN).
+        Trả về list[dict] thay vì list[SolutionEntity] vì cần dữ liệu từ nhiều bảng.
+        """
+        from app.adapters.database.models import ChallengeModel
+        rows = (
+            self._session.query(SolutionModel, ChallengeModel.title)
+            .join(ChallengeModel, SolutionModel.challenge_id == ChallengeModel.id)
+            .filter(SolutionModel.user_id == user_id)
+            .filter(ChallengeModel.deleted_at.is_(None))
+            .order_by(SolutionModel.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "id": sol.id,
+                "challenge_id": sol.challenge_id,
+                "challenge_title": title,
+                "title": sol.title,
+                "upvotes": sol.upvotes,
+                "created_at": sol.created_at,
+            }
+            for sol, title in rows
+        ]
+
     def upvote(self, solution_id: uuid.UUID, user_id: uuid.UUID) -> SolutionEntity | None:
         """
         Upvote solution — chống double-vote và race condition.

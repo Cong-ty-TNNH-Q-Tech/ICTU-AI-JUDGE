@@ -49,6 +49,36 @@ class IUserRepository(ABC):
     @abstractmethod
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
 
+    @abstractmethod
+    def update_profile(
+        self,
+        user_id: uuid.UUID,
+        github_url: str | None,
+        linkedin_url: str | None,
+        avatar_url: str | None = ...,  # type: ignore[assignment]
+    ) -> UserEntity | None:
+        """
+        Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
+        Dùng atomic SQL UPDATE — an toàn đồng thời.
+        Trả về entity sau khi cập nhật, None nếu user không tồn tại.
+        """
+        ...
+
+    @abstractmethod
+    def get_profile_stats(self, user_id: uuid.UUID) -> dict:
+        """
+        Lấy thống kê tổng hợp của user:
+        { total_submissions, total_solutions, best_rank }
+        Thực hiện trong 3 COUNT query riêng biệt (đơn giản, dễ index).
+        """
+        ...
+
+    @abstractmethod
+    def update_avatar(self, user_id: uuid.UUID, avatar_s3_key: str) -> "UserEntity | None":
+        """Atomic update chỉ trường avatar_url — dùng sau khi upload thành công."""
+        ...
+
+
 
 class IChallengeRepository(ABC):
     @abstractmethod
@@ -252,6 +282,11 @@ class ISolutionRepository(ABC):
         Trả về entity đã cập nhật, None nếu không tồn tại.
         Raises ValueError nếu user đã upvote rồi.
         """
+        ...
+
+    @abstractmethod
+    def list_by_user(self, user_id: uuid.UUID) -> list[dict]:
+        """Lấy danh sách solutions của user kèm challenge_title (JOIN)."""
         ...
 
 class ITagRepository(ABC):

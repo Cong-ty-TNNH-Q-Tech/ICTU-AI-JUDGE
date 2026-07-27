@@ -36,6 +36,7 @@ from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
 from app.application.interfaces.clients import IGoogleAuthClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.team_use_case import TeamUseCase
@@ -101,10 +102,32 @@ def get_current_user_id(
         )
 
 
-
 def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     """Dependency: inject UserRepository."""
     return UserRepository(db)
+
+
+def get_optional_current_user_id(
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+) -> uuid.UUID | None:
+    """
+    Dependency: đọc JWT từ cookie nhưng trả None thay vì 401 khi không có token.
+    Dùng cho Public endpoints cần optional auth context (VD: list challenges).
+    """
+    if not access_token:
+        return None
+    try:
+        payload = jwt.decode(
+            access_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        user_id_str: str | None = payload.get("sub")
+        if not user_id_str:
+            return None
+        return uuid.UUID(user_id_str)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
+        return None
 
 
 def get_google_auth_client() -> IGoogleAuthClient:
@@ -142,7 +165,6 @@ def require_admin(user: UserEntity = Depends(get_current_user)) -> UserEntity:
     return user
 
 
-
 # Re-export kiểu để Router dùng làm type hint
 DBSession = Session
 
@@ -165,6 +187,7 @@ def get_submission_repository(db: Session = Depends(get_db)) -> ISubmissionRepos
 
 def get_team_repository(db: Session = Depends(get_db)) -> ITeamRepository:
     return SQLTeamRepository(db)
+
 
 def get_tag_repository(db: Session = Depends(get_db)) -> ITagRepository:
     return SQLTagRepository(db)
@@ -190,6 +213,16 @@ def get_solution_use_case(
     return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
 
 
+def get_profile_use_case(
+    user_repo: IUserRepository = Depends(get_user_repository),
+    storage_repo: IStorageRepository = Depends(get_storage_repository),
+    solution_repo: ISolutionRepository = Depends(get_solution_repository),
+    uow: IUnitOfWork = Depends(get_uow),
+) -> ProfileUseCase:
+    """Dependency: inject ProfileUseCase cho 3 endpoints profile."""
+    return ProfileUseCase(user_repo, storage_repo, solution_repo, uow)
+
+
 def get_submission_use_case(
     submission_repo: ISubmissionRepository = Depends(get_submission_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
@@ -199,7 +232,10 @@ def get_submission_use_case(
     message_broker: IMessageBroker = Depends(get_message_broker),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> SubmissionUseCase:
-    return SubmissionUseCase(submission_repo, challenge_repo, team_repo, storage_repo, leaderboard_repo, message_broker, uow)
+    return SubmissionUseCase(
+        submission_repo, challenge_repo, team_repo,
+        storage_repo, leaderboard_repo, message_broker, uow
+    )
 
 
 def get_challenge_use_case(
@@ -216,6 +252,7 @@ def get_admin_use_case(
     submission_repo: ISubmissionRepository = Depends(get_submission_repository),
 ) -> AdminUseCase:
     return AdminUseCase(user_repo, challenge_repo, submission_repo)
+
 
 def get_team_use_case(
     team_repo: ITeamRepository = Depends(get_team_repository),

@@ -35,6 +35,11 @@ apiClient.interceptors.response.use(
     const apiErr = error.response?.data as ApiError | undefined;
 
     if (error.response?.status === 401 && window.location.pathname !== '/login') {
+      // Xóa Zustand store khỏi localStorage để phá vòng lặp redirect:
+      // Nếu không xóa → login page thấy isAuthenticated=true → redirect lại → loop
+      try {
+        localStorage.removeItem('ictu-auth');
+      } catch { /* ignore */ }
       window.location.href = '/login';
       return Promise.reject(error);
     }
