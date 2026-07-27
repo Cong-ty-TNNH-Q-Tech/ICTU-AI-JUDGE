@@ -295,8 +295,9 @@ def get_admin_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     submission_repo: ISubmissionRepository = Depends(get_submission_repository),
+    leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
 ) -> AdminUseCase:
-    return AdminUseCase(user_repo, challenge_repo, submission_repo)
+    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo)
 
 
 def get_team_use_case(

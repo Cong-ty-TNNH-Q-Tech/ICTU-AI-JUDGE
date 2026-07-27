@@ -5,7 +5,7 @@ import ChallengeForm from '../../components/admin/ChallengeForm';
 import UploadSecrets from '../../components/admin/UploadSecrets';
 
 const ChallengeManagePage = () => {
-  const { challenges, loading, error, createChallenge, updateChallenge, deleteChallenge } = useAdminChallengesVM();
+  const { challenges, loading, error, exportingId, createChallenge, updateChallenge, deleteChallenge, downloadLeaderboardCSV } = useAdminChallengesVM();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Challenge | null>(null);
   const [uploadTarget, setUploadTarget] = useState<Challenge | null>(null);
@@ -65,7 +65,21 @@ const ChallengeManagePage = () => {
                       {new Date(c.start_time).toLocaleDateString('vi-VN')} — {new Date(c.end_time).toLocaleDateString('vi-VN')}
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1 flex-wrap">
+                        <button 
+                          onClick={() => downloadLeaderboardCSV(c.id, 'public')} 
+                          disabled={exportingId === c.id}
+                          className="btn-ghost text-[12px] py-1.5 px-2.5 text-primary-600 dark:text-primary-400 disabled:opacity-50"
+                        >
+                          {exportingId === c.id ? 'Exporting...' : 'Export Pub'}
+                        </button>
+                        <button 
+                          onClick={() => downloadLeaderboardCSV(c.id, 'private')} 
+                          disabled={exportingId === c.id}
+                          className="btn-ghost text-[12px] py-1.5 px-2.5 text-purple-600 dark:text-purple-400 disabled:opacity-50"
+                        >
+                          {exportingId === c.id ? 'Exporting...' : 'Export Priv'}
+                        </button>
                         <button onClick={() => setUploadTarget(c)} className="btn-ghost text-[12px] py-1.5 px-2.5">Upload</button>
                         <button onClick={() => { setEditing(c); setIsFormOpen(true); }} className="btn-ghost text-[12px] py-1.5 px-2.5">Edit</button>
                         <button onClick={() => deleteChallenge(c.id)} className="btn-ghost text-[12px] py-1.5 px-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
