@@ -1,7 +1,7 @@
 """add tags and challenge_tags tables
 
 Revision ID: 001122334455
-Revises: 17dc37a4b222
+Revises: abcdef123456
 Create Date: 2026-07-27 20:20:00.000000
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '001122334455'
-down_revision: Union[str, None] = '17dc37a4b222'
+down_revision: Union[str, None] = 'abcdef123456'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

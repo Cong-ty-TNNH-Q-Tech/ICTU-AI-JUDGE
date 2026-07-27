@@ -49,3 +49,67 @@ def test_get_challenge(challenge_use_case, dummy_challenge):
     res = challenge_use_case.get_challenge(cid, is_admin=False)
     assert res.title == "Test Challenge"
     challenge_use_case.challenge_repo.get_by_id.assert_called_once_with(cid)
+
+def test_get_challenge_not_found(challenge_use_case):
+    challenge_use_case.challenge_repo.get_by_id.return_value = None
+    with pytest.raises(ValueError, match="Bài thi không tồn tại."):
+        challenge_use_case.get_challenge(uuid.uuid4())
+
+def test_create_challenge(challenge_use_case):
+    from app.application.dtos.challenge_dtos import ChallengeCreateRequestDTO
+    dto = ChallengeCreateRequestDTO(
+        title="New Challenge",
+        description="Desc",
+        type=ChallengeType.PUBLIC,
+        start_time=datetime.now(),
+        end_time=datetime.now(),
+        rate_limit_minutes=10,
+        max_file_size_mb=5,
+        metric_name="F1",
+        metric_direction=MetricDirection.HIGHER_IS_BETTER,
+        max_team_size=3,
+        team_lock_deadline=datetime.now(),
+        tag_ids=[uuid.uuid4()]
+    )
+    from app.domain.entities.entities import TagEntity
+    tag = TagEntity(
+        id=uuid.uuid4(),
+        name="NLP",
+        color_hex="#ffffff",
+        created_at=datetime.now()
+    )
+    challenge_use_case.tag_repo.get_by_ids.return_value = [tag]
+    challenge_use_case.challenge_repo.save.side_effect = lambda x: x
+    
+    admin_id = uuid.uuid4()
+    res = challenge_use_case.create_challenge(admin_id, dto)
+    assert res.title == "New Challenge"
+    assert res.created_by == admin_id
+
+def test_update_challenge(challenge_use_case, dummy_challenge):
+    from app.application.dtos.challenge_dtos import ChallengeUpdateRequestDTO
+    challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
+    challenge_use_case.challenge_repo.has_successful_submission.return_value = False
+    challenge_use_case.tag_repo.get_by_ids.return_value = []
+    challenge_use_case.challenge_repo.update.side_effect = lambda x: x
+    
+    dto = ChallengeUpdateRequestDTO(title="Updated Title", tag_ids=[])
+    res = challenge_use_case.update_challenge(dummy_challenge.id, dto)
+    assert res.title == "Updated Title"
+
+def test_delete_challenge(challenge_use_case):
+    cid = uuid.uuid4()
+    challenge_use_case.delete_challenge(cid)
+    challenge_use_case.challenge_repo.soft_delete.assert_called_once_with(cid)
+
+def test_upload_secrets(challenge_use_case, dummy_challenge):
+    challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
+    challenge_use_case.challenge_repo.has_successful_submission.return_value = False
+    challenge_use_case.challenge_repo.update.side_effect = lambda x: x
+    
+    gt_csv = b"ID,Usage\n1,Public"
+    res = challenge_use_case.upload_secrets(dummy_challenge.id, gt_csv, None)
+    
+    assert "ground_truth" in res.ground_truth_url
+    challenge_use_case.storage_repo.upload.assert_called_once()
+
