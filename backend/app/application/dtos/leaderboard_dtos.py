@@ -16,6 +16,7 @@ class LeaderboardType(str, Enum):
 
 class LeaderboardEntryDTO(BaseModel):
     rank: int
+    team_id: uuid.UUID
     team_name: str
     best_public_score: float
     best_private_score: Optional[float] = None
