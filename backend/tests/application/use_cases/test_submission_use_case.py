@@ -19,6 +19,9 @@ from app.domain.exceptions.exceptions import (
     DuplicateSubmissionError,
     FileSizeExceededError,
     RateLimitExceededError,
+    PermissionDeniedError,
+    NotFoundError,
+    SubmissionDeadlinePassedError
 )
 
 @pytest.fixture
@@ -166,3 +169,54 @@ def test_trigger_scoring(use_case, mock_repos):
     submission_id = "test-123"
     use_case.trigger_scoring(submission_id)
     mock_repos["message_broker"].enqueue_scoring_task.assert_called_once_with(submission_id)
+
+def test_submit_prediction_no_team(use_case, mock_repos, mock_challenge):
+    mock_repos["team_repo"].get_by_challenge_and_user.return_value = None
+    with pytest.raises(PermissionDeniedError):
+        use_case.submit_prediction(
+            challenge_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            file_bytes=b"1,1",
+            filename="sub.csv",
+            content_type="text/csv"
+        )
+
+def test_submit_prediction_no_challenge(use_case, mock_repos, mock_team):
+    mock_repos["team_repo"].get_by_challenge_and_user.return_value = mock_team
+    mock_repos["challenge_repo"].get_by_id.return_value = None
+    with pytest.raises(NotFoundError):
+        use_case.submit_prediction(
+            challenge_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            file_bytes=b"1,1",
+            filename="sub.csv",
+            content_type="text/csv"
+        )
+
+def test_submit_prediction_empty_file(use_case, mock_repos, mock_challenge, mock_team):
+    mock_repos["team_repo"].get_by_challenge_and_user.return_value = mock_team
+    mock_repos["challenge_repo"].get_by_id.return_value = mock_challenge
+    mock_repos["submission_repo"].get_last_submission_time.return_value = None
+    mock_repos["submission_repo"].exists_by_hash.return_value = False
+    with pytest.raises(ValueError, match="File CSV rỗng"):
+        use_case.submit_prediction(
+            challenge_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            file_bytes=b"",
+            filename="sub.csv",
+            content_type="text/csv"
+        )
+
+def test_submit_prediction_challenge_closed(use_case, mock_repos, mock_challenge, mock_team):
+    mock_challenge.status = ChallengeStatus.ARCHIVED
+    mock_repos["team_repo"].get_by_challenge_and_user.return_value = mock_team
+    mock_repos["challenge_repo"].get_by_id.return_value = mock_challenge
+    mock_repos["submission_repo"].get_last_submission_time.return_value = None
+    with pytest.raises(SubmissionDeadlinePassedError):
+        use_case.submit_prediction(
+            challenge_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            file_bytes=b"1,1",
+            filename="sub.csv",
+            content_type="text/csv"
+        )
