@@ -31,6 +31,8 @@ export interface UserResponse {
   email: string;
   full_name: string;
   role: UserRole;
+  is_active: boolean;
+  student_id?: string;
 }
 
 export interface Team {
@@ -46,11 +48,13 @@ export interface Challenge {
   description?: string;
   type: ChallengeType;
   status: ChallengeStatus;
+  is_public: boolean;
   start_time: string;  // ISO 8601
   end_time: string;
   team_lock_deadline?: string;
   rate_limit_minutes: number;
   max_file_size_mb: number;
+  max_team_size: number;
   metric_name: string;
   metric_direction: MetricDirection;
   dataset_url: string;
@@ -103,6 +107,7 @@ export interface ChallengeCreateRequest {
   team_lock_deadline?: string;
   rate_limit_minutes?: number;
   max_file_size_mb?: number;
+  max_team_size?: number;
   metric_name: string;
   metric_direction: MetricDirection;
   dataset_url?: string;

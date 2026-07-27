@@ -622,6 +622,12 @@ components:
         role:
           type: string
           enum: [STUDENT, ADMIN]
+        is_active:
+          type: boolean
+          default: true
+        student_id:
+          type: string
+          nullable: true
 
     Team:
       type: object
@@ -648,12 +654,18 @@ components:
           type: string
         status:
           type: string
+        is_public:
+          type: boolean
+          description: true nếu là PUBLIC, false nếu là COMPETITION
         start_time:
           type: string
           format: date-time
         end_time:
           type: string
           format: date-time
+        max_team_size:
+          type: integer
+          default: 1
         metric_direction:
           type: string
         dataset_url:
@@ -702,6 +714,10 @@ components:
           type: integer
           default: 50
           description: Giới hạn dung lượng file upload (MB)
+        max_team_size:
+          type: integer
+          default: 1
+          description: Kích thước tối đa của một đội thi
         metric_name:
           type: string
           example: "Accuracy"

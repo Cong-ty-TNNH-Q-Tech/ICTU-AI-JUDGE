@@ -3,31 +3,24 @@ import IctuLogo from '../../assets/ictu-logo.png';
 
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#0F2027] flex items-center justify-center relative overflow-hidden p-4">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[30rem] h-[30rem] bg-primary/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30rem] h-[30rem] bg-accent/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute top-[20%] left-[50%] -translate-x-1/2 w-[25rem] h-[25rem] bg-purple-600/15 rounded-full blur-[120px] pointer-events-none"></div>
-      
-      {/* Main card */}
-      <div className="relative z-10 w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl overflow-hidden">
-        {/* Brand header */}
-        <div className="w-full h-1.5 bg-gradient-to-r from-primary via-purple-500 to-accent"></div>
-        
-        <div className="p-8 pb-0 text-center flex flex-col items-center relative">
-          <div className="absolute top-8 w-24 h-24 bg-primary/20 rounded-full blur-2xl pointer-events-none"></div>
-          <img src={IctuLogo} alt="ICTU Logo" className="h-20 w-auto mb-4 object-contain relative z-10 drop-shadow-md" />
-          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-wide">
-            ICTU AI JUDGE
-          </h2>
+    <div className="min-h-screen bg-background dark:bg-background-dark flex items-center justify-center relative overflow-hidden">
+      {/* Subtle gradient orbs */}
+      <div className="absolute top-[-30%] left-[-15%] w-[600px] h-[600px] bg-primary-100/40 dark:bg-primary-900/10 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute bottom-[-30%] right-[-15%] w-[600px] h-[600px] bg-accent-100/40 dark:bg-accent-900/10 rounded-full blur-[150px] pointer-events-none"></div>
+
+      <div className="relative z-10 w-full max-w-[400px] mx-4">
+        <div className="card p-0 overflow-hidden animate-fade-in-up">
+          <div className="h-1 w-full bg-gradient-to-r from-primary-400 to-primary-600"></div>
+          <div className="p-8 pb-4 text-center">
+            <img src={IctuLogo} alt="ICTU" className="h-12 w-auto mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-content-primary dark:text-content-dark-primary">ICTU AI Judge</h2>
+            <p className="text-[13px] text-content-tertiary mt-1">AI Competition Platform for ICTU Students</p>
+          </div>
+          {children}
         </div>
-        
-        {/* Render page content */}
-        {children}
       </div>
     </div>
   );
 };
 
 export default AuthLayout;
-
