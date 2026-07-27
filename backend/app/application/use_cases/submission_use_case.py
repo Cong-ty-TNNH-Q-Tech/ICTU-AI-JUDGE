@@ -8,6 +8,7 @@ import hashlib
 import io
 import logging
 import uuid
+import zipfile
 from datetime import datetime, timezone
 
 from app.application.dtos.submission_dtos import (
@@ -263,9 +264,6 @@ class SubmissionUseCase:
         UC06 — Upload source code (nhiều files).
         Chỉ cho phép sau khi challenge kết thúc.
         """
-        import zipfile
-        import io
-        
         now = datetime.now(tz=timezone.utc)
 
         submission = self.submission_repo.get_by_id(submission_id)

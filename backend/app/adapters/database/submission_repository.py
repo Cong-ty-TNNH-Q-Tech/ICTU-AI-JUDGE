@@ -86,31 +86,6 @@ class SQLSubmissionRepository(ISubmissionRepository):
 
 
 
-    def get_last_submission_time(self, team_id: uuid.UUID, challenge_id: uuid.UUID) -> datetime | None:
-        raise NotImplementedError
-
-    def exists_by_hash(self, team_id: uuid.UUID, challenge_id: uuid.UUID, md5_hash: str) -> bool:
-        raise NotImplementedError
-
-    def list_by_team(self, team_id: uuid.UUID, challenge_id: uuid.UUID, page: int, size: int) -> tuple[list[SubmissionEntity], int]:
-        raise NotImplementedError
-
-    def list_stale_processing(self, older_than: datetime) -> list[SubmissionEntity]:
-        stmt = select(SubmissionModel).where(
-            SubmissionModel.status == SubmissionStatus.PROCESSING.value,
-            SubmissionModel.submitted_at < older_than
-        )
-        models = self.db.execute(stmt).scalars().all()
-        entities = []
-        for m in models:
-            entities.append(SubmissionEntity(
-                id=m.id, challenge_id=m.challenge_id, team_id=m.team_id,
-                submitted_by=m.submitted_by, file_url=m.file_url,
-                file_md5_hash=m.file_md5_hash, file_size_bytes=m.file_size_bytes,
-                status=SubmissionStatus(m.status), submitted_at=m.submitted_at
-            ))
-        return entities
-
     def get_stale_submissions(self, older_than: datetime) -> list[SubmissionEntity]:
         """
         Lấy danh sách các file nộp thoả mãn: 
