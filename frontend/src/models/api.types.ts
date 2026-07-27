@@ -73,6 +73,56 @@ export interface Team {
   leader_id: string;
 }
 
+// ==========================================
+// TEAM TYPES (UC02) — Dựa trên TeamResponseDTO backend
+// ==========================================
+
+/** Khớp với TeamResponseDTO từ backend (team_dtos.py) */
+export interface TeamResponse {
+  id: string;
+  name: string;
+  challenge_id: string;
+  leader_id: string;
+  created_at: string;
+  member_ids: string[];  // chỉ UUID, theo backend thực tế
+}
+
+/** Member info đầy đủ — cần join với User data */
+export interface TeamMemberInfo {
+  user_id: string;
+  full_name: string;
+  email: string;
+  joined_at: string;
+}
+
+/** ViewModel-level enriched Team — sau khi merge data */
+export interface TeamDetailVM {
+  id: string;
+  name: string;
+  challenge_id: string;
+  leader_id: string;
+  created_at: string;
+  member_ids: string[];
+  // Enriched fields (populated bởi ViewModel từ mock hoặc API)
+  members: TeamMemberInfo[];
+  has_submissions: boolean;   // từ mock hoặc future API field
+  challenge_title?: string;
+}
+
+/** Khớp với CreateInviteResponseDTO backend */
+export interface CreateInviteResponse {
+  token: string;
+  invite_url: string;
+  expires_at: string;
+}
+
+export interface JoinTeamRequest {
+  token: string;
+}
+
+/** POST /teams/join trả về TeamResponseDTO */
+export type JoinTeamResponse = TeamResponse;
+
 export interface Challenge {
   id: string;
   title: string;
@@ -184,6 +234,9 @@ export interface PaginationMeta {
 export interface PaginatedResponse<T> extends PaginationMeta {
   items: T[];
 }
+
+/** GET /users/me/teams trả về paginated Team list */
+export type MyTeamsResponse = PaginatedResponse<TeamResponse>;
 
 // ==========================================
 // ERROR

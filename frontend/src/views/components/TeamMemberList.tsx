@@ -1,0 +1,71 @@
+import React from 'react';
+import type { TeamDetailVM } from '../../models/api.types';
+import { useAuthStore } from '../../store';
+
+interface Props {
+  team: TeamDetailVM;
+}
+
+const TeamMemberList: React.FC<Props> = ({ team }) => {
+  const { user } = useAuthStore();
+
+  return (
+    <div className="flex flex-col gap-3">
+      {team.members.map((member) => {
+        const isLeader = member.user_id === team.leader_id;
+        const isMe = user?.id === member.user_id;
+
+        // Get initials
+        const initials = member.full_name
+          .split(' ')
+          .map(n => n[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase() || '?';
+
+        return (
+          <div
+            key={member.user_id}
+            className="flex items-center gap-3 p-3 rounded-xl 
+              bg-white dark:bg-slate-800/50 
+              border border-gray-100 dark:border-slate-700/50
+              hover:bg-gray-50 dark:hover:bg-slate-800 
+              transition-all duration-200"
+          >
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              {initials}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                  {member.full_name}
+                </p>
+                {isMe && (
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400">
+                    Bạn
+                  </span>
+                )}
+                {isLeader && (
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700/50">
+                    👑 Trưởng nhóm
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
+                {member.email}
+              </p>
+            </div>
+
+            {/* TODO: Implement kick button when backend has DELETE /teams/{id}/members/{userId} */}
+            {/* {isLeader && !isMe && !team.has_submissions && (
+               <button className="...">Đá ra</button>
+            )} */}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default TeamMemberList;

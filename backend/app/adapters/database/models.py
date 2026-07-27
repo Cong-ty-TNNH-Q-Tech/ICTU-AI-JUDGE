@@ -97,6 +97,30 @@ class ChallengeModel(Base):
     submissions: Mapped[list["SubmissionModel"]] = relationship("SubmissionModel", back_populates="challenge")
     leaderboard_entries: Mapped[list["LeaderboardModel"]] = relationship("LeaderboardModel", back_populates="challenge")
     participants: Mapped[list["ChallengeParticipantModel"]] = relationship("ChallengeParticipantModel", back_populates="challenge")
+    tags: Mapped[list["TagModel"]] = relationship(
+        "TagModel", secondary="challenge_tags", back_populates="challenges"
+    )
+
+class TagModel(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    color_hex: Mapped[str] = mapped_column(String(7), nullable=False, default="#CCCCCC")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    challenges: Mapped[list["ChallengeModel"]] = relationship(
+        "ChallengeModel", secondary="challenge_tags", back_populates="tags"
+    )
+
+
+class ChallengeTagModel(Base):
+    __tablename__ = "challenge_tags"
+
+    challenge_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("challenges.id", ondelete="CASCADE"), primary_key=True)
+    tag_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ChallengeParticipantModel(Base):

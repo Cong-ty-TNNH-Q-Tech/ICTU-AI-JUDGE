@@ -18,6 +18,7 @@ from app.domain.entities.entities import (
     MetricDirection,
     InviteStatus,
     SolutionEntity,
+    TagEntity,
 )
 
 
@@ -94,7 +95,7 @@ class IChallengeRepository(ABC):
 
     @abstractmethod
     def list_all(
-        self, page: int, size: int, status_filter: str | None = None
+        self, page: int, size: int, status_filter: str | None = None, tag_id: uuid.UUID | None = None
     ) -> tuple[list[ChallengeEntity], int]: ...
 
     @abstractmethod
@@ -183,6 +184,34 @@ class ISubmissionRepository(ABC):
         self, submission_ids: list[uuid.UUID]
     ) -> None: ...
 
+    @abstractmethod
+    def clear_selected_for_private(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID
+    ) -> None:
+        """UC05 — Bỏ chọn tất cả submission trước đó của team trong challenge."""
+        ...
+
+    @abstractmethod
+    def set_selected_for_private(
+        self, submission_id: uuid.UUID, value: bool
+    ) -> None:
+        """UC05 — Set is_selected_for_private cho một submission cụ thể."""
+        ...
+
+    @abstractmethod
+    def update_source_code_url(
+        self, submission_id: uuid.UUID, source_code_url: str
+    ) -> None:
+        """UC06 — Cập nhật đường dẫn source code sau khi upload."""
+        ...
+
+    @abstractmethod
+    def list_all_by_challenge(
+        self, challenge_id: uuid.UUID, page: int, size: int
+    ) -> tuple[list[SubmissionEntity], int]:
+        """UC11 (Admin) — Lấy tất cả bài nộp trong một Challenge."""
+        ...
+
 
 class ILeaderboardRepository(ABC):
     @abstractmethod
@@ -254,3 +283,26 @@ class ISolutionRepository(ABC):
         Raises ValueError nếu user đã upvote rồi.
         """
         ...
+
+class ITagRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, tag_id: uuid.UUID) -> TagEntity | None: ...
+
+    @abstractmethod
+    def get_by_name(self, name: str) -> TagEntity | None: ...
+
+    @abstractmethod
+    def get_by_ids(self, tag_ids: list[uuid.UUID]) -> list[TagEntity]: ...
+
+    @abstractmethod
+    def save(self, tag: TagEntity) -> TagEntity: ...
+
+    @abstractmethod
+    def update(self, tag: TagEntity) -> TagEntity: ...
+
+    @abstractmethod
+    def delete(self, tag_id: uuid.UUID) -> None: ...
+
+    @abstractmethod
+    def list_all(self) -> list[TagEntity]: ...
+

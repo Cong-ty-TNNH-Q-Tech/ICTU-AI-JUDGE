@@ -15,7 +15,6 @@ from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
-    SourceCodeUploadResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -48,20 +47,16 @@ router = APIRouter()
 @router.get("", response_model=dict)
 async def list_challenges(
     status_filter: str | None = None,
+    tag_id: uuid.UUID | None = None,
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_optional_current_user_id)  # Public — trả None nếu chưa login
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — trả None nếu chưa login
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
     from app.adapters.database.user_repository import SQLUserRepository
     
-    # Đoán role từ DB nếu cần, nhưng list_all không lộ file.
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     # Check nếu user là Admin thì is_admin=True, nếu ko có thì False
     is_admin = False
     if user_id:
@@ -70,7 +65,7 @@ async def list_challenges(
         if user and user.role.value == "ADMIN":
             is_admin = True
 
-    result = use_case.list_challenges(page=page, size=size, status_filter=status_filter, is_admin=is_admin)
+    result = use_case.list_challenges(page=page, size=size, status_filter=status_filter, is_admin=is_admin, tag_id=tag_id)
     return result.dict()
 
 
@@ -78,17 +73,13 @@ async def list_challenges(
 async def create_challenge(
     request: dict,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Tạo bài thi mới (Admin only)."""
     from app.application.dtos.challenge_dtos import ChallengeCreateRequestDTO
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
     
     dto = ChallengeCreateRequestDTO(**request)
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     
     result = use_case.create_challenge(admin_id=admin_id, data=dto)
     db.commit()
@@ -129,17 +120,13 @@ async def update_challenge(
     challenge_id: uuid.UUID,
     request: dict,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin_id: uuid.UUID = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Cập nhật bài thi (Admin only). Bị khóa nếu đã có Submission."""
     from app.application.dtos.challenge_dtos import ChallengeUpdateRequestDTO
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
     
     dto = ChallengeUpdateRequestDTO(**request)
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     
     try:
         result = use_case.update_challenge(challenge_id=challenge_id, data=dto)
@@ -312,36 +299,6 @@ async def submit(
     use_case.trigger_scoring(str(result.submission_id))
 
     return result
-
-# ==========================================
-# UC06 — Nộp Source Code
-# ==========================================
-
-@router.post(
-    "/{challenge_id}/submissions/{submission_id}/source-code",
-    response_model=SourceCodeUploadResponseDTO,
-)
-async def upload_source_code(
-    challenge_id: uuid.UUID,
-    submission_id: uuid.UUID,
-    files: list[UploadFile] = File(...),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-    use_case: SubmissionUseCase = Depends(get_submission_use_case),
-):
-    """
-    UC06 — Nộp Source Code (chống gian lận).
-    Upload nhiều files, sẽ được nén in-memory và đưa lên S3.
-    """
-    file_tuples = []
-    for f in files:
-        data = await f.read()
-        file_tuples.append((f.filename, data, f.content_type))
-        
-    return use_case.upload_source_code(
-        submission_id=submission_id,
-        user_id=user_id,
-        files=file_tuples
-    )
 
 
 # ==========================================
