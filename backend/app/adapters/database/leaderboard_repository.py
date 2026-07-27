@@ -4,7 +4,7 @@ Leaderboard Repository Adapter (SQLAlchemy).
 import uuid
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.adapters.database.models import LeaderboardModel, TeamModel
@@ -173,13 +173,16 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             order_by=[score_order, LeaderboardModel.last_submission_time.asc()]
         ).label("computed_rank")
 
-        stmt = (
-            select(LeaderboardModel, rank_func)
+        subq = (
+            select(LeaderboardModel.id, rank_func)
             .where(LeaderboardModel.challenge_id == challenge_id)
+            .subquery()
         )
         
-        results = self.db.execute(stmt).all()
-        for model, computed_rank in results:
-            model.rank = computed_rank
-            
+        stmt = (
+            update(LeaderboardModel)
+            .where(LeaderboardModel.id == subq.c.id)
+            .values(rank=subq.c.computed_rank)
+        )
+        self.db.execute(stmt)
         self.db.flush()

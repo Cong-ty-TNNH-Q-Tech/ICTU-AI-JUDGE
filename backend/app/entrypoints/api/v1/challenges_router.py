@@ -27,12 +27,15 @@ router = APIRouter()
 # Helper: khởi tạo SubmissionUseCase
 # ==========================================
 
+from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
+
 def _get_submission_use_case(db: Session) -> SubmissionUseCase:
     return SubmissionUseCase(
         submission_repo=SQLSubmissionRepository(db),
         challenge_repo=SQLChallengeRepository(db),
         team_repo=SQLTeamRepository(db),
         storage_repo=S3StorageRepository(),
+        message_broker=CeleryMessageBroker(),
     )
 
 
@@ -187,9 +190,10 @@ async def submit(
     )
 
     # [CRITICAL] Commit DB TRƯỚC khi Celery Worker consume job từ Redis.
-    # _enqueue_scoring_task() trong use_case đã được gọi — Worker sẽ
-    # tìm record trong DB và sẽ thấy nó vì commit xảy ra trước.
+    # Đã di chuyển việc enqueue ra controller sau khi commit để fix Race Condition.
     db.commit()
+    
+    use_case.trigger_scoring(str(result.submission_id))
 
     return result
 
