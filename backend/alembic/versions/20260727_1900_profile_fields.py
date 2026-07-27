@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = "20260727_profile_fields"
-down_revision = "20260727_1400_3f8a1c2e9d45_add_solution_upvotes_table"
+down_revision = "3f8a1c2e9d45"
 branch_labels = None
 depends_on = None
 
