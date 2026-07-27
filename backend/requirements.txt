@@ -10,3 +10,4 @@ pydantic-settings
 python-multipart
 pyjwt
 passlib[bcrypt]
+docker

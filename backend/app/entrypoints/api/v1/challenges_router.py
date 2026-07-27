@@ -17,6 +17,7 @@ from app.application.dtos.submission_dtos import (
     SubmitResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
+from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.entrypoints.dependencies import get_current_user_id, get_db
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,15 @@ def _get_submission_use_case(db: Session) -> SubmissionUseCase:
 
 
 # ==========================================
+# Helper: khởi tạo ChallengeUseCase
+# ==========================================
+
+def _get_challenge_use_case(db: Session) -> ChallengeUseCase:
+    return ChallengeUseCase(
+        challenge_repo=SQLChallengeRepository(db)
+    )
+
+# ==========================================
 # Existing endpoints (skeleton — chưa implement)
 # ==========================================
 
@@ -48,8 +58,8 @@ async def list_challenges(
     db: Session = Depends(get_db),
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    use_case = _get_challenge_use_case(db)
+    return use_case.list_challenges(page=page, size=size, status_filter=status_filter)
 
 
 @router.post("")
@@ -62,8 +72,11 @@ async def create_challenge(db: Session = Depends(get_db)):
 @router.get("/{challenge_id}")
 async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
     """Chi tiết bài thi."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    use_case = _get_challenge_use_case(db)
+    challenge = use_case.get_challenge(challenge_id)
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    return challenge
 
 
 @router.patch("/{challenge_id}")
@@ -207,6 +220,10 @@ async def get_leaderboard(
     db: Session = Depends(get_db),
 ):
     """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    return {
+        "items": [],
+        "total": 0,
+        "page": page,
+        "size": size,
+    }
 
