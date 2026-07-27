@@ -48,6 +48,7 @@ def test_login_with_google_success_existing_user(auth_use_case):
         updated_at=datetime.now()
     )
     auth_use_case._user_repo.get_by_email.return_value = existing_user
+    auth_use_case._user_repo.save.side_effect = lambda u: u
     
     user = auth_use_case.login_with_google("valid_token")
     assert user.full_name == "New Name"
