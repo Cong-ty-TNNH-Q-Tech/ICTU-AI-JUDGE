@@ -107,6 +107,7 @@ export interface ChallengeCreateRequest {
   team_lock_deadline?: string;
   rate_limit_minutes?: number;
   max_file_size_mb?: number;
+  max_team_size?: number;
   metric_name: string;
   metric_direction: MetricDirection;
   dataset_url?: string;
