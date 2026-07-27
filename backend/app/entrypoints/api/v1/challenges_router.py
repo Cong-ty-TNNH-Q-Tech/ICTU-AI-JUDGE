@@ -5,7 +5,7 @@ Challenges Router — UC03 (enroll), UC04 (submit), UC09 (CRUD), UC10 (participa
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.adapters.database.challenge_repository import SQLChallengeRepository
@@ -18,10 +18,19 @@ from app.application.dtos.submission_dtos import (
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
-from app.entrypoints.dependencies import get_current_user_id, get_db
+from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
+from app.domain.entities.entities import UserEntity
+from app.entrypoints.dependencies import (
+    get_current_user_id,
+    get_current_user,
+    get_db,
+    get_solution_use_case,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 
 # ==========================================
@@ -227,3 +236,76 @@ async def get_leaderboard(
         "size": size,
     }
 
+
+# ==========================================
+# Feature: Kernels / Solutions
+# ==========================================
+
+@router.get("/{challenge_id}/solutions", response_model=SolutionListResponseDTO)
+async def list_solutions(
+    challenge_id: uuid.UUID,
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+):
+    """Lấy danh sách Solutions của một bài thi."""
+    try:
+        return use_case.list_solutions(challenge_id)
+    except ValueError:
+        # Challenge không tồn tại — trả về danh sách rỗng thay vì 404
+        return SolutionListResponseDTO(items=[], total=0)
+
+
+@router.post(
+    "/{challenge_id}/solutions",
+    response_model=SolutionResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_solution(
+    challenge_id: uuid.UUID,
+    title: str = Form(...),
+    content: str = Form(...),
+    file: UploadFile = File(...),
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+    db: Session = Depends(get_db),
+):
+    """Chia sẻ file notebook (Upload lên S3/MinIO và tạo bản ghi vào DB)."""
+    file_bytes = await file.read()
+    filename = file.filename or "solution.ipynb"
+
+    try:
+        result = use_case.publish_solution(
+            user=user,
+            challenge_id=challenge_id,
+            title=title,
+            content=content,
+            file_bytes=file_bytes,
+            filename=filename,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    db.commit()
+    return result
+
+
+@router.post(
+    "/{challenge_id}/solutions/{solution_id}/upvote",
+    response_model=SolutionResponseDTO,
+)
+async def upvote_solution(
+    challenge_id: uuid.UUID,
+    solution_id: uuid.UUID,
+    user: UserEntity = Depends(get_current_user),
+    use_case: SolutionUseCase = Depends(get_solution_use_case),
+    db: Session = Depends(get_db),
+):
+    """Upvote một solution (+1). Yêu cầu đăng nhập. Mỗi user chỉ vote được 1 lần."""
+    try:
+        result = use_case.upvote_solution(solution_id, user.id)
+    except LookupError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solution không tồn tại.")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+    db.commit()
+    return result

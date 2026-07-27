@@ -133,7 +133,7 @@ export function useLeaderboardVM(challengeId: string) {
     setError(null);
     try {
       const result = await challengeService.getLeaderboard(challengeId, { type: leaderboardType });
-      setEntries(result.items);
+      setEntries(result?.items ?? []);
     } catch {
       console.warn('API get leaderboard failed, using mock data');
       setEntries(MOCK_LEADERBOARD);
@@ -164,7 +164,7 @@ export function useSubmissionsVM(challengeId: string) {
     setError(null);
     try {
       const result = await challengeService.listSubmissions(challengeId);
-      setSubmissions(result.items);
+      setSubmissions(result?.items ?? []);
     } catch {
       console.warn('API get submissions failed, using mock data');
       setSubmissions(MOCK_SUBMISSIONS);

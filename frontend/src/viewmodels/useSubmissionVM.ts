@@ -25,7 +25,7 @@ export function useSubmissionVM(challengeId: string) {
   
   // Keep track of latest state for visibility listener
   const hasPendingRef = useRef(false);
-  hasPendingRef.current = submissions.some(
+  hasPendingRef.current = (submissions ?? []).some(
     (s) => s.status === 'PENDING' || s.status === 'PROCESSING'
   );
 
@@ -35,7 +35,7 @@ export function useSubmissionVM(challengeId: string) {
     setError(null);
     try {
       const result = await challengeService.listSubmissions(challengeId);
-      setSubmissions(result.items);
+      setSubmissions(result?.items ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lỗi tải lịch sử nộp bài');
     } finally {

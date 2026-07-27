@@ -90,6 +90,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     container_name: ictu_ai_judge_frontend
     restart: always
     ports:

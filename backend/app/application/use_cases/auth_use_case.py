@@ -39,7 +39,11 @@ class AuthUseCase:
 
         user = self._user_repo.get_by_email(email)
         if user:
-            # Update user if necessary, but here we just return
+            # Cập nhật full_name nếu user đổi tên Google
+            if user.full_name != full_name:
+                user.full_name = full_name
+                self._user_repo.save(user)
+                logger.info(f"Updated full_name for user: {email}")
             return user
         
         # Create new user

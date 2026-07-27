@@ -12,6 +12,7 @@ import type {
   Submission,
   AddParticipantsRequest,
   LeaderboardType,
+  Solution,
 } from '../models/api.types';
 
 export const challengeService = {
@@ -119,6 +120,44 @@ export const challengeService = {
     const { data } = await apiClient.get<PaginatedResponse<LeaderboardEntry>>(
       `/challenges/${id}/leaderboard`,
       { params },
+    );
+    return data;
+  },
+
+  /** Feature: Kernels / Solutions - Lấy danh sách giải pháp */
+  async listSolutions(
+    id: string,
+  ): Promise<PaginatedResponse<Solution>> {
+    const { data } = await apiClient.get<PaginatedResponse<Solution>>(
+      `/challenges/${id}/solutions`,
+    );
+    return data;
+  },
+
+  /** Feature: Kernels / Solutions - Đăng tải giải pháp */
+  async publishSolution(
+    id: string,
+    title: string,
+    content: string,
+    file: File,
+  ): Promise<Solution> {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('file', file);
+
+    const { data } = await apiClient.post<Solution>(
+      `/challenges/${id}/solutions`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+  },
+
+  /** Feature: Kernels / Solutions - Upvote một giải pháp */
+  async upvoteSolution(challengeId: string, solutionId: string): Promise<Solution> {
+    const { data } = await apiClient.post<Solution>(
+      `/challenges/${challengeId}/solutions/${solutionId}/upvote`,
     );
     return data;
   },
