@@ -1,8 +1,10 @@
-# Environment Variables
+
+.commandcode/
+# Command Code
 .env
 .env.*
 !.env.example
+# Environment Variables
+*.pyc
+__pycache__/
 __pycache__/  
-
-# Command Code
-.commandcode/
