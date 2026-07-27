@@ -284,7 +284,3 @@ async def upvote_solution(
 
     db.commit()
     return result
-<<<<<<< HEAD
-
-=======
->>>>>>> d61a5b19a0696b2f2d45761e63fad54d5ed360fc
