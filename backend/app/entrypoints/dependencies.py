@@ -144,5 +144,6 @@ def get_solution_use_case(
     solution_repo: ISolutionRepository = Depends(get_solution_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    user_repo: IUserRepository = Depends(get_user_repository),
 ) -> SolutionUseCase:
-    return SolutionUseCase(solution_repo, storage_repo, challenge_repo)
+    return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)

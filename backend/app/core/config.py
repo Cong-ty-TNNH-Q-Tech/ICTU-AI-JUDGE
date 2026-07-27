@@ -35,6 +35,10 @@ class Settings(BaseSettings):
 
     # ---- S3 / MinIO Storage ----
     S3_ENDPOINT_URL: str = "http://minio:9000"
+    # URL công khai để browser truy cập presigned URL (thay thế S3_ENDPOINT_URL trong URL)
+    # Docker internal: minio:9000 → browser không thể truy cập trực tiếp
+    # Dev local: http://localhost:9000 | Production: https://storage.example.com
+    S3_PUBLIC_ENDPOINT_URL: str = "http://localhost:9000"
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
     S3_BUCKET_NAME: str = "ictu-ai-judge-bucket"

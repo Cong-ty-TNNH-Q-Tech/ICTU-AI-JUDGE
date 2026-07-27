@@ -149,7 +149,7 @@ class ILeaderboardRepository(ABC):
 class IStorageRepository(ABC):
     @abstractmethod
     def upload(self, key: str, data: bytes, content_type: str = "text/csv") -> str:
-        """Upload file lên S3/MinIO, trả về presigned URL hoặc internal path."""
+        """Upload file lên S3/MinIO, trả về key (object path)."""
         ...
 
     @abstractmethod
@@ -158,6 +158,15 @@ class IStorageRepository(ABC):
     @abstractmethod
     def delete(self, key: str) -> None: ...
 
+    @abstractmethod
+    def get_presigned_url(self, key: str, expires_in: int = 3600, filename: str | None = None) -> str:
+        """
+        Tạo presigned URL cho phép Frontend download trực tiếp (không qua API).
+        URL trả về phải dùng public endpoint (có thể truy cập từ browser),
+        không phải internal Docker hostname.
+        """
+        ...
+
 
 class ISolutionRepository(ABC):
     @abstractmethod
@@ -165,3 +174,12 @@ class ISolutionRepository(ABC):
 
     @abstractmethod
     def list_by_challenge(self, challenge_id: uuid.UUID) -> list[SolutionEntity]: ...
+
+    @abstractmethod
+    def upvote(self, solution_id: uuid.UUID, user_id: uuid.UUID) -> SolutionEntity | None:
+        """
+        Upvote solution — chống double-vote qua UNIQUE constraint DB.
+        Trả về entity đã cập nhật, None nếu không tồn tại.
+        Raises ValueError nếu user đã upvote rồi.
+        """
+        ...

@@ -80,8 +80,8 @@ class S3StorageRepository(IStorageRepository):
     def get_presigned_url(self, key: str, expires_in: int = 3600, filename: str | None = None) -> str:
         """
         Tạo presigned URL cho phép Frontend download trực tiếp (không qua API).
-        expires_in: thời gian hiệu lực (giây).
-        filename: nếu cung cấp, sẽ thêm Content-Disposition để force download.
+        Tự động thay thế internal Docker hostname (S3_ENDPOINT_URL)
+        bằng public-facing URL (S3_PUBLIC_ENDPOINT_URL) để browser có thể truy cập.
         """
         try:
             params: dict = {"Bucket": self._bucket, "Key": key}
@@ -93,6 +93,10 @@ class S3StorageRepository(IStorageRepository):
                 Params=params,
                 ExpiresIn=expires_in,
             )
+            # Thay internal endpoint (http://minio:9000) bằng public URL
+            # để browser có thể truy cập từ bên ngoài Docker network
+            if settings.S3_PUBLIC_ENDPOINT_URL != settings.S3_ENDPOINT_URL:
+                url = url.replace(settings.S3_ENDPOINT_URL, settings.S3_PUBLIC_ENDPOINT_URL)
             return url
         except ClientError as e:
             logger.error("S3 presign FAILED — key=%s error=%s", key, e)

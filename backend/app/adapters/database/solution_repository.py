@@ -1,5 +1,8 @@
 import logging
 import uuid
+
+from sqlalchemy import update as sql_update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.adapters.database.models import SolutionModel, SolutionUpvoteModel
@@ -56,32 +59,47 @@ class PostgresSolutionRepository(ISolutionRepository):
 
     def upvote(self, solution_id: uuid.UUID, user_id: uuid.UUID) -> SolutionEntity | None:
         """
-        Upvote solution — chống double-vote qua bảng solution_upvotes.
-        Trả về entity sau khi cập nhật, hoặc None nếu solution không tồn tại.
-        Raises ValueError nếu user đã upvote rồi.
+        Upvote solution — chống double-vote và race condition.
+
+        Chiến lược an toàn đồng thời:
+        1. Dùng begin_nested() (SAVEPOINT) để INSERT upvote record.
+           Nếu UNIQUE constraint bị vi phạm → IntegrityError → chỉ rollback SAVEPOINT,
+           không ảnh hưởng toàn bộ session.
+        2. Dùng atomic SQL expression `SolutionModel.upvotes + 1` (thay vì Python +=)
+           để tránh "Lost Update" khi nhiều thread/worker upvote cùng lúc.
         """
-        model = self._session.query(SolutionModel).filter(SolutionModel.id == solution_id).first()
+        model = (
+            self._session.query(SolutionModel)
+            .filter(SolutionModel.id == solution_id)
+            .first()
+        )
         if not model:
             return None
 
-        # Kiểm tra đã vote chưa
-        existing = (
-            self._session.query(SolutionUpvoteModel)
-            .filter(
-                SolutionUpvoteModel.solution_id == solution_id,
-                SolutionUpvoteModel.user_id == user_id,
-            )
-            .first()
-        )
-        if existing:
+        # 1. INSERT upvote record — UNIQUE(solution_id, user_id) trên DB ngăn double-vote
+        try:
+            with self._session.begin_nested():  # SAVEPOINT — chỉ rollback block này nếu lỗi
+                vote_record = SolutionUpvoteModel(solution_id=solution_id, user_id=user_id)
+                self._session.add(vote_record)
+        except IntegrityError:
+            # UNIQUE constraint bị vi phạm → user đã upvote rồi
             raise ValueError("Bạn đã upvote bài này rồi.")
 
-        # Ghi nhận vote
-        vote_record = SolutionUpvoteModel(solution_id=solution_id, user_id=user_id)
-        self._session.add(vote_record)
-
-        # Tăng counter
-        model.upvotes += 1
+        # 2. Atomic increment — tránh "Lost Update" race condition
+        # `SolutionModel.upvotes + 1` là SQL expression, KHÔNG phải Python arithmetic
+        self._session.execute(
+            sql_update(SolutionModel)
+            .where(SolutionModel.id == solution_id)
+            .values(upvotes=SolutionModel.upvotes + 1)
+        )
         self._session.flush()
-        logger.info("Solution upvoted — id=%s user=%s upvotes=%d", solution_id, user_id, model.upvotes)
+
+        # Refresh để lấy giá trị upvotes mới nhất từ DB
+        self._session.refresh(model)
+        logger.info(
+            "Solution upvoted — id=%s user=%s upvotes=%d",
+            solution_id,
+            user_id,
+            model.upvotes,
+        )
         return _to_entity(model)
