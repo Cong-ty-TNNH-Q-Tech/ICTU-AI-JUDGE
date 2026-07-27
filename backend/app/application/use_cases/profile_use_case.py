@@ -1,6 +1,9 @@
 """
 ProfileUseCase — Issue #30: Hồ sơ cá nhân (View & Update Profile).
-Business logic: xem profile, cập nhật Github/LinkedIn, upload Avatar.
+Business logic: xem profile, cập nhật Github/LinkedIn, upload Avatar, xem solutions list.
+[ARCH] Tuân thủ Hexagonal Architecture:
+  - Không import FastAPI / SQLAlchemy trực tiếp.
+  - Gọi self._uow.commit() để quản lý transaction, KHÔNG để Router làm việc này.
 [SECURITY] Avatar upload: validate format + size trước khi upload lên MinIO.
 """
 import logging
@@ -10,8 +13,14 @@ from app.application.dtos.profile_dtos import (
     AvatarUploadResponseDTO,
     UpdateProfileRequest,
     UserProfileDTO,
+    UserSolutionDTO,
 )
-from app.application.interfaces.repositories import IStorageRepository, IUserRepository
+from app.application.interfaces.repositories import (
+    IStorageRepository,
+    ISolutionRepository,
+    IUnitOfWork,
+    IUserRepository,
+)
 from app.domain.entities.entities import UserEntity
 
 logger = logging.getLogger(__name__)
@@ -27,9 +36,13 @@ class ProfileUseCase:
         self,
         user_repo: IUserRepository,
         storage_repo: IStorageRepository,
+        solution_repo: ISolutionRepository,
+        uow: IUnitOfWork,
     ):
         self._user_repo = user_repo
         self._storage_repo = storage_repo
+        self._solution_repo = solution_repo
+        self._uow = uow
 
     # ==========================================
     # Private helpers
@@ -66,7 +79,7 @@ class ProfileUseCase:
 
     def get_profile(self, user_id: uuid.UUID) -> UserProfileDTO:
         """
-        Lấy hồ sơ công khai của user — kèm stats tổng hợp.
+        Lấy hồ sơ công khai của user kèm stats tổng hợp.
         Raises LookupError nếu user không tồn tại.
         """
         user = self._user_repo.get_by_id(user_id)
@@ -81,7 +94,7 @@ class ProfileUseCase:
     ) -> UserProfileDTO:
         """
         Cập nhật Github URL và LinkedIn URL của user hiện tại.
-        Partial update — trường nào truyền vào thì cập nhật trường đó.
+        [ARCH] Gọi self._uow.commit() để hoàn tất transaction — Router không được commit.
         """
         updated = self._user_repo.update_profile(
             user_id=current_user.id,
@@ -90,6 +103,7 @@ class ProfileUseCase:
         )
         if not updated:
             raise LookupError("Không tìm thấy user để cập nhật.")
+        self._uow.commit()
         logger.info(
             "Profile updated: user=%s github=%s linkedin=%s",
             current_user.id, payload.github_url, payload.linkedin_url,
@@ -106,6 +120,7 @@ class ProfileUseCase:
         """
         Upload ảnh đại diện lên MinIO và cập nhật avatar_url trong DB.
         [SECURITY] Validate format (jpg/png/webp) và size (max 2MB) trước khi upload.
+        [ARCH] Gọi self._uow.commit() để hoàn tất transaction — Router không được commit.
         Trả về presigned URL để Frontend hiển thị ngay (cập nhật Zustand store).
         """
         # 1. Validate size
@@ -135,8 +150,19 @@ class ProfileUseCase:
 
         # 5. Cập nhật DB (chỉ avatar_url — atomic UPDATE)
         self._user_repo.update_avatar(current_user.id, s3_key)
-        logger.info("Avatar DB updated: user=%s s3_key=%s", current_user.id, s3_key)
 
-        # 6. Trả về presigned URL để Frontend cập nhật Zustand store ngay lập tức
+        # 6. Commit transaction — UseCase chịu trách nhiệm, không để Router làm
+        self._uow.commit()
+        logger.info("Avatar DB updated + committed: user=%s s3_key=%s", current_user.id, s3_key)
+
+        # 7. Trả về presigned URL để Frontend cập nhật Zustand store ngay lập tức
         presigned_url = self._storage_repo.get_presigned_url(s3_key, expires_in=3600)
         return AvatarUploadResponseDTO(avatar_url=presigned_url)
+
+    def get_user_solutions(self, user_id: uuid.UUID) -> list[UserSolutionDTO]:
+        """
+        Lấy danh sách Solutions đã đăng của user kèm challenge_title.
+        [ARCH] Dùng ISolutionRepository.list_by_user() — không inject db/Session trực tiếp.
+        """
+        rows = self._solution_repo.list_by_user(user_id)
+        return [UserSolutionDTO(**row) for row in rows]

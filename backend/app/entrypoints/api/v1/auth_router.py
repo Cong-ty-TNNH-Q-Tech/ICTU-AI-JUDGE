@@ -4,9 +4,10 @@ Auth Router — UC01: Đăng nhập Google OAuth & Đăng xuất.
 TODO: Implement các endpoint bên dưới
 """
 import logging
+import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
 from app.entrypoints.dependencies import get_user_repository, get_google_auth_client
@@ -87,16 +88,13 @@ def dev_login(
     user_repo: IUserRepository = Depends(get_user_repository),
 ):
     """[DEV ONLY] Đăng nhập bằng user_id, bỏ qua Google OAuth. Bị block khi DEBUG=False."""
-    import uuid as _uuid
-    from fastapi import HTTPException, status as http_status
-
     if not settings.DEBUG:
         raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Endpoint này chỉ dành cho môi trường development.",
         )
     try:
-        uid = _uuid.UUID(request.user_id)
+        uid = uuid.UUID(request.user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="user_id không hợp lệ.")
 

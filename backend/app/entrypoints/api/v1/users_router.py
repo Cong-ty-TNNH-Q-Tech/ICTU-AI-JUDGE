@@ -1,6 +1,9 @@
 """
 Users Router — UC01 (me), UC07 (my teams), Issue #30 (Profile).
 [OWNER] Thành viên phụ trách: User Module
+[ARCH] Router KHÔNG được:
+  - Inject db: Session trực tiếp (ngoại trừ endpoint chưa implement như /me/teams).
+  - Gọi db.commit() — đây là trách nhiệm của UseCase (qua IUnitOfWork).
 """
 import logging
 import uuid
@@ -93,21 +96,18 @@ async def update_profile(
     payload: UpdateProfileRequest,
     user: UserEntity = Depends(get_current_user),
     use_case: ProfileUseCase = Depends(get_profile_use_case),
-    db: Session = Depends(get_db),
 ):
     """
     Cập nhật hồ sơ cá nhân (Github URL, LinkedIn URL).
-    Yêu cầu đăng nhập.
+    [ARCH] UseCase tự commit qua IUnitOfWork — Router không gọi db.commit().
     """
     try:
-        result = use_case.update_profile(user, payload)
+        return use_case.update_profile(user, payload)
     except (ValueError, LookupError) as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e),
         )
-    db.commit()
-    return result
 
 
 @router.post("/me/avatar", response_model=AvatarUploadResponseDTO)
@@ -115,10 +115,10 @@ async def upload_avatar(
     file: UploadFile = File(...),
     user: UserEntity = Depends(get_current_user),
     use_case: ProfileUseCase = Depends(get_profile_use_case),
-    db: Session = Depends(get_db),
 ):
     """
     Upload ảnh đại diện (jpg/png/webp, max 2MB).
+    [ARCH] UseCase tự commit qua IUnitOfWork — Router không gọi db.commit().
     Sau khi upload, Frontend cập nhật Zustand store → Header hiển thị avatar mới ngay lập tức.
     """
     file_bytes = await file.read()
@@ -126,7 +126,7 @@ async def upload_avatar(
     content_type = file.content_type or "image/jpeg"
 
     try:
-        result = use_case.upload_avatar(
+        return use_case.upload_avatar(
             current_user=user,
             file_bytes=file_bytes,
             filename=filename,
@@ -140,19 +140,14 @@ async def upload_avatar(
         )
         raise HTTPException(status_code=status_code, detail=str(e))
 
-    db.commit()
-    return result
-
 
 @router.get("/{user_id}/solutions", response_model=list[UserSolutionDTO])
 def get_user_solutions(
     user_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    use_case: ProfileUseCase = Depends(get_profile_use_case),
 ):
     """
     Danh sách Solutions đã đăng của user (kèm tên cuộc thi). Public endpoint.
+    [ARCH] Dùng ProfileUseCase.get_user_solutions() — không inject db/Session trực tiếp.
     """
-    from app.adapters.database.solution_repository import PostgresSolutionRepository
-    repo = PostgresSolutionRepository(db)
-    rows = repo.list_by_user(user_id)
-    return [UserSolutionDTO(**row) for row in rows]
+    return use_case.get_user_solutions(user_id)

@@ -284,6 +284,11 @@ class ISolutionRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    def list_by_user(self, user_id: uuid.UUID) -> list[dict]:
+        """Lấy danh sách solutions của user kèm challenge_title (JOIN)."""
+        ...
+
 class ITagRepository(ABC):
     @abstractmethod
     def get_by_id(self, tag_id: uuid.UUID) -> TagEntity | None: ...
