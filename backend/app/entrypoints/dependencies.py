@@ -208,8 +208,6 @@ def get_challenge_use_case(
     tag_repo: ITagRepository = Depends(get_tag_repository),
 ) -> ChallengeUseCase:
     return ChallengeUseCase(challenge_repo, storage_repo, tag_repo)
-) -> ChallengeUseCase:
-    return ChallengeUseCase(challenge_repo, storage_repo)
 
 
 def get_admin_use_case(
