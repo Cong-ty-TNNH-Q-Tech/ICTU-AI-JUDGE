@@ -166,17 +166,59 @@ def _run_sandbox(
             script_info = tarfile.TarInfo(name='metric.py')
             script_info.size = len(metric_script)
             tar.addfile(script_info, io.BytesIO(metric_script))
-            cmd = "python /sandbox/metric.py /sandbox/ground_truth.csv /sandbox/submission.csv"
+            cmd = "python /tmp/metric.py /tmp/ground_truth.csv /tmp/submission.csv"
         else:
-            # Built-in metrics
-            cmd = (
-                f"python -c \""
-                f"import pandas as pd; "
-                f"gt=pd.read_csv('/sandbox/ground_truth.csv'); "
-                f"sub=pd.read_csv('/sandbox/submission.csv'); "
-                f"from sklearn.metrics import accuracy_score; "
-                f"print(accuracy_score(gt['label'], sub['label']))\""
-            )
+            # Strategy Pattern cho Built-in metrics
+            built_in_script = f"""
+import pandas as pd
+import sys
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
+
+try:
+    gt = pd.read_csv('/tmp/ground_truth.csv')
+    sub = pd.read_csv('/tmp/submission.csv')
+
+    if 'Usage' in gt.columns:
+        gt = gt.drop(columns=['Usage'])
+        
+    # Xóa cột ID (case-insensitive)
+    cols_to_drop = [c for c in gt.columns if c.lower() == 'id']
+    target_cols = gt.columns.difference(cols_to_drop)
+    
+    if len(target_cols) == 0:
+        print('Không tìm thấy cột mục tiêu trong Ground Truth.')
+        sys.exit(1)
+        
+    target_col = target_cols[0]
+    if target_col not in sub.columns:
+        print(f'Thiếu cột {{target_col}} trong bài nộp.')
+        sys.exit(1)
+
+    y_true = gt[target_col]
+    y_pred = sub[target_col]
+
+    metric_name = '{metric_name}'
+    
+    if metric_name == 'ACCURACY':
+        score = accuracy_score(y_true, y_pred)
+    elif metric_name == 'F1_SCORE':
+        score = f1_score(y_true, y_pred, average='macro')
+    elif metric_name == 'RMSE':
+        score = mean_squared_error(y_true, y_pred, squared=False)
+    else:
+        print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
+        sys.exit(1)
+
+    print(score)
+except Exception as e:
+    print(f"Lỗi khi chấm điểm: {{str(e)}}")
+    sys.exit(1)
+""".encode('utf-8')
+            
+            script_info = tarfile.TarInfo(name='built_in_metric.py')
+            script_info.size = len(built_in_script)
+            tar.addfile(script_info, io.BytesIO(built_in_script))
+            cmd = "python /tmp/built_in_metric.py"
 
     tar_stream.seek(0)
 
@@ -192,8 +234,8 @@ def _run_sandbox(
     )
 
     try:
-        # 2. Inject files via put_archive (Docker automatically creates /sandbox if it doesn't exist)
-        container.put_archive("/sandbox", tar_stream)
+        # 2. Inject files via put_archive (Docker automatically creates /tmp if it doesn't exist)
+        container.put_archive("/tmp", tar_stream)
 
         # 3. Start container and wait for it to finish
         container.start()
