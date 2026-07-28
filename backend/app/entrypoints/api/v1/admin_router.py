@@ -14,7 +14,7 @@ from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.leaderboard_repository import SQLLeaderboardRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.user_repository import UserRepository
-from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO
+from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO, UserRoleUpdateRequestDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.entrypoints.dependencies import get_db, require_admin
@@ -53,6 +53,19 @@ async def update_user_status(
     """UC12 — Khóa/Mở khóa tài khoản sinh viên (Admin only)."""
     use_case = _get_admin_use_case(db)
     result = use_case.update_user_status(user_id=user_id, is_active=request.is_active)
+    db.commit()
+    return result
+
+
+@router.patch("/users/{user_id}/role")
+async def update_user_role(
+    user_id: uuid.UUID,
+    request: UserRoleUpdateRequestDTO,
+    db: Session = Depends(get_db)
+):
+    """Cấp/Đổi quyền cho người dùng (Admin only)."""
+    use_case = _get_admin_use_case(db)
+    result = use_case.update_user_role(user_id=user_id, role=request.role)
     db.commit()
     return result
 

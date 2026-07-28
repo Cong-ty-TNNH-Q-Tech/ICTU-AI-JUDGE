@@ -50,6 +50,9 @@ class IUserRepository(ABC):
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
 
     @abstractmethod
+    def update_role(self, user_id: uuid.UUID, role: str) -> bool: ...
+
+    @abstractmethod
     def update_profile(
         self,
         user_id: uuid.UUID,

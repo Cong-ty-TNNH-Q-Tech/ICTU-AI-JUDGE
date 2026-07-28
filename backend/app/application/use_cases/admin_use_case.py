@@ -43,6 +43,15 @@ class AdminUseCase:
             )
         return {"detail": "Cập nhật trạng thái thành công"}
 
+    def update_user_role(self, user_id: uuid.UUID, role: str) -> dict:
+        success = self.user_repo.update_role(user_id=user_id, role=role)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Không tìm thấy user hoặc user đã bị khóa"
+            )
+        return {"detail": "Cập nhật quyền thành công"}
+
     def get_whitelist(self, challenge_id: uuid.UUID, page: int, size: int) -> dict:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:

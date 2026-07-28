@@ -122,6 +122,17 @@ class UserRepository(IUserRepository):
         self._session.commit()
         return True
 
+    def update_role(self, user_id: uuid.UUID, role: UserRole) -> bool:
+        """Cập nhật quyền (role) của tài khoản (Admin feature)."""
+        stmt = select(UserModel).where(UserModel.id == user_id, UserModel.deleted_at.is_(None))
+        user = self._session.execute(stmt).scalar_one_or_none()
+        if not user:
+            return False
+        user.role = role
+        self._session.add(user)
+        self._session.commit()
+        return True
+
     # ==========================================
     # Profile methods (Issue #30)
     # ==========================================

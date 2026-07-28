@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminService } from '../services/adminService';
 import { challengeService } from '../services/challengeService';
-import type { Challenge, UserResponse, PaginatedResponse, ChallengeCreateRequest, ChallengeUpdateRequest } from '../models/api.types';
+import type { Challenge, UserResponse, PaginatedResponse, ChallengeCreateRequest, ChallengeUpdateRequest, UserRole } from '../models/api.types';
 
 export function useAdminUsersVM(options: { page?: number; size?: number; q?: string } = {}) {
   const [data, setData] = useState<PaginatedResponse<UserResponse> | null>(null);
@@ -38,7 +38,16 @@ export function useAdminUsersVM(options: { page?: number; size?: number; q?: str
     }
   }, [fetchUsers]);
 
-  return { users: data?.items ?? [], meta: data, loading, error, refetch: fetchUsers, toggleUserStatus };
+  const updateUserRole = useCallback(async (userId: string, role: UserRole) => {
+    try {
+      await adminService.updateUserRole(userId, role);
+      await fetchUsers(); // Refresh sau khi update
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Không thể cập nhật quyền');
+    }
+  }, [fetchUsers]);
+
+  return { users: data?.items ?? [], meta: data, loading, error, refetch: fetchUsers, toggleUserStatus, updateUserRole };
 }
 
 export function useAdminChallengesVM(options: { page?: number; size?: number; status?: string } = {}) {
