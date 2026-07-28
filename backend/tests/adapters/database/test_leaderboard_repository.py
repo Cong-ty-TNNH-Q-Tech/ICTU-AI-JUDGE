@@ -135,3 +135,83 @@ def test_list_private_includes_entries_count(db_session: Session):
     assert team_name == "Test Team Private"
     assert entry.entries == 2
     assert entry.best_private_score == 0.95
+
+def test_upsert_with_lock_race_condition(db_session: Session):
+    repo = SQLLeaderboardRepository(db_session)
+    from app.domain.entities.entities import LeaderboardEntryEntity, MetricDirection
+    
+    # Setup
+    user = UserModel(email="test3@test.com", password_hash="123", full_name="Test 3", student_id="sv3")
+    db_session.add(user)
+    db_session.commit()
+    
+    challenge = ChallengeModel(
+        title="Test Challenge Lock",
+        description="desc",
+        type="PUBLIC",
+        start_time=datetime.now(),
+        end_time=datetime.now(),
+        metric_name="accuracy",
+        metric_direction=MetricDirection.HIGHER_IS_BETTER.value,
+        created_by=user.id
+    )
+    db_session.add(challenge)
+    db_session.commit()
+    
+    team = TeamModel(name="Test Team Lock", challenge_id=challenge.id, leader_id=user.id)
+    db_session.add(team)
+    db_session.commit()
+    
+    # First Upsert (Initial Insert)
+    entry1 = LeaderboardEntryEntity(
+        id=uuid.uuid4(),
+        challenge_id=challenge.id,
+        team_id=team.id,
+        best_public_score=0.5,
+        best_private_score=None,
+        best_public_submission_id=uuid.uuid4(),
+        best_private_submission_id=None,
+        last_submission_time=datetime.now(),
+        rank=1,
+        is_source_code_submitted=True,
+        updated_at=datetime.now()
+    )
+    res1 = repo.upsert_with_lock(entry1, direction=MetricDirection.HIGHER_IS_BETTER)
+    assert res1.best_public_score == 0.5
+    
+    # Second Upsert (Worse score -> should NOT overwrite)
+    entry2 = LeaderboardEntryEntity(
+        id=uuid.uuid4(),
+        challenge_id=challenge.id,
+        team_id=team.id,
+        best_public_score=0.3, # Worse than 0.5
+        best_private_score=None,
+        best_public_submission_id=uuid.uuid4(),
+        best_private_submission_id=None,
+        last_submission_time=datetime.now(),
+        rank=0,
+        is_source_code_submitted=False,
+        updated_at=datetime.now()
+    )
+    res2 = repo.upsert_with_lock(entry2, direction=MetricDirection.HIGHER_IS_BETTER)
+    # The record should still have 0.5
+    assert res2.best_public_score == 0.5
+    
+    # Third Upsert (Better score -> SHOULD overwrite)
+    entry3 = LeaderboardEntryEntity(
+        id=uuid.uuid4(),
+        challenge_id=challenge.id,
+        team_id=team.id,
+        best_public_score=0.8, # Better than 0.5
+        best_private_score=None,
+        best_public_submission_id=uuid.uuid4(),
+        best_private_submission_id=None,
+        last_submission_time=datetime.now(),
+        rank=0,
+        is_source_code_submitted=False,
+        updated_at=datetime.now()
+    )
+    res3 = repo.upsert_with_lock(entry3, direction=MetricDirection.HIGHER_IS_BETTER)
+    assert res3.best_public_score == 0.8
+    assert res3.is_source_code_submitted is True
+    assert res3.rank == 1

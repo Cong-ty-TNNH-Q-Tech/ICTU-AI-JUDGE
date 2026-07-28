@@ -226,11 +226,11 @@ class ILeaderboardRepository(ABC):
 
     @abstractmethod
     def upsert_with_lock(
-        self, entry: LeaderboardEntryEntity
+        self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
     ) -> LeaderboardEntryEntity:
         """
-        [CHỐNG RACE CONDITION] Bắt buộc dùng SELECT ... FOR UPDATE (Pessimistic Locking)
-        trong implementation SQLAlchemy trước khi ghi đè kỷ lục.
+        [CHỐNG RACE CONDITION] Bắt buộc dùng Atomic Query (INSERT ... ON CONFLICT DO UPDATE ... WHERE)
+        trong implementation SQLAlchemy để tránh ghi đè sai điểm số khi nhiều worker chấm song song.
         """
         ...
 
