@@ -81,8 +81,7 @@ async def export_leaderboard(
     csv_content, filename = use_case.export_leaderboard_csv(challenge_id, leaderboard_type)
     logger.info(
         "export_leaderboard challenge=%s type=%s rows=%d elapsed_ms=%.0f",
-        challenge_id, leaderboard_type, csv_content.count("
-") - 1, (time.time() - t0) * 1000,
+        challenge_id, leaderboard_type, csv_content.count("\\n") - 1, (time.time() - t0) * 1000,
     )
     return Response(
         content=csv_content.encode("utf-8"),
