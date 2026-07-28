@@ -150,8 +150,8 @@ export function useLeaderboardVM(challengeId: string) {
         page,
         size
       });
-      setEntries(result?.data ?? []);
-      setTotalCount(result?.total_count ?? 0);
+      setEntries(result?.items ?? []);
+      setTotalCount(result?.total ?? 0);
     } catch (error: unknown) {
       const err = error as { response?: { status?: number }; message?: string };
       if (err?.response?.status === 403 && leaderboardType === 'private') {

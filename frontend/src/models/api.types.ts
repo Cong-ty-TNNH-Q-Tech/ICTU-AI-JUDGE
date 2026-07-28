@@ -164,10 +164,10 @@ export interface LeaderboardEntry {
 }
 
 export interface LeaderboardResponse {
-  total_count: number;
+  total: number;
   page: number;
   size: number;
-  data: LeaderboardEntry[];
+  items: LeaderboardEntry[];
 }
 
 export interface Participant {

@@ -26,7 +26,7 @@ class LeaderboardEntryDTO(BaseModel):
 
 
 class LeaderboardResponseDTO(BaseModel):
-    total_count: int
+    total: int
     page: int
     size: int
-    data: List[LeaderboardEntryDTO]
+    items: List[LeaderboardEntryDTO]

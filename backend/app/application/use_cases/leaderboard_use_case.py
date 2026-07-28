@@ -71,8 +71,8 @@ class LeaderboardUseCase:
             data.append(dto)
 
         return LeaderboardResponseDTO(
-            total_count=total,
+            total=total,
             page=page,
             size=size,
-            data=data,
+            items=data,
         )
