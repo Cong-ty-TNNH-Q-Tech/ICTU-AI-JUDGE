@@ -118,8 +118,9 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
       
       const { score } = await adminService.testMetric(formData);
       setTestResult(`Success! Calculated Score: ${score}`);
-    } catch (err: any) {
-      setTestResult(`Error: ${err.response?.data?.detail || err.message}`);
+    } catch (err: unknown) {
+      // @ts-expect-error axios response type
+      setTestResult(`Error: ${err.response?.data?.detail || (err as Error).message || 'Unknown error'}`);
     } finally {
       setTestLoading(false);
     }
