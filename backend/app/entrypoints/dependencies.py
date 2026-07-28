@@ -42,7 +42,8 @@ from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.use_cases.tag_use_case import TagUseCase
-from app.domain.entities.entities import UserEntity
+from app.application.use_cases.auth_use_case import AuthUseCase
+from app.domain.entities.entities import UserEntity, UserRole
 
 settings = get_settings()
 
@@ -72,34 +73,17 @@ def get_current_user_id(
     Trả về user_id (UUID) đã được verify.
     Raises HTTP 401 nếu token thiếu hoặc không hợp lệ.
     """
+    from app.core.security import decode_access_token
+    from app.domain.exceptions.exceptions import AuthenticationError
+    
     if not access_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.",
-        )
-    try:
-        payload = jwt.decode(
-            access_token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
-        user_id_str: str | None = payload.get("sub")
-        if not user_id_str:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token không hợp lệ: thiếu subject.",
-            )
-        return uuid.UUID(user_id_str)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token đã hết hạn. Vui lòng đăng nhập lại.",
-        )
-    except (jwt.InvalidTokenError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token không hợp lệ.",
-        )
+        raise AuthenticationError("Chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.")
+    
+    payload = decode_access_token(access_token)
+    user_id_str: str | None = payload.get("sub")
+    if not user_id_str:
+        raise AuthenticationError("Token không hợp lệ: thiếu subject.")
+    return uuid.UUID(user_id_str)
 
 
 def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
@@ -114,19 +98,18 @@ def get_optional_current_user_id(
     Dependency: đọc JWT từ cookie nhưng trả None thay vì 401 khi không có token.
     Dùng cho Public endpoints cần optional auth context (VD: list challenges).
     """
+    from app.core.security import decode_access_token
+    from app.domain.exceptions.exceptions import AuthenticationError
+    
     if not access_token:
         return None
     try:
-        payload = jwt.decode(
-            access_token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
+        payload = decode_access_token(access_token)
         user_id_str: str | None = payload.get("sub")
         if not user_id_str:
             return None
         return uuid.UUID(user_id_str)
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
+    except (AuthenticationError, ValueError):
         return None
 
 
@@ -150,6 +133,9 @@ def get_current_user(
             detail="Người dùng không tồn tại hoặc đã bị khóa.",
         )
     return user
+
+
+
 
 
 def require_admin(user: UserEntity = Depends(get_current_user)) -> UserEntity:
@@ -268,5 +254,19 @@ def get_tag_use_case(
 ) -> TagUseCase:
     return TagUseCase(uow, tag_repo)
 
-get_current_admin = require_admin
+def get_auth_use_case(
+    user_repo: IUserRepository = Depends(get_user_repository),
+    google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+) -> AuthUseCase:
+    """
+    Factory inject AuthUseCase với root_admin_email từ Settings.
+    Entrypoint layer chịu trách nhiệm đọc config và truyền vào Use Case
+    (tuân thủ Hexagonal Architecture — Use Case không import get_settings).
+    """
+    return AuthUseCase(
+        user_repo=user_repo,
+        google_client=google_client,
+        root_admin_email=settings.ROOT_ADMIN_EMAIL,
+    )
 
+get_current_admin = require_admin
