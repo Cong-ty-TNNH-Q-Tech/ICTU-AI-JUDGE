@@ -568,6 +568,50 @@ paths:
         '403':
           description: Không có quyền Admin.
 
+  /admin/challenges/{challenge_id}/export-leaderboard:
+    get:
+      summary: Xuất Bảng xếp hạng ra file CSV (Admin)
+      tags:
+        - Admin
+        - Leaderboard
+      description: |
+        Xuất toàn bộ BXH (cả public lẫn private) kèm thông tin Team, MSSV, Họ tên thành viên.
+        File CSV encoding utf-8-sig (có BOM) để hiển thị đúng tiếng Việt trong Excel.
+      parameters:
+        - name: challenge_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [public, private]
+            default: private
+          description: Loại BXH — "public" hoặc "private"
+      responses:
+        '200':
+          description: File CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="leaderboard_{challenge_id}_{type}.csv"'
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền Admin.
+        '404':
+          description: Không tìm thấy bài thi.
+
 components:
   securitySchemes:
     cookieAuth:
@@ -804,11 +848,6 @@ components:
           format: double
           nullable: true
           description: Chỉ có sau khi cuộc thi kết thúc
-        entries:
-          type: integer
-          example: 5
-          description: T?ng s? lu?t n?p c?a d?i
-
         last_submission_time:
           type: string
           format: date-time
@@ -835,13 +874,13 @@ components:
 
   # ==========================================
   # Feature: Kernels / Solutions (UC: #27)
-  # ?c t? TRU?C khi vi?t code  theo quy t?c 6.1 AGENTS.md
+  # �?c t? TRU?C khi vi?t code � theo quy t?c 6.1 AGENTS.md
   # ==========================================
   /challenges/{challenge_id}/solutions:
     get:
       tags: [Solutions]
-      summary: L?y danh sch Solutions c?a m?t bi thi
-      description: Tr? v? danh sch gi?i php/notebook d du?c chia s?, km presigned URL d? download v author_name.
+      summary: L?y danh s�ch Solutions c?a m?t b�i thi
+      description: Tr? v? danh s�ch gi?i ph�p/notebook d� du?c chia s?, k�m presigned URL d? download v� author_name.
       security: []
       parameters:
         - name: challenge_id
@@ -852,7 +891,7 @@ components:
             format: uuid
       responses:
         "200":
-          description: Danh sch Solutions
+          description: Danh s�ch Solutions
           content:
             application/json:
               schema:
@@ -862,11 +901,11 @@ components:
 
     post:
       tags: [Solutions]
-      summary: Chia s? gi?i php (Upload notebook)
+      summary: Chia s? gi?i ph�p (Upload notebook)
       description: |
-        Upload file Jupyter Notebook (.ipynb) ln MinIO v t?o b?n ghi Solution trong DB.
+        Upload file Jupyter Notebook (.ipynb) l�n MinIO v� t?o b?n ghi Solution trong DB.
         Ch? kh? d?ng khi Challenge dang PUBLISHED.
-        Yu c?u dang nh?p.
+        Y�u c?u dang nh?p.
       security:
         - cookieAuth: []
       parameters:
@@ -886,19 +925,19 @@ components:
               properties:
                 title:
                   type: string
-                  description: Tiu d? solution
-                  example: "Gi?i php LGBM d?t 0.95 Accuracy"
+                  description: Ti�u d? solution
+                  example: "Gi?i ph�p LGBM d?t 0.95 Accuracy"
                 content:
                   type: string
-                  description: M t?/gi?i thch gi?i php (Markdown)
-                  example: "## Approach\n\nDng LightGBM v?i feature engineering..."
+                  description: M� t?/gi?i th�ch gi?i ph�p (Markdown)
+                  example: "## Approach\n\nD�ng LightGBM v?i feature engineering..."
                 file:
                   type: string
                   format: binary
                   description: File Jupyter Notebook (.ipynb)
       responses:
         "201":
-          description: Solution d du?c t?o thnh cng
+          description: Solution d� du?c t?o th�nh c�ng
           content:
             application/json:
               schema:
@@ -906,16 +945,16 @@ components:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
-          description: File khng ph?i .ipynb ho?c challenge khng PUBLISHED
+          description: File kh�ng ph?i .ipynb ho?c challenge kh�ng PUBLISHED
 
   /challenges/{challenge_id}/solutions/{solution_id}/upvote:
     post:
       tags: [Solutions]
       summary: Upvote m?t Solution
       description: |
-        Tang upvote count ln +1. M?i user ch? du?c upvote m?i solution 1 l?n.
-        Double-vote du?c ngan b?ng UNIQUE constraint trn DB (atomic, race-condition-safe).
-        Yu c?u dang nh?p.
+        Tang upvote count l�n +1. M?i user ch? du?c upvote m?i solution 1 l?n.
+        Double-vote du?c ngan b?ng UNIQUE constraint tr�n DB (atomic, race-condition-safe).
+        Y�u c?u dang nh?p.
       security:
         - cookieAuth: []
       parameters:
@@ -943,7 +982,7 @@ components:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: User d upvote solution ny r?i (double-vote)
+          description: User d� upvote solution n�y r?i (double-vote)
           content:
             application/json:
               schema:
@@ -963,14 +1002,14 @@ components:
           format: uuid
         author_name:
           type: string
-          description: Tn hi?n th? c?a tc gi?
+          description: T�n hi?n th? c?a t�c gi?
           example: "Nguy?n Van A"
         title:
           type: string
-          example: "Gi?i php LGBM d?t 0.95 Accuracy"
+          example: "Gi?i ph�p LGBM d?t 0.95 Accuracy"
         content:
           type: string
-          description: M t? gi?i php (Markdown)
+          description: M� t? gi?i ph�p (Markdown)
         notebook_url:
           type: string
           description: Presigned URL d? download Jupyter Notebook (TTL 1 gi?)
@@ -1004,11 +1043,11 @@ components:
   /users/{user_id}/profile:
     get:
       tags: [Users]
-      summary: Xem h? so ngu?i dng (cng khai)
+      summary: Xem h? so ngu?i d�ng (c�ng khai)
       description: |
-        Tr? v? thng tin h? so + th?ng k thi d?u c?a user.
-        Bao g?m: t?ng s? bi n?p, t?ng gi?i php d dang, rank t?t nh?t.
-        Endpoint cng khai, khng yu c?u dang nh?p.
+        Tr? v? th�ng tin h? so + th?ng k� thi d?u c?a user.
+        Bao g?m: t?ng s? b�i n?p, t?ng gi?i ph�p d� dang, rank t?t nh?t.
+        Endpoint c�ng khai, kh�ng y�u c?u dang nh?p.
       security: []
       parameters:
         - name: user_id
@@ -1019,7 +1058,7 @@ components:
             format: uuid
       responses:
         "200":
-          description: H? so ngu?i dng
+          description: H? so ngu?i d�ng
           content:
             application/json:
               schema:
@@ -1030,10 +1069,10 @@ components:
   /users/me/profile:
     patch:
       tags: [Users]
-      summary: C?p nh?t h? so c nhn
+      summary: C?p nh?t h? so c� nh�n
       description: |
-        Cho php user d dang nh?p c?p nh?t Github URL, LinkedIn URL.
-        Ch? ?nh hu?ng d?n cc tru?ng du?c g?i ln (partial update).
+        Cho ph�p user d� dang nh?p c?p nh?t Github URL, LinkedIn URL.
+        Ch? ?nh hu?ng d?n c�c tru?ng du?c g?i l�n (partial update).
       security:
         - cookieAuth: []
       requestBody:
@@ -1052,14 +1091,14 @@ components:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
-          description: D? li?u khng h?p l? (URL sai format)
+          description: D? li?u kh�ng h?p l? (URL sai format)
 
   /users/me/avatar:
     post:
       tags: [Users]
       summary: Upload ?nh d?i di?n
       description: |
-        Upload file ?nh (jpg, png, webp) lm avatar. ?nh du?c luu vo MinIO.
+        Upload file ?nh (jpg, png, webp) l�m avatar. ?nh du?c luu v�o MinIO.
         Gi?i h?n dung lu?ng 2MB. Tr? v? presigned URL d? hi?n th? ngay.
         Khi nh?n URL m?i, Frontend c?p nh?t Zustand store d? Header t? d?ng refresh.
       security:
@@ -1091,9 +1130,9 @@ components:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "413":
-          description: File vu?t qu 2MB
+          description: File vu?t qu� 2MB
         "422":
-          description: ?nh d?ng file khng h? tr? (ch? jpg/png/webp)
+          description: �?nh d?ng file kh�ng h? tr? (ch? jpg/png/webp)
 
     UserProfile:
       type: object
@@ -1119,14 +1158,14 @@ components:
           description: Presigned URL d? hi?n th? avatar
         total_submissions:
           type: integer
-          description: T?ng s? bi n?p c?a user
+          description: T?ng s? b�i n?p c?a user
         total_solutions:
           type: integer
-          description: T?ng s? gi?i php d chia s?
+          description: T?ng s? gi?i ph�p d� chia s?
         best_rank:
           type: integer
           nullable: true
-          description: H?ng t?t nh?t trn t?t c? challenges
+          description: H?ng t?t nh?t tr�n t?t c? challenges
 
     UpdateProfileRequest:
       type: object

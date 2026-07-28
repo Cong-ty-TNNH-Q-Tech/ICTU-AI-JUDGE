@@ -196,3 +196,74 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             .values(is_source_code_submitted=submitted)
         )
         self.db.execute(stmt)
+
+    def export_all(
+        self,
+        challenge_id: uuid.UUID,
+        direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER,
+        leaderboard_type: str = "private",
+    ) -> list[dict]:
+        from app.adapters.database.models import TeamMemberModel, UserModel
+
+        if leaderboard_type == "public":
+            effective_score = LeaderboardModel.best_public_score
+        else:
+            effective_score = func.coalesce(LeaderboardModel.best_private_score, LeaderboardModel.best_public_score)
+
+        if direction == MetricDirection.HIGHER_IS_BETTER:
+            score_order = effective_score.desc()
+        else:
+            score_order = effective_score.asc()
+
+        rank_func = func.rank().over(
+            order_by=[score_order, LeaderboardModel.last_submission_time.asc()]
+        ).label("computed_rank")
+
+        # Step 1: CTE to compute rank per team
+        cte = (
+            select(
+                LeaderboardModel.team_id,
+                LeaderboardModel.best_public_score,
+                LeaderboardModel.best_private_score,
+                LeaderboardModel.last_submission_time,
+                rank_func,
+            )
+            .where(LeaderboardModel.challenge_id == challenge_id)
+            .cte("ranked_leaderboard")
+        )
+
+        # Step 2: Join CTE with Teams and Users
+        stmt = (
+            select(
+                cte.c.computed_rank,
+                TeamModel.name.label("team_name"),
+                UserModel.student_id,
+                UserModel.full_name,
+                cte.c.best_public_score,
+                cte.c.best_private_score,
+                cte.c.last_submission_time,
+            )
+            .join(TeamModel, cte.c.team_id == TeamModel.id)
+            .join(TeamMemberModel, TeamModel.id == TeamMemberModel.team_id)
+            .join(UserModel, TeamMemberModel.user_id == UserModel.id)
+            .where(
+                TeamModel.deleted_at.is_(None),
+                UserModel.deleted_at.is_(None),
+            )
+            .order_by(cte.c.computed_rank.asc(), UserModel.student_id.asc())
+        )
+
+        results = self.db.execute(stmt).all()
+
+        return [
+            {
+                "Rank": row.computed_rank,
+                "Team Name": row.team_name,
+                "MSSV": row.student_id,
+                "Full Name": row.full_name,
+                "Public Score": row.best_public_score,
+                "Private Score": row.best_private_score,
+                "Last Submission Time": row.last_submission_time.strftime("%Y-%m-%d %H:%M:%S") if row.last_submission_time else "",
+            }
+            for row in results
+        ]

@@ -45,6 +45,7 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
   const [data, setData] = useState<PaginatedResponse<Challenge> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const fetchChallenges = useCallback(async () => {
     setLoading(true);
@@ -94,14 +95,36 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
     }
   }, [fetchChallenges]);
 
+  const downloadLeaderboardCSV = useCallback(
+    async (challengeId: string, type: 'public' | 'private' = 'private') => {
+      setExportingId(challengeId);
+      try {
+        const blob = await adminService.exportLeaderboard(challengeId, type);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `leaderboard_${challengeId}_${type}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Lỗi xuất file CSV');
+      } finally {
+        setExportingId(null);
+      }
+    },
+    []
+  );
+
   return { 
     challenges: data?.items ?? [], 
     meta: data, 
     loading, 
     error, 
+    exportingId,
     refetch: fetchChallenges,
     createChallenge,
     updateChallenge,
-    deleteChallenge
+    deleteChallenge,
+    downloadLeaderboardCSV
   };
 }
