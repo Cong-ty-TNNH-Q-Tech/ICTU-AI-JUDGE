@@ -82,6 +82,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      sandbox_builder:
+        condition: service_completed_successfully
     command: celery -A app.adapters.worker.celery_app worker --loglevel=info
 
   frontend:
@@ -101,7 +103,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile.sandbox
     image: ictu-ai-judge-sandbox:latest
-    profiles: ["donotstart"]
+    command: ["echo", "Sandbox image built successfully!"]
+    restart: "no"
 
 volumes:
   pgdata:
