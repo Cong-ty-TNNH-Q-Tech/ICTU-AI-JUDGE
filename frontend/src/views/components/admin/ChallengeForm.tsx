@@ -3,6 +3,9 @@ import type { Challenge, ChallengeCreateRequest } from '../../../models/api.type
 import { adminService } from '../../../services/adminService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface Props {
   initialData?: Challenge | null;
@@ -194,7 +197,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                   </div>
                   {previewMarkdown ? (
                     <div className="input-field min-h-[160px] overflow-y-auto max-h-[300px] prose prose-sm dark:prose-invert bg-surface-50 dark:bg-gray-900">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.description || '*No description provided*'}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{form.description || '*No description provided*'}</ReactMarkdown>
                     </div>
                   ) : (
                     <textarea name="description" value={form.description} onChange={set} rows={8} className="input-field resize-none font-mono text-[13px] shadow-sm leading-relaxed" placeholder="# Introduction&#10;Describe your challenge here..."></textarea>
