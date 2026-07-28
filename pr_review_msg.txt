@@ -1,0 +1,37 @@
+**LGTM cho phần lớn UI/UX redesign, tuy nhiên cần sửa một lỗi quan trọng về luồng xử lý (Logical Correctness) ở ViewModel.**
+
+### Vấn đề:
+Trong `useAdminVM.ts`, ở cả hàm `createChallenge` và `updateChallenge`, lời gọi `await fetchChallenges();` được đặt sau `await challengeService.uploadSecrets(...)`. 
+
+```typescript
+// useAdminVM.ts
+const createChallenge = useCallback(async (payload, groundTruth, metricScript) => {
+  try {
+    const challenge = await challengeService.create(payload); // (1) Tạo thành công trên DB
+    await challengeService.uploadSecrets(challenge.id, groundTruth, metricScript); // (2) Có thể lỗi ở đây (vd: mạng, timeout)
+    await fetchChallenges(); // (3) BỊ BỎ QUA nếu (2) lỗi!
+  } catch (err) { ... }
+});
+```
+Nếu bước `uploadSecrets` gặp lỗi (ví dụ file quá lớn, timeout, S3 lỗi), thì khối `catch` sẽ được trigger và `fetchChallenges()` bị bỏ qua.
+**Hậu quả:** 
+- Lúc tạo mới: Bài thi đã được lưu vào DB (DRAFT) nhưng bảng danh sách (UI) không hiển thị bài thi đó cho đến khi Admin F5.
+- Lúc sửa: Thông tin cơ bản (title, desc) đã update nhưng UI không cập nhật lại nếu phần upload file theo sau bị lỗi.
+
+### Đề xuất sửa (Action Required):
+Di chuyển `await fetchChallenges();` vào khối `finally` để đảm bảo bảng danh sách luôn được refresh để phản ánh đúng state cuối cùng trên Database, cho dù quá trình upload file phụ có thành công hay thất bại.
+
+```typescript
+  const createChallenge = useCallback(async (payload, groundTruthFile, metricScriptFile) => {
+    try {
+      const challenge = await challengeService.create(payload);
+      await challengeService.uploadSecrets(challenge.id, groundTruthFile, metricScriptFile);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Lỗi tạo bài thi hoặc upload file');
+      throw err;
+    } finally {
+      await fetchChallenges(); // Đảm bảo luôn refresh
+    }
+  }, [fetchChallenges]);
+```
+Tương tự cho hàm `updateChallenge`. Vui lòng fix đổi lại nhé!
