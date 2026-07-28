@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { challengeService } from "../../../services/challengeService";
 import type { Solution } from "../../../models/api.types";
-import { useToast } from "../Toast";
+import { useToastStore } from "../../../store/toastStore";
 
 interface SolutionsTabProps {
   challengeId: string;
@@ -17,7 +17,8 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
   const [uploading, setUploading] = useState(false);
   const [upvotingId, setUpvotingId] = useState<string | null>(null);
 
-  const { showToast, ToastContainer } = useToast();
+  // Toast global — mounted once in App.tsx
+  const showToast = useToastStore((s) => s.showToast);
 
   const fetchSolutions = async () => {
     try {
@@ -84,7 +85,6 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
 
   return (
     <div className="mt-6">
-      <ToastContainer />
 
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-white">Giải pháp cộng đồng (Kernels)</h3>
