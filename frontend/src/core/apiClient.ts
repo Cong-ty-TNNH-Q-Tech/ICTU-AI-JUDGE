@@ -6,7 +6,7 @@
 import axios from 'axios';
 import type { ApiError } from '../models/api.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 function extractErrorMessage(apiErr: ApiError | undefined, error: unknown): string {
   if (apiErr?.detail) {
