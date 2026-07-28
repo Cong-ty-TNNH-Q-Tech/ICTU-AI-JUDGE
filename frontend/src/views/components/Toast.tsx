@@ -28,7 +28,7 @@ const SingleToast: React.FC<SingleToastProps> = ({ id, message, type }) => {
       role="alert"
       className={`flex items-start gap-3 min-w-[300px] max-w-sm w-full ${s.bg} border ${s.border}
         rounded-xl px-4 py-3 shadow-2xl backdrop-blur-sm
-        animate-[fadeInRight_0.3s_ease-out]`}
+        animate-fade-in`}
     >
       <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${s.iconCls}`}>
         {s.icon}
