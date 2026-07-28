@@ -1,7 +1,6 @@
 /**
  * useChallengeVM — ViewModel cho Challenge List & Detail (UC03, UC07).
  * [OWNER] Thành viên phụ trách: Challenge Module
- * TODO: Thêm logic pagination, filter state vào đây.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { challengeService } from '../services/challengeService';
