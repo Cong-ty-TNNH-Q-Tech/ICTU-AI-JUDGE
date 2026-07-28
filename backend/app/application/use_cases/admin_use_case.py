@@ -107,7 +107,7 @@ class AdminUseCase:
         participants, total = self.challenge_repo.list_participants(challenge_id, page, size)
         
         return {
-            "data": participants,
+            "items": participants,
             "total": total,
             "page": page,
             "size": size

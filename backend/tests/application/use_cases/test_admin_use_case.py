@@ -63,7 +63,7 @@ def test_get_whitelist_success(admin_use_case):
     
     result = admin_use_case.get_whitelist(challenge_id, 1, 10)
     assert result["total"] == 2
-    assert len(result["data"]) == 2
+    assert len(result["items"]) == 2
 
 def test_get_whitelist_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None

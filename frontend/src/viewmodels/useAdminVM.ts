@@ -256,25 +256,13 @@ export function useWhitelistVM(challengeId: string) {
   const fetchParticipants = useCallback(async () => {
     setLoading(true);
     try {
-      // Backend trả về { data: [...], total, page, size } thay vì { items: [...] }
-      // Dùng unknown → interface cụ thể để tránh any
-      type WhitelistApiResponse = {
-        data?: Participant[];
-        items?: Participant[];
-        total?: number;
-      };
       const res = await challengeService.listParticipants(challengeId, {
         page,
         size: PAGE_SIZE,
-      }) as unknown as WhitelistApiResponse;
+      });
 
-      const list: Participant[] = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.items)
-        ? res.items
-        : [];
-      setParticipants(list);
-      setTotal(typeof res.total === 'number' ? res.total : list.length);
+      setParticipants(res.items || []);
+      setTotal(res.total || 0);
     } catch (err) {
       useToastStore.getState().showToast(
         err instanceof Error ? err.message : 'Lỗi tải danh sách whitelist',
