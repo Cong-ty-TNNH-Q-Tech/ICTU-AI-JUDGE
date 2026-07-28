@@ -6,7 +6,7 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -17,10 +17,10 @@ from app.adapters.database.user_repository import UserRepository
 from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO
 from app.application.use_cases.admin_use_case import AdminUseCase
-from app.entrypoints.dependencies import get_db, get_current_admin_user
+from app.entrypoints.dependencies import get_db, require_admin
 
 logger = logging.getLogger(__name__)
-router = APIRouter(dependencies=[Depends(get_current_admin_user)])
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 def _get_admin_use_case(db: Session) -> AdminUseCase:
@@ -72,16 +72,17 @@ async def list_all_submissions(
 @router.get("/challenges/{challenge_id}/export-leaderboard")
 async def export_leaderboard(
     challenge_id: uuid.UUID,
-    type: str = "private",
+    leaderboard_type: str = Query("private", alias="type"),
     db: Session = Depends(get_db),
 ):
     """Admin — Xuất Bảng xếp hạng ra file CSV (utf-8-sig, Excel-compatible)."""
     t0 = time.time()
     use_case = _get_admin_use_case(db)
-    csv_content, filename = use_case.export_leaderboard_csv(challenge_id, type)
+    csv_content, filename = use_case.export_leaderboard_csv(challenge_id, leaderboard_type)
     logger.info(
         "export_leaderboard challenge=%s type=%s rows=%d elapsed_ms=%.0f",
-        challenge_id, type, csv_content.count("\n") - 1, (time.time() - t0) * 1000,
+        challenge_id, leaderboard_type, csv_content.count("
+") - 1, (time.time() - t0) * 1000,
     )
     return Response(
         content=csv_content.encode("utf-8"),

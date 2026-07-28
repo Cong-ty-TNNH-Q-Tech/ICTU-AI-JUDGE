@@ -6,13 +6,13 @@ import type {
   Challenge,
   ChallengeCreateRequest,
   ChallengeUpdateRequest,
-  LeaderboardEntry,
   PaginatedResponse,
   Participant,
   Submission,
   AddParticipantsRequest,
   LeaderboardType,
   Solution,
+  LeaderboardResponse,
 } from '../models/api.types';
 
 export const challengeService = {
@@ -116,9 +116,9 @@ export const challengeService = {
   async getLeaderboard(
     id: string,
     params?: { type?: LeaderboardType; page?: number; size?: number },
-  ): Promise<PaginatedResponse<LeaderboardEntry>> {
-    const { data } = await apiClient.get<PaginatedResponse<LeaderboardEntry>>(
-      `/challenges/${id}/leaderboard`,
+  ): Promise<LeaderboardResponse> {
+    const { data } = await apiClient.get<LeaderboardResponse>(
+      `/leaderboard/${id}`,
       { params },
     );
     return data;

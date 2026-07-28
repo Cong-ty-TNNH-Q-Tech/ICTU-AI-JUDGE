@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Index,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -217,6 +218,8 @@ class SubmissionModel(Base):
     __table_args__ = (
         # Unique per team + challenge để chống spam MD5 duplicate
         UniqueConstraint("challenge_id", "team_id", "file_md5_hash", name="uq_submission_md5"),
+        # Index for leaderboard entries subquery performance
+        Index("idx_submission_team_challenge", "team_id", "challenge_id"),
     )
 
     # Relationships

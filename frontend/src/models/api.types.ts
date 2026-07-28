@@ -158,8 +158,16 @@ export interface LeaderboardEntry {
   team_name: string;
   best_public_score: number;
   best_private_score: number | null;
+  entries: number;
   last_submission_time: string;
   is_selected_for_private: boolean;
+}
+
+export interface LeaderboardResponse {
+  total: number;
+  page: number;
+  size: number;
+  items: LeaderboardEntry[];
 }
 
 export interface Participant {
