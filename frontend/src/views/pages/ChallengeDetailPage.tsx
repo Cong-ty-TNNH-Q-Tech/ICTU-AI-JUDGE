@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { useChallengeDetailVM, useLeaderboardVM } from '../../viewmodels/useChallengeVM';
 import { useSubmissionVM } from '../../viewmodels/useSubmissionVM';
 import { useToast } from '../components/Toast';
@@ -184,7 +187,7 @@ const ChallengeDetailPage = () => {
         {activeTab === 'description' && (
           <div className="prose prose-slate dark:prose-invert max-w-none bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
             {challenge.description ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{challenge.description}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{challenge.description}</ReactMarkdown>
             ) : (
               <p className="text-slate-500 italic">Không có mô tả chi tiết.</p>
             )}
