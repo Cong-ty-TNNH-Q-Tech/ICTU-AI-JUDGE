@@ -167,7 +167,25 @@ def _run_sandbox(
             script_info = tarfile.TarInfo(name='metric.py')
             script_info.size = len(metric_script)
             tar.addfile(script_info, io.BytesIO(metric_script))
-            cmd = "python /tmp/metric.py /tmp/ground_truth.csv /tmp/submission.csv"
+            
+            # Wrapper script để gọi hàm calculate_score từ metric.py
+            wrapper_script = """
+import sys
+try:
+    sys.path.append('/tmp')
+    from metric import calculate_score
+    score = calculate_score('/tmp/ground_truth.csv', '/tmp/submission.csv')
+    print(score)
+except Exception as e:
+    print(f"Lỗi khi chạy Custom Metric: {str(e)}")
+    sys.exit(1)
+""".strip().encode('utf-8')
+
+            wrapper_info = tarfile.TarInfo(name='runner.py')
+            wrapper_info.size = len(wrapper_script)
+            tar.addfile(wrapper_info, io.BytesIO(wrapper_script))
+            
+            cmd = "python /tmp/runner.py"
         else:
             # Strategy Pattern cho Built-in metrics
             built_in_script = f"""
@@ -182,17 +200,18 @@ try:
     if 'Usage' in gt.columns:
         gt = gt.drop(columns=['Usage'])
         
-    # Xóa cột ID (case-insensitive)
-    cols_to_drop = [c for c in gt.columns if c.lower() == 'id']
-    target_cols = gt.columns.difference(cols_to_drop)
-    
-    if len(target_cols) == 0:
+    if len(gt.columns) == 0:
         print('Không tìm thấy cột mục tiêu trong Ground Truth.')
         sys.exit(1)
-        
-    target_col = target_cols[0]
+
+    # Cột dự đoán (target) thường là cột cuối cùng sau khi bỏ 'Usage'
+    target_col = gt.columns[-1]
     if target_col not in sub.columns:
         print(f'Thiếu cột {{target_col}} trong bài nộp.')
+        sys.exit(1)
+
+    if len(gt) != len(sub):
+        print(f'Số lượng dòng không khớp. Kì vọng {{len(gt)}} dòng, nhưng nhận được {{len(sub)}} dòng.')
         sys.exit(1)
 
     y_true = gt[target_col]

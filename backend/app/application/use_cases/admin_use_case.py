@@ -38,11 +38,13 @@ class AdminUseCase:
         challenge_repo: SQLChallengeRepository,
         submission_repo: SQLSubmissionRepository,
         leaderboard_repo: ILeaderboardRepository,
+        root_admin_email: str | None = None,
     ):
         self.user_repo = user_repo
         self.challenge_repo = challenge_repo
         self.submission_repo = submission_repo
         self.leaderboard_repo = leaderboard_repo
+        self.root_admin_email = root_admin_email
 
     def list_users(self, q: str, page: int, size: int) -> UserListResponseDTO:
         users, total = self.user_repo.list_all(query=q, page=page, size=size)
@@ -54,6 +56,19 @@ class AdminUseCase:
         )
 
     def update_user_status(self, user_id: uuid.UUID, is_active: bool) -> dict:
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Không tìm thấy user với id {user_id}"
+            )
+            
+        if self.root_admin_email and user.email == self.root_admin_email:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Không thể thay đổi trạng thái của Root Admin"
+            )
+
         success = self.user_repo.update_status(user_id=user_id, is_active=is_active)
         if not success:
             raise HTTPException(
@@ -63,11 +78,24 @@ class AdminUseCase:
         return {"detail": "Cập nhật trạng thái thành công"}
 
     def update_user_role(self, user_id: uuid.UUID, role: str) -> dict:
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy user hoặc user đã bị khóa"
+            )
+            
+        if self.root_admin_email and user.email == self.root_admin_email:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Không thể thay đổi quyền của Root Admin"
+            )
+
         success = self.user_repo.update_role(user_id=user_id, role=role)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy user hoặc user đã bị khóa"
+                detail="Không tìm thấy user hoặc user đã bị khóa"
             )
         return {"detail": "Cập nhật quyền thành công"}
 
