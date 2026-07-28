@@ -53,7 +53,7 @@ class ProfileUseCase:
         if not s3_key:
             return None
         try:
-            return self._storage_repo.get_presigned_url(s3_key, expires_in=3600)
+            return self._storage_repo.get_download_url(s3_key)
         except Exception:
             logger.warning("Failed to generate presigned URL for avatar key=%s", s3_key)
             return None
@@ -156,7 +156,7 @@ class ProfileUseCase:
         logger.info("Avatar DB updated + committed: user=%s s3_key=%s", current_user.id, s3_key)
 
         # 7. Trả về presigned URL để Frontend cập nhật Zustand store ngay lập tức
-        presigned_url = self._storage_repo.get_presigned_url(s3_key, expires_in=3600)
+        presigned_url = self._storage_repo.get_download_url(s3_key)
         return AvatarUploadResponseDTO(avatar_url=presigned_url)
 
     def get_user_solutions(self, user_id: uuid.UUID) -> list[UserSolutionDTO]:
