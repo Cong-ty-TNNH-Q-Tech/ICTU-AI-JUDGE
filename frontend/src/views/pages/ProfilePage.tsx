@@ -7,13 +7,13 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../../store';
 import { useProfileVM } from '../../viewmodels/useProfileVM';
-import { useToast } from '../components/Toast';
+import { useToastStore } from '../../store/toastStore';
 
 const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const currentUser = useAuthStore((state) => state.user);
   const isOwner = currentUser?.id === userId;
-  const { showToast, ToastContainer } = useToast();
+  // Global toast is mounted in App.tsx
 
   const {
     profile,
@@ -38,8 +38,8 @@ const ProfilePage: React.FC = () => {
 
   // Show toast khi avatar error
   React.useEffect(() => {
-    if (avatarError) showToast(avatarError, 'error');
-  }, [avatarError, showToast]);
+    if (avatarError) useToastStore.getState().showToast(avatarError, 'error');
+  }, [avatarError]);
 
   // ==========================================
   // Loading / Error states
@@ -84,8 +84,6 @@ const ProfilePage: React.FC = () => {
   // ==========================================
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <ToastContainer />
-
       {/* Hidden file input for avatar */}
       <input
         ref={fileInputRef}

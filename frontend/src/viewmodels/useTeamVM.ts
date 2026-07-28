@@ -3,7 +3,7 @@ import { teamService } from '../services/teamService';
 import { useAuthStore } from '../store';
 import { userService } from '../services/userService';
 import type { TeamDetailVM, CreateInviteResponse, TeamMemberInfo } from '../models/api.types';
-import { useToast } from '../views/components/Toast';
+import { useToastStore } from '../store/toastStore';
 
 export function useTeamVM(teamId: string | undefined) {
   const { user } = useAuthStore();
@@ -14,7 +14,7 @@ export function useTeamVM(teamId: string | undefined) {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteResult, setInviteResult] = useState<CreateInviteResponse | null>(null);
   
-  const { showToast, ToastContainer } = useToast();
+  // Global toast is mounted in App.tsx
 
   const fetchTeam = useCallback(async () => {
     if (!teamId) return;
@@ -73,32 +73,32 @@ export function useTeamVM(teamId: string | undefined) {
     try {
       const result = await teamService.createInvite(teamId);
       setInviteResult(result);
-      showToast('Tạo link mời thành công!', 'success');
+      useToastStore.getState().showToast('Tạo link mời thành công!', 'success');
     } catch (err: unknown) {
       const errorObj = err as { response?: { status?: number, data?: { detail?: string } } };
       const status = errorObj.response?.status;
       const detail: string = errorObj.response?.data?.detail ?? '';
-      if (status === 403) showToast('Chỉ trưởng nhóm mới được tạo mã mời', 'error');
-      else if (status === 400 && detail.includes('tối đa')) showToast('Đội đã đủ số lượng thành viên tối đa', 'error');
-      else if (status === 400 && detail.includes('hạn')) showToast('Đã qua hạn chốt đội, không thể mời thêm', 'error');
-      else showToast('Lỗi khi tạo mã mời', 'error');
+      if (status === 403) useToastStore.getState().showToast('Chỉ trưởng nhóm mới được tạo mã mời', 'error');
+      else if (status === 400 && detail.includes('tối đa')) useToastStore.getState().showToast('Đội đã đủ số lượng thành viên tối đa', 'error');
+      else if (status === 400 && detail.includes('hạn')) useToastStore.getState().showToast('Đã qua hạn chốt đội, không thể mời thêm', 'error');
+      else useToastStore.getState().showToast('Lỗi khi tạo mã mời', 'error');
     } finally {
       setInviteLoading(false);
     }
-  }, [teamId, showToast]);
+  }, [teamId]);
 
   const kickMember = useCallback(async (userId: string) => {
     if (!teamId) return;
     try {
       await teamService.kickMember(teamId, userId);
-      showToast('Đã xóa thành viên', 'success');
+      useToastStore.getState().showToast('Đã xóa thành viên', 'success');
       fetchTeam(); // refetch after kick
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { detail?: string } } };
       const detail = errorObj.response?.data?.detail || 'Lỗi khi xóa thành viên';
-      showToast(detail, 'error');
+      useToastStore.getState().showToast(detail, 'error');
     }
-  }, [teamId, showToast, fetchTeam]);
+  }, [teamId, fetchTeam]);
 
   const isLeader = Boolean(user && team && team.leader_id === user.id);
   // Optional: check against challenge deadline. Hardcoded as false for now until challenge fetch.
@@ -114,8 +114,6 @@ export function useTeamVM(teamId: string | undefined) {
     canInvite: isLeader && !isDeadlinePassed,
     createInvite,
     kickMember,
-    showToast,
-    ToastContainer,
   };
 }
 

@@ -7,7 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { useChallengeDetailVM, useLeaderboardVM } from '../../viewmodels/useChallengeVM';
 import { useSubmissionVM } from '../../viewmodels/useSubmissionVM';
-import { useToast } from '../components/Toast';
+import { useToastStore } from '../../store/toastStore';
 
 import ChallengeTimer from '../components/ChallengeTimer';
 import MetricBadge from '../components/MetricBadge';
@@ -21,7 +21,7 @@ const ChallengeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('description');
-  const { showToast, ToastContainer } = useToast();
+  // Global toast is mounted in App.tsx
 
   const { challenge, loading: detailLoading, error: detailError, isEnrolled, teamId, enroll } = useChallengeDetailVM(id || '');
   const { entries, loading: lbLoading, error: lbError, leaderboardType, setLeaderboardType, page, setPage, totalCount, size } = useLeaderboardVM(id || '');
@@ -47,12 +47,12 @@ const ChallengeDetailPage = () => {
     setEnrolling(true);
     try {
       const newTeamId = await enroll();
-      showToast('Ghi danh thành công!', 'success');
+      useToastStore.getState().showToast('Ghi danh thành công!', 'success');
       setTimeout(() => {
         if (newTeamId) navigate(`/teams/${newTeamId}`);
       }, 500);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Lỗi ghi danh', 'error');
+      useToastStore.getState().showToast(e instanceof Error ? e.message : 'Lỗi ghi danh', 'error');
     } finally {
       setEnrolling(false);
     }
@@ -344,7 +344,6 @@ const ChallengeDetailPage = () => {
           <SolutionsTab challengeId={challenge.id} />
         )}
       </div>
-      <ToastContainer />
     </div>
   );
 };
