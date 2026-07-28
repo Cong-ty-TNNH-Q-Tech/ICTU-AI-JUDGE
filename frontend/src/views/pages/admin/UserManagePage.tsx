@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminUsersVM } from '../../../viewmodels/useAdminVM';
+import type { UserRole } from '../../../models/api.types';
 
 const UserManagePage = () => {
   const [search, setSearch] = useState('');
@@ -56,7 +57,7 @@ const UserManagePage = () => {
                     <td className="px-5 py-3.5">
                       <select 
                         value={u.role} 
-                        onChange={(e) => updateUserRole(u.id, e.target.value as any)}
+                        onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
                         className="bg-surface-100 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 text-[11px] rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary-500 transition-shadow"
                       >
                         <option value="STUDENT">Student</option>
