@@ -192,8 +192,9 @@ class LeaderboardEntryEntity:
     team_id: uuid.UUID
     best_public_score: float
     last_submission_time: datetime
-    rank: int
-    updated_at: datetime
+    rank: int = 0
+    entries: int = 0
+    updated_at: datetime | None = None
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None

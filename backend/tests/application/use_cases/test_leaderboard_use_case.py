@@ -32,9 +32,10 @@ def test_get_leaderboard_public(leaderboard_use_case):
     res = leaderboard_use_case.get_leaderboard(
         uuid.uuid4(), LeaderboardType.PUBLIC, 1, 10, datetime.now()
     )
-    assert res.total_count == 1
-    assert len(res.data) == 1
-    assert res.data[0].team_name == "Team 1"
+    assert res.total == 1
+    assert len(res.items) == 1
+    assert res.items[0].team_name == "Team 1"
+    assert res.items[0].entries == 0
 
 def test_get_leaderboard_private_success(leaderboard_use_case):
     challenge = MagicMock()
@@ -58,8 +59,9 @@ def test_get_leaderboard_private_success(leaderboard_use_case):
     res = leaderboard_use_case.get_leaderboard(
         uuid.uuid4(), LeaderboardType.PRIVATE, 1, 10, now
     )
-    assert res.total_count == 1
-    assert res.data[0].best_private_score == 0.9
+    assert res.total == 1
+    assert res.items[0].best_private_score == 0.9
+    assert res.items[0].entries == 0
 
 def test_get_leaderboard_private_not_ended(leaderboard_use_case):
     challenge = MagicMock()

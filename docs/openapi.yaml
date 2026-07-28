@@ -804,6 +804,11 @@ components:
           format: double
           nullable: true
           description: Chá»‰ cÃ³ sau khi cuá»™c thi káº¿t thÃºc
+        entries:
+          type: integer
+          example: 5
+          description: T?ng s? lu?t n?p c?a d?i
+
         last_submission_time:
           type: string
           format: date-time
@@ -830,13 +835,13 @@ components:
 
   # ==========================================
   # Feature: Kernels / Solutions (UC: #27)
-  # Ð?c t? TRU?C khi vi?t code — theo quy t?c 6.1 AGENTS.md
+  # ?c t? TRU?C khi vi?t code  theo quy t?c 6.1 AGENTS.md
   # ==========================================
   /challenges/{challenge_id}/solutions:
     get:
       tags: [Solutions]
-      summary: L?y danh sách Solutions c?a m?t bài thi
-      description: Tr? v? danh sách gi?i pháp/notebook dã du?c chia s?, kèm presigned URL d? download và author_name.
+      summary: L?y danh sch Solutions c?a m?t bi thi
+      description: Tr? v? danh sch gi?i php/notebook d du?c chia s?, km presigned URL d? download v author_name.
       security: []
       parameters:
         - name: challenge_id
@@ -847,7 +852,7 @@ components:
             format: uuid
       responses:
         "200":
-          description: Danh sách Solutions
+          description: Danh sch Solutions
           content:
             application/json:
               schema:
@@ -857,11 +862,11 @@ components:
 
     post:
       tags: [Solutions]
-      summary: Chia s? gi?i pháp (Upload notebook)
+      summary: Chia s? gi?i php (Upload notebook)
       description: |
-        Upload file Jupyter Notebook (.ipynb) lên MinIO và t?o b?n ghi Solution trong DB.
+        Upload file Jupyter Notebook (.ipynb) ln MinIO v t?o b?n ghi Solution trong DB.
         Ch? kh? d?ng khi Challenge dang PUBLISHED.
-        Yêu c?u dang nh?p.
+        Yu c?u dang nh?p.
       security:
         - cookieAuth: []
       parameters:
@@ -881,19 +886,19 @@ components:
               properties:
                 title:
                   type: string
-                  description: Tiêu d? solution
-                  example: "Gi?i pháp LGBM d?t 0.95 Accuracy"
+                  description: Tiu d? solution
+                  example: "Gi?i php LGBM d?t 0.95 Accuracy"
                 content:
                   type: string
-                  description: Mô t?/gi?i thích gi?i pháp (Markdown)
-                  example: "## Approach\n\nDùng LightGBM v?i feature engineering..."
+                  description: M t?/gi?i thch gi?i php (Markdown)
+                  example: "## Approach\n\nDng LightGBM v?i feature engineering..."
                 file:
                   type: string
                   format: binary
                   description: File Jupyter Notebook (.ipynb)
       responses:
         "201":
-          description: Solution dã du?c t?o thành công
+          description: Solution d du?c t?o thnh cng
           content:
             application/json:
               schema:
@@ -901,16 +906,16 @@ components:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
-          description: File không ph?i .ipynb ho?c challenge không PUBLISHED
+          description: File khng ph?i .ipynb ho?c challenge khng PUBLISHED
 
   /challenges/{challenge_id}/solutions/{solution_id}/upvote:
     post:
       tags: [Solutions]
       summary: Upvote m?t Solution
       description: |
-        Tang upvote count lên +1. M?i user ch? du?c upvote m?i solution 1 l?n.
-        Double-vote du?c ngan b?ng UNIQUE constraint trên DB (atomic, race-condition-safe).
-        Yêu c?u dang nh?p.
+        Tang upvote count ln +1. M?i user ch? du?c upvote m?i solution 1 l?n.
+        Double-vote du?c ngan b?ng UNIQUE constraint trn DB (atomic, race-condition-safe).
+        Yu c?u dang nh?p.
       security:
         - cookieAuth: []
       parameters:
@@ -938,7 +943,7 @@ components:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: User dã upvote solution này r?i (double-vote)
+          description: User d upvote solution ny r?i (double-vote)
           content:
             application/json:
               schema:
@@ -958,14 +963,14 @@ components:
           format: uuid
         author_name:
           type: string
-          description: Tên hi?n th? c?a tác gi?
+          description: Tn hi?n th? c?a tc gi?
           example: "Nguy?n Van A"
         title:
           type: string
-          example: "Gi?i pháp LGBM d?t 0.95 Accuracy"
+          example: "Gi?i php LGBM d?t 0.95 Accuracy"
         content:
           type: string
-          description: Mô t? gi?i pháp (Markdown)
+          description: M t? gi?i php (Markdown)
         notebook_url:
           type: string
           description: Presigned URL d? download Jupyter Notebook (TTL 1 gi?)
@@ -999,11 +1004,11 @@ components:
   /users/{user_id}/profile:
     get:
       tags: [Users]
-      summary: Xem h? so ngu?i dùng (công khai)
+      summary: Xem h? so ngu?i dng (cng khai)
       description: |
-        Tr? v? thông tin h? so + th?ng kê thi d?u c?a user.
-        Bao g?m: t?ng s? bài n?p, t?ng gi?i pháp dã dang, rank t?t nh?t.
-        Endpoint công khai, không yêu c?u dang nh?p.
+        Tr? v? thng tin h? so + th?ng k thi d?u c?a user.
+        Bao g?m: t?ng s? bi n?p, t?ng gi?i php d dang, rank t?t nh?t.
+        Endpoint cng khai, khng yu c?u dang nh?p.
       security: []
       parameters:
         - name: user_id
@@ -1014,7 +1019,7 @@ components:
             format: uuid
       responses:
         "200":
-          description: H? so ngu?i dùng
+          description: H? so ngu?i dng
           content:
             application/json:
               schema:
@@ -1025,10 +1030,10 @@ components:
   /users/me/profile:
     patch:
       tags: [Users]
-      summary: C?p nh?t h? so cá nhân
+      summary: C?p nh?t h? so c nhn
       description: |
-        Cho phép user dã dang nh?p c?p nh?t Github URL, LinkedIn URL.
-        Ch? ?nh hu?ng d?n các tru?ng du?c g?i lên (partial update).
+        Cho php user d dang nh?p c?p nh?t Github URL, LinkedIn URL.
+        Ch? ?nh hu?ng d?n cc tru?ng du?c g?i ln (partial update).
       security:
         - cookieAuth: []
       requestBody:
@@ -1047,14 +1052,14 @@ components:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
-          description: D? li?u không h?p l? (URL sai format)
+          description: D? li?u khng h?p l? (URL sai format)
 
   /users/me/avatar:
     post:
       tags: [Users]
       summary: Upload ?nh d?i di?n
       description: |
-        Upload file ?nh (jpg, png, webp) làm avatar. ?nh du?c luu vào MinIO.
+        Upload file ?nh (jpg, png, webp) lm avatar. ?nh du?c luu vo MinIO.
         Gi?i h?n dung lu?ng 2MB. Tr? v? presigned URL d? hi?n th? ngay.
         Khi nh?n URL m?i, Frontend c?p nh?t Zustand store d? Header t? d?ng refresh.
       security:
@@ -1086,9 +1091,9 @@ components:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "413":
-          description: File vu?t quá 2MB
+          description: File vu?t qu 2MB
         "422":
-          description: Ð?nh d?ng file không h? tr? (ch? jpg/png/webp)
+          description: ?nh d?ng file khng h? tr? (ch? jpg/png/webp)
 
     UserProfile:
       type: object
@@ -1114,14 +1119,14 @@ components:
           description: Presigned URL d? hi?n th? avatar
         total_submissions:
           type: integer
-          description: T?ng s? bài n?p c?a user
+          description: T?ng s? bi n?p c?a user
         total_solutions:
           type: integer
-          description: T?ng s? gi?i pháp dã chia s?
+          description: T?ng s? gi?i php d chia s?
         best_rank:
           type: integer
           nullable: true
-          description: H?ng t?t nh?t trên t?t c? challenges
+          description: H?ng t?t nh?t trn t?t c? challenges
 
     UpdateProfileRequest:
       type: object

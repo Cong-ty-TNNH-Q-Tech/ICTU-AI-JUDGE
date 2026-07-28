@@ -20,12 +20,13 @@ class LeaderboardEntryDTO(BaseModel):
     team_name: str
     best_public_score: float
     best_private_score: Optional[float] = None
+    entries: int = 0
     last_submission_time: datetime
     is_selected_for_private: bool = False
 
 
 class LeaderboardResponseDTO(BaseModel):
-    total_count: int
+    total: int
     page: int
     size: int
-    data: List[LeaderboardEntryDTO]
+    items: List[LeaderboardEntryDTO]
