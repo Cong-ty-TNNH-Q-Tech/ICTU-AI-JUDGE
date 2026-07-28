@@ -200,6 +200,10 @@ try:
     if 'Usage' in gt.columns:
         gt = gt.drop(columns=['Usage'])
         
+    if len(gt.columns) == 0:
+        print('Không tìm thấy cột mục tiêu trong Ground Truth.')
+        sys.exit(1)
+
     # Cột dự đoán (target) thường là cột cuối cùng sau khi bỏ 'Usage'
     target_col = gt.columns[-1]
     if target_col not in sub.columns:
