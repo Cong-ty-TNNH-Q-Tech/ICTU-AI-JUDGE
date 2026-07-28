@@ -113,3 +113,32 @@ def test_upload_secrets(challenge_use_case, dummy_challenge):
     assert "ground_truth" in res.ground_truth_url
     challenge_use_case.storage_repo.upload.assert_called_once()
 
+def test_upload_secrets_missing_usage_auto_generate(challenge_use_case, dummy_challenge):
+    challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
+    challenge_use_case.challenge_repo.has_successful_submission.return_value = False
+    challenge_use_case.challenge_repo.update.side_effect = lambda x: x
+    
+    gt_csv = b"ID,Target\n1,A\n2,B\n3,C\n4,D\n5,E"
+    res = challenge_use_case.upload_secrets(dummy_challenge.id, gt_csv, None, public_test_split_ratio=40)
+    
+    challenge_use_case.storage_repo.upload.assert_called_once()
+    args, kwargs = challenge_use_case.storage_repo.upload.call_args
+    uploaded_bytes = kwargs.get('data') or args[1]
+    
+    content = uploaded_bytes.decode('utf-8').strip().split('\r\n')
+    # Because csv writer uses \r\n
+    headers = content[0].split(',')
+    assert "Usage" in headers
+    
+    public_count = sum(1 for row in content[1:] if "Public" in row)
+    private_count = sum(1 for row in content[1:] if "Private" in row)
+    assert public_count == 2
+    assert private_count == 3
+
+def test_upload_secrets_empty_csv(challenge_use_case, dummy_challenge):
+    challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
+    challenge_use_case.challenge_repo.has_successful_submission.return_value = False
+    
+    gt_csv = b""
+    with pytest.raises(ValueError, match="File CSV rỗng."):
+        challenge_use_case.upload_secrets(dummy_challenge.id, gt_csv, None)

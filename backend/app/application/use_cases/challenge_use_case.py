@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 import uuid
+import random
 from datetime import datetime
 
 from app.application.dtos.challenge_dtos import (
@@ -161,7 +162,6 @@ class ChallengeUseCase:
                 
             headers = rows[0]
             if "Usage" not in headers:
-                import random
                 headers.append("Usage")
                 data_rows = rows[1:]
                 
