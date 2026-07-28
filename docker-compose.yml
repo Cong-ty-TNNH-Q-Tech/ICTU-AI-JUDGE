@@ -58,6 +58,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      # [CRITICAL] DooD (Docker-out-of-Docker) for Sandbox execution from API (Admin Metric Test)
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy
