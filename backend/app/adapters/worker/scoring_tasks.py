@@ -4,6 +4,7 @@ Scoring Task — Celery Worker chấm điểm qua Docker Sandbox.
 """
 import logging
 import time
+import math
 import uuid
 from datetime import datetime, timezone
 
@@ -247,7 +248,11 @@ except Exception as e:
             error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
             raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
 
-        return float(output)
+        score = float(output)
+        if math.isnan(score) or math.isinf(score):
+            raise ValueError(f"Invalid score value returned by metric script: {output}")
+            
+        return score
     finally:
         # Ensure container is destroyed even on error
         container.remove(force=True)
@@ -269,10 +274,12 @@ def _mark_submission_failed(
                 SubmissionStatus.FAILED,
                 error_message=error_message,
             )
+            sub_repo.db.commit()
         else:
             with SessionLocal() as db:
                 from app.adapters.database.submission_repository import SQLSubmissionRepository
                 repo = SQLSubmissionRepository(db)
                 repo.update_status(submission_id, SubmissionStatus.FAILED, error_message=error_message)
+                db.commit()
     except Exception as e:
         logger.error("Failed to mark submission %s as FAILED: %s", submission_id, e)

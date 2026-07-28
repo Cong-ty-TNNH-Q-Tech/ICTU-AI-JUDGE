@@ -407,17 +407,21 @@ def _validate_csv_format(file_bytes: bytes, filename: str) -> None:
         raise ValueError("Chỉ chấp nhận file định dạng .csv")
 
     try:
-        text = file_bytes.decode("utf-8", errors="replace")
-        reader = csv.reader(io.StringIO(text))
-        rows = list(reader)
+        text_stream = io.TextIOWrapper(io.BytesIO(file_bytes), encoding="utf-8", errors="replace")
+        reader = csv.reader(text_stream)
+        
+        row1 = next(reader, None)
+        row2 = next(reader, None)
+        
+        if not row1:
+            raise ValueError("File CSV rỗng, không có dòng nào.")
+        if not row2:
+            raise ValueError("File CSV cần có ít nhất 1 dòng header và 1 dòng dữ liệu.")
+            
     except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise
         raise ValueError(f"Không thể đọc file CSV: {exc}") from exc
-
-    if len(rows) == 0:
-        raise ValueError("File CSV rỗng, không có dòng nào.")
-
-    if len(rows) < 2:
-        raise ValueError("File CSV cần có ít nhất 1 dòng header và 1 dòng dữ liệu.")
 
 
 def _build_s3_key(

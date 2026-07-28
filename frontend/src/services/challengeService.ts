@@ -118,7 +118,7 @@ export const challengeService = {
     params?: { type?: LeaderboardType; page?: number; size?: number },
   ): Promise<LeaderboardResponse> {
     const { data } = await apiClient.get<LeaderboardResponse>(
-      `/leaderboard/${id}`,
+      `/challenges/${id}/leaderboard`,
       { params },
     );
     return data;
