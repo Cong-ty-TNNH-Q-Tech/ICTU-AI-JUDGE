@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { challengeService } from '../services/challengeService';
 import type { Challenge, PaginatedResponse, LeaderboardEntry, Submission, LeaderboardType } from '../models/api.types';
+import { teamService } from '../services/teamService';
+import { useAuthStore } from '../store';
 
 
 interface UseChallengeListOptions {
@@ -43,6 +45,9 @@ export function useChallengeDetailVM(challengeId: string) {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const { isAuthenticated } = useAuthStore();
 
   const fetchDetail = useCallback(async () => {
     if (!challengeId) return;
@@ -51,12 +56,33 @@ export function useChallengeDetailVM(challengeId: string) {
     try {
       const result = await challengeService.getById(challengeId);
       setChallenge(result);
+      
+      if (isAuthenticated) {
+        try {
+          const myTeams = await teamService.getMyTeams({ size: 100 });
+          const team = myTeams.items.find(t => t.challenge_id === challengeId);
+          if (team) {
+            setIsEnrolled(true);
+            setTeamId(team.id);
+          } else {
+            setIsEnrolled(false);
+            setTeamId(null);
+          }
+        } catch (teamErr) {
+          console.error("Failed to fetch teams:", teamErr);
+          setIsEnrolled(false);
+          setTeamId(null);
+        }
+      } else {
+        setIsEnrolled(false);
+        setTeamId(null);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Lỗi tải bài thi');
     } finally {
       setLoading(false);
     }
-  }, [challengeId]);
+  }, [challengeId, isAuthenticated]);
 
   useEffect(() => {
     fetchDetail();
@@ -67,7 +93,7 @@ export function useChallengeDetailVM(challengeId: string) {
     return result.team_id;
   }, [challengeId]);
 
-  return { challenge, loading, error, enroll, refetch: fetchDetail };
+  return { challenge, loading, error, isEnrolled, teamId, enroll, refetch: fetchDetail };
 }
 
 export function useLeaderboardVM(challengeId: string) {
