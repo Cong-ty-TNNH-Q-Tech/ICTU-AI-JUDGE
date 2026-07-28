@@ -34,9 +34,12 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+import { ToastContainer } from './views/components/Toast';
+
 function App() {
   return (
     <ErrorBoundary>
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<LandingPage />} />
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { challengeService } from "../../../services/challengeService";
 import type { Solution } from "../../../models/api.types";
-import { useToast } from "../Toast";
+import { useToastStore } from "../../../store/toastStore";
 
 interface SolutionsTabProps {
   challengeId: string;
@@ -17,7 +17,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
   const [uploading, setUploading] = useState(false);
   const [upvotingId, setUpvotingId] = useState<string | null>(null);
 
-  const { showToast, ToastContainer } = useToast();
+  // Global toast is mounted in App.tsx
 
   const fetchSolutions = async () => {
     try {
@@ -39,13 +39,13 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !content || !file) {
-      showToast("Vui lòng điền đủ thông tin và chọn file notebook.", "warning");
+      useToastStore.getState().showToast("Vui lòng điền đủ thông tin và chọn file notebook.", "warning");
       return;
     }
     try {
       setUploading(true);
       await challengeService.publishSolution(challengeId, title, content, file);
-      showToast("Đăng giải pháp thành công! 🎉", "success");
+      useToastStore.getState().showToast("Đăng giải pháp thành công! 🎉", "success");
       setShowModal(false);
       setTitle("");
       setContent("");
@@ -54,7 +54,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }; message: string };
       const detail = error.response?.data?.detail || error.message || "Lỗi không xác định";
-      showToast("Có lỗi xảy ra: " + detail, "error");
+      useToastStore.getState().showToast("Có lỗi xảy ra: " + detail, "error");
     } finally {
       setUploading(false);
     }
@@ -66,16 +66,16 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
       setUpvotingId(solutionId);
       const updated = await challengeService.upvoteSolution(challengeId, solutionId);
       setSolutions((prev) => prev.map((s) => (s.id === solutionId ? { ...s, upvotes: updated.upvotes } : s)));
-      showToast("Đã upvote thành công! 👍", "success", 2500);
+      useToastStore.getState().showToast("Đã upvote thành công! 👍", "success", 2500);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
-        showToast("Bạn đã upvote bài này rồi!", "warning");
+        useToastStore.getState().showToast("Bạn đã upvote bài này rồi!", "warning");
       } else if (status === 401) {
-        showToast("Vui lòng đăng nhập để upvote!", "info");
+        useToastStore.getState().showToast("Vui lòng đăng nhập để upvote!", "info");
       } else {
         console.error("Upvote failed", err);
-        showToast("Không thể upvote. Vui lòng thử lại!", "error");
+        useToastStore.getState().showToast("Không thể upvote. Vui lòng thử lại!", "error");
       }
     } finally {
       setUpvotingId(null);
@@ -84,7 +84,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
 
   return (
     <div className="mt-6">
-      <ToastContainer />
+      {/* Toast is mounted in App.tsx */}
 
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-white">Giải pháp cộng đồng (Kernels)</h3>

@@ -7,6 +7,7 @@ import { challengeService } from '../services/challengeService';
 import type { Challenge, PaginatedResponse, LeaderboardEntry, Submission, LeaderboardType } from '../models/api.types';
 import { teamService } from '../services/teamService';
 import { useAuthStore } from '../store';
+import { useToastStore } from '../store/toastStore';
 
 
 interface UseChallengeListOptions {
@@ -176,9 +177,12 @@ export function useSubmissionsVM(challengeId: string) {
     try {
       await challengeService.submitFile(challengeId, file);
       setSubmitSuccess('Nộp bài thành công!');
+      useToastStore.getState().showToast('Nộp bài thành công!', 'success');
       await fetchSubmissions(); // Refresh list after submit
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Lỗi nộp bài');
+      const message = err instanceof Error ? err.message : 'Lỗi nộp bài';
+      setSubmitError(message);
+      useToastStore.getState().showToast(message, 'error');
       throw err;
     } finally {
       setSubmitting(false);

@@ -15,8 +15,7 @@ const TeamPage: React.FC = () => {
     inviteResult,
     canInvite,
     createInvite,
-    kickMember,
-    ToastContainer
+    kickMember
   } = useTeamVM(teamId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,7 +108,6 @@ const TeamPage: React.FC = () => {
         inviteResult={inviteResult}
         onGenerate={createInvite}
       />
-      <ToastContainer />
     </div>
   );
 };
