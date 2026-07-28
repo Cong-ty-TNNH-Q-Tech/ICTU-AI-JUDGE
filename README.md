@@ -47,7 +47,7 @@ Hệ thống phục vụ **hai mục đích chính**:
 | 🎓 **Luyện tập tự do** | Public Challenges — Sinh viên tự do ghi danh, nộp bài và theo dõi thứ hạng |
 | 🥇 **Thi đấu chính thức** | Competitions — Tổ chức các kỳ thi Olympic AI cấp trường, có kiểm soát danh sách tham gia |
 
-> **Chỉ tài khoản `@ictu.edu.vn`** mới được phép đăng nhập, đảm bảo tính toàn vẹn của cuộc thi và ngăn chặn gian lận tạo nick ảo.
+> **Lưu ý:** Chỉ sinh viên tham gia giải đấu mới được cấp quyền đăng nhập, đảm bảo tính toàn vẹn của cuộc thi.
 
 ---
 
@@ -55,7 +55,7 @@ Hệ thống phục vụ **hai mục đích chính**:
 
 ### Dành cho Sinh viên (Thí sinh)
 
-- 🔐 **Đăng nhập bằng Google** với email `@ictu.edu.vn` — Xác thực danh tính tự động, không cần đăng ký thủ công
+- 🔐 **Đăng nhập bằng Google** — Xác thực danh tính tự động, không cần đăng ký thủ công
 - 🤝 **Thi đội hoặc cá nhân** — Tạo đội, mời thành viên qua email, trưởng nhóm quản lý danh sách
 - 📤 **Nộp bài (Submit)** — Upload file kết quả `.csv`, hệ thống tự động chấm điểm ngầm (background)
 - 📊 **Bảng xếp hạng real-time** — Public Leaderboard cập nhật tức thì sau mỗi lần nộp
