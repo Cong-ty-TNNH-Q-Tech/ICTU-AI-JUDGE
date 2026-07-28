@@ -1,5 +1,0 @@
-[     120ms] [WARNING] [GSI_LOGGER]: Provided button width is invalid: 100% @ https://accounts.google.com/gsi/client:86
-[     143ms] [ERROR] Not signed in with the identity provider. @ http://localhost:3000/login:0
-[     341ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://accounts.google.com/gsi/button?type=standard&theme=outline&size=large&text=continue_with&shape=rectangular&logo_alignment=undefined&width=100%25&locale=undefined&click_listener=undefined&is_fedcm_supported=true&client_id=998963626820-dm28e2bhs1fj1mqs43rpvm00ge5eqec7.apps.googleusercontent.com&iframe_id=gsi_668915_387082&cas=yO8et6Tw7zSBmE7RebDSZYNNfqnp287fETCmi1vQAVg:0
-[     584ms] [ERROR] [GSI_LOGGER]: The given origin is not allowed for the given client ID. @ https://ssl.gstatic.com/_/gsi/_/js/k=gsi.gsi.vi.duEBmHq_WFk.O/am=AAAAAAQBmCQE/d=1/rs=AF0KOtUas9R0AYQYO59JDEhhsk00GnV2tw/m=credential_button_library:87
-[    7087ms] [ERROR] [GSI_LOGGER]: FedCM get() rejects with NetworkError: Error retrieving a token. @ https://accounts.google.com/gsi/client:87

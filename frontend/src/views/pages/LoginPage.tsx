@@ -66,11 +66,6 @@ const LoginPage = () => {
         </button>
       )}
 
-      <div className="mt-6 pt-5 border-t border-surface-100 dark:border-gray-800">
-        <p className="text-[12px] text-content-tertiary text-center leading-relaxed">
-          Only <span className="font-medium text-content-secondary dark:text-content-dark-secondary">@ictu.edu.vn</span> accounts are permitted.
-        </p>
-      </div>
     </div>
   );
 };

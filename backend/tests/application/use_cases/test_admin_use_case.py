@@ -12,7 +12,8 @@ def admin_use_case():
     user_repo = MagicMock()
     challenge_repo = MagicMock()
     submission_repo = MagicMock()
-    return AdminUseCase(user_repo, challenge_repo, submission_repo)
+    leaderboard_repo = MagicMock()
+    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo)
 
 def test_list_users(admin_use_case):
     uid = uuid.uuid4()
@@ -102,4 +103,34 @@ def test_list_all_submissions_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
     with pytest.raises(HTTPException) as exc:
         admin_use_case.list_all_submissions(uuid.uuid4(), 1, 10)
+    assert exc.value.status_code == 404
+
+def test_export_leaderboard_csv_success(admin_use_case):
+    challenge = MagicMock()
+    challenge.metric_direction = MetricDirection.HIGHER_IS_BETTER
+    admin_use_case.challenge_repo.get_by_id.return_value = challenge
+    
+    mock_data = [
+        {"Rank": 1, "Team Name": "Team A", "MSSV": "123", "Full Name": "Alice", "Public Score": 1.0, "Private Score": 1.0, "Last Submission Time": "2023-01-01"},
+        {"Rank": 2, "Team Name": "Team B", "MSSV": "456", "Full Name": "Bob", "Public Score": 0.5, "Private Score": 0.5, "Last Submission Time": "2023-01-02"}
+    ]
+    admin_use_case.leaderboard_repo.export_all.return_value = mock_data
+    
+    challenge_id = uuid.uuid4()
+    csv_content, filename = admin_use_case.export_leaderboard_csv(challenge_id, "private")
+    
+    assert filename == f"leaderboard_{challenge_id}_private.csv"
+    assert "Team A" in csv_content
+    assert "Alice" in csv_content
+    assert "Team B" in csv_content
+    admin_use_case.leaderboard_repo.export_all.assert_called_once_with(
+        challenge_id=challenge_id,
+        direction=challenge.metric_direction,
+        leaderboard_type="private"
+    )
+
+def test_export_leaderboard_csv_not_found(admin_use_case):
+    admin_use_case.challenge_repo.get_by_id.return_value = None
+    with pytest.raises(HTTPException) as exc:
+        admin_use_case.export_leaderboard_csv(uuid.uuid4(), "public")
     assert exc.value.status_code == 404

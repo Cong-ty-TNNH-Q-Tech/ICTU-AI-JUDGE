@@ -244,6 +244,21 @@ class ILeaderboardRepository(ABC):
         self, team_id: uuid.UUID, challenge_id: uuid.UUID, submitted: bool = True
     ) -> None: ...
 
+    @abstractmethod
+    def export_all(
+        self,
+        challenge_id: uuid.UUID,
+        direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER,
+        leaderboard_type: str = "private",
+    ) -> list[dict]:
+        """
+        (Admin) Xuất toàn bộ BXH kèm thông tin members.
+        Trả về list[dict] với keys: Rank, Team Name, MSSV, Full Name,
+        Public Score, Private Score, Last Submission Time.
+        Mỗi team_member chiếm 1 dòng.
+        leaderboard_type: "public" | "private" — xác định dùng score nào để xếp hạng.
+        """
+        ...
 
 
 class IStorageRepository(ABC):
