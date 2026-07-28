@@ -23,7 +23,7 @@ type Filter = 'all' | 'active' | 'upcoming' | 'completed';
 
 const ChallengesPage = () => {
   const [page, setPage] = useState(1);
-  const { challenges: api, meta, loading, error } = useChallengeListVM({ page, size: 9 });
+  const { challenges: api, meta, loading } = useChallengeListVM({ page, size: 9 });
   const [filter, setFilter] = useState<Filter>('all');
 
   const challenges = api;

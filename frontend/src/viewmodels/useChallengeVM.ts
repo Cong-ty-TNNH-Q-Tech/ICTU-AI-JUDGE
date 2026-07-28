@@ -64,12 +64,8 @@ export function useChallengeDetailVM(challengeId: string) {
   }, [fetchDetail]);
 
   const enroll = useCallback(async () => {
-    try {
-      const result = await challengeService.enroll(challengeId);
-      return result.team_id;
-    } catch (err: unknown) {
-      throw err;
-    }
+    const result = await challengeService.enroll(challengeId);
+    return result.team_id;
   }, [challengeId]);
 
   return { challenge, loading, error, enroll, refetch: fetchDetail };
