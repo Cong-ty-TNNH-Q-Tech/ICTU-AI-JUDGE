@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-ictu_ai_judge}
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -38,9 +38,6 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
@@ -61,6 +58,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      # [CRITICAL] DooD (Docker-out-of-Docker) for Sandbox execution from API (Admin Metric Test)
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy
@@ -85,6 +84,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      sandbox_builder:
+        condition: service_completed_successfully
     command: celery -A app.adapters.worker.celery_app worker --loglevel=info
 
   frontend:
@@ -95,9 +96,17 @@ services:
     container_name: ictu_ai_judge_frontend
     restart: always
     ports:
-      - "3000:80"
+      - "8386:80"
     depends_on:
       - backend
+
+  sandbox_builder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.sandbox
+    image: ictu-ai-judge-sandbox:latest
+    command: ["echo", "Sandbox image built successfully!"]
+    restart: "no"
 
 volumes:
   pgdata:

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.adapters.database.models import ChallengeModel, SubmissionModel
 from app.application.interfaces.repositories import IChallengeRepository
@@ -15,6 +15,7 @@ from app.domain.entities.entities import (
     ChallengeStatus,
     ChallengeType,
     MetricDirection,
+    TagEntity,
 )
 
 
@@ -42,13 +43,22 @@ class SQLChallengeRepository(IChallengeRepository):
             ground_truth_url=model.ground_truth_url or "",
             custom_metric_url=model.custom_metric_url or "",
             team_lock_deadline=model.team_lock_deadline,
+            max_team_size=model.max_team_size,
             deleted_at=model.deleted_at,
+            tags=[TagEntity(
+                id=t.id,
+                name=t.name,
+                color_hex=t.color_hex,
+                created_at=t.created_at
+            ) for t in getattr(model, "tags", [])]
         )
 
     def get_by_id(self, challenge_id: uuid.UUID) -> ChallengeEntity | None:
         model = (
             self.db.execute(
-                select(ChallengeModel).where(
+                select(ChallengeModel)
+                .options(selectinload(ChallengeModel.tags))
+                .where(
                     ChallengeModel.id == challenge_id,
                     ChallengeModel.deleted_at == None,  # noqa: E711
                 )
@@ -78,6 +88,7 @@ class SQLChallengeRepository(IChallengeRepository):
             ground_truth_url=challenge.ground_truth_url,
             custom_metric_url=challenge.custom_metric_url,
             team_lock_deadline=challenge.team_lock_deadline,
+            max_team_size=challenge.max_team_size,
         )
         self.db.add(model)
         self.db.flush()
@@ -87,7 +98,9 @@ class SQLChallengeRepository(IChallengeRepository):
     def update(self, challenge: ChallengeEntity) -> ChallengeEntity:
         model = (
             self.db.execute(
-                select(ChallengeModel).where(ChallengeModel.id == challenge.id)
+                select(ChallengeModel)
+                .options(selectinload(ChallengeModel.tags))
+                .where(ChallengeModel.id == challenge.id)
             )
             .scalars()
             .first()
@@ -108,6 +121,7 @@ class SQLChallengeRepository(IChallengeRepository):
         model.ground_truth_url = challenge.ground_truth_url
         model.custom_metric_url = challenge.custom_metric_url
         model.team_lock_deadline = challenge.team_lock_deadline
+        model.max_team_size = challenge.max_team_size
         self.db.flush()
         return self._to_entity(model)
 
@@ -121,11 +135,13 @@ class SQLChallengeRepository(IChallengeRepository):
         self.db.flush()
 
     def list_all(
-        self, page: int, size: int, status_filter: str | None = None
+        self, page: int, size: int, status_filter: str | None = None, tag_id: uuid.UUID | None = None
     ) -> tuple[list[ChallengeEntity], int]:
         query = select(ChallengeModel).where(ChallengeModel.deleted_at == None)  # noqa: E711
         if status_filter:
             query = query.where(ChallengeModel.status == status_filter)
+        if tag_id:
+            query = query.filter(ChallengeModel.tags.any(id=tag_id))
 
         total = self.db.execute(
             select(func.count()).select_from(query.subquery())
@@ -133,7 +149,8 @@ class SQLChallengeRepository(IChallengeRepository):
 
         models = (
             self.db.execute(
-                query.order_by(ChallengeModel.created_at.desc())
+                query.options(selectinload(ChallengeModel.tags))
+                .order_by(ChallengeModel.created_at.desc())
                 .offset((page - 1) * size)
                 .limit(size)
             )
@@ -157,3 +174,65 @@ class SQLChallengeRepository(IChallengeRepository):
             .first()
         )
         return result is not None
+
+    def list_participants(self, challenge_id: uuid.UUID, page: int, size: int) -> tuple[list[dict], int]:
+        """UC10 - Lấy danh sách participants của 1 challenge (Kèm thông tin User)."""
+        from app.adapters.database.models import ChallengeParticipantModel, UserModel
+        
+        total = self.db.execute(
+            select(func.count(ChallengeParticipantModel.id))
+            .where(ChallengeParticipantModel.challenge_id == challenge_id)
+        ).scalar_one()
+
+        results = self.db.execute(
+            select(ChallengeParticipantModel, UserModel)
+            .join(UserModel, ChallengeParticipantModel.user_id == UserModel.id)
+            .where(ChallengeParticipantModel.challenge_id == challenge_id)
+            .order_by(ChallengeParticipantModel.joined_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        ).all()
+
+        participants = []
+        for part, user in results:
+            participants.append({
+                "participant_id": part.id,
+                "user_id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "student_id": user.student_id,
+                "is_approved": part.is_approved,
+                "joined_at": part.joined_at
+            })
+            
+        return participants, total
+
+    def add_participants(self, challenge_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+        """UC10 - Thêm danh sách user vào whitelist. Trả về số lượng thêm thành công."""
+        from app.adapters.database.models import ChallengeParticipantModel
+        
+        # Bỏ qua những user đã có trong whitelist
+        existing = self.db.execute(
+            select(ChallengeParticipantModel.user_id)
+            .where(
+                ChallengeParticipantModel.challenge_id == challenge_id,
+                ChallengeParticipantModel.user_id.in_(user_ids)
+            )
+        ).scalars().all()
+        
+        existing_set = set(existing)
+        new_users = [uid for uid in user_ids if uid not in existing_set]
+        
+        if not new_users:
+            return 0
+            
+        for uid in new_users:
+            self.db.add(ChallengeParticipantModel(
+                challenge_id=challenge_id,
+                user_id=uid,
+                is_approved=True # Admin add luôn được approved
+            ))
+            
+        self.db.flush()
+        return len(new_users)
+

@@ -41,16 +41,15 @@ class SolutionUseCase:
         user = self._user_repo.get_by_id(user_id)
         return user.full_name if user and user.full_name else str(user_id)
 
-    def _build_presigned_url(self, s3_key: str, filename: str) -> str:
-        """Generate presigned URL on-the-fly — không bao giờ lưu URL vào DB."""
+    def _build_download_url(self, s3_key: str, filename: str) -> str:
+        """Generate download proxy URL on-the-fly — không bao giờ lưu URL vào DB."""
         try:
-            return self._storage_repo.get_presigned_url(
+            return self._storage_repo.get_download_url(
                 s3_key,
-                expires_in=3600,
                 filename=filename,
             )
         except Exception:
-            logger.warning("Failed to generate presigned URL for key=%s — fallback to key", s3_key)
+            logger.warning("Failed to generate download URL for key=%s — fallback to key", s3_key)
             return s3_key  # fallback nếu storage không khả dụng
 
     def _to_dto(self, entity: SolutionEntity) -> SolutionResponseDTO:
@@ -63,7 +62,7 @@ class SolutionUseCase:
             author_name=self._resolve_author_name(entity.user_id),
             title=entity.title,
             content=entity.content,
-            notebook_url=self._build_presigned_url(entity.notebook_url, filename),
+            notebook_url=self._build_download_url(entity.notebook_url, filename),
             upvotes=entity.upvotes,
             created_at=entity.created_at,
         )
@@ -130,7 +129,7 @@ class SolutionUseCase:
             author_name=user.full_name or str(user.id),
             title=saved.title,
             content=saved.content,
-            notebook_url=self._build_presigned_url(saved.notebook_url, filename),
+            notebook_url=self._build_download_url(saved.notebook_url, filename),
             upvotes=saved.upvotes,
             created_at=saved.created_at,
         )

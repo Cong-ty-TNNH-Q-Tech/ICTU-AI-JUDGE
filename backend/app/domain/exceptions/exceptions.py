@@ -30,9 +30,14 @@ class DuplicateSubmissionError(DomainException):
 class FileSizeExceededError(DomainException):
     """File upload vượt quá giới hạn dung lượng của bài thi."""
 
-    def __init__(self, max_mb: int):
-        self.max_mb = max_mb
-        super().__init__(f"Dung lượng file vượt quá giới hạn {max_mb}MB.")
+    def __init__(self, max_mb: int | str):
+        if isinstance(max_mb, int):
+            self.max_mb = max_mb
+            super().__init__(f"Dung lượng file vượt quá giới hạn {max_mb}MB.")
+        else:
+            # Cho phép truyền message string trực tiếp (VD: UC06 source code upload)
+            self.max_mb = None
+            super().__init__(max_mb)
 
 
 class TeamAlreadyLockedError(DomainException):
@@ -72,4 +77,9 @@ class PermissionDeniedError(DomainException):
 
 class AuthenticationError(DomainException):
     """Thông tin xác thực không hợp lệ."""
+    pass
+
+
+class InvalidTokenError(DomainException):
+    """Mã xác nhận hoặc token không hợp lệ hoặc đã hết hạn."""
     pass

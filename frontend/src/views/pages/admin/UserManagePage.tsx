@@ -95,7 +95,6 @@ const UserManagePage = () => {
                   <th className="px-5 py-2.5 text-left font-medium hidden sm:table-cell">Student ID</th>
                   <th className="px-5 py-2.5 text-left font-medium">Role</th>
                   <th className="px-5 py-2.5 text-left font-medium">Status</th>
-                  {/* Ẩn cột Action trên mobile, hiện dưới dạng dropdown qua menu 3 chấm */}
                   <th className="px-5 py-2.5 text-right font-medium">Action</th>
                 </tr>
               </thead>

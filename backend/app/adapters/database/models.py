@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Index,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -43,6 +44,11 @@ class UserModel(Base):
     role: Mapped[str] = mapped_column(
         Enum(UserRole, name="user_role_enum"), nullable=False, default=UserRole.STUDENT
     )
+    # Profile fields (Issue #30)
+    github_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)  # S3 key
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -52,6 +58,8 @@ class UserModel(Base):
     # Relationships
     team_memberships: Mapped[list["TeamMemberModel"]] = relationship("TeamMemberModel", back_populates="user")
     submissions_made: Mapped[list["SubmissionModel"]] = relationship("SubmissionModel", back_populates="submitted_by_user")
+
+
 
 
 class ChallengeModel(Base):
@@ -72,6 +80,7 @@ class ChallengeModel(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     team_lock_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rate_limit_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    max_team_size: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     max_file_size_mb: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False)
     metric_direction: Mapped[str] = mapped_column(
@@ -89,6 +98,30 @@ class ChallengeModel(Base):
     submissions: Mapped[list["SubmissionModel"]] = relationship("SubmissionModel", back_populates="challenge")
     leaderboard_entries: Mapped[list["LeaderboardModel"]] = relationship("LeaderboardModel", back_populates="challenge")
     participants: Mapped[list["ChallengeParticipantModel"]] = relationship("ChallengeParticipantModel", back_populates="challenge")
+    tags: Mapped[list["TagModel"]] = relationship(
+        "TagModel", secondary="challenge_tags", back_populates="challenges"
+    )
+
+class TagModel(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    color_hex: Mapped[str] = mapped_column(String(7), nullable=False, default="#CCCCCC")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    challenges: Mapped[list["ChallengeModel"]] = relationship(
+        "ChallengeModel", secondary="challenge_tags", back_populates="tags"
+    )
+
+
+class ChallengeTagModel(Base):
+    __tablename__ = "challenge_tags"
+
+    challenge_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("challenges.id", ondelete="CASCADE"), primary_key=True)
+    tag_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ChallengeParticipantModel(Base):
@@ -185,6 +218,8 @@ class SubmissionModel(Base):
     __table_args__ = (
         # Unique per team + challenge để chống spam MD5 duplicate
         UniqueConstraint("challenge_id", "team_id", "file_md5_hash", name="uq_submission_md5"),
+        # Index for leaderboard entries subquery performance
+        Index("idx_submission_team_challenge", "team_id", "challenge_id"),
     )
 
     # Relationships
@@ -209,6 +244,7 @@ class LeaderboardModel(Base):
     )
     last_submission_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_source_code_submitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

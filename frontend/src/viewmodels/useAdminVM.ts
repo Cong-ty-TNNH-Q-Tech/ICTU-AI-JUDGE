@@ -3,10 +3,11 @@
  * [OWNER] Thành viên phụ trách: Admin Module
  *
  * Cải tiến theo Admin UX Review:
- * - Thêm updateUserRole với inline loading state (updatingRoleId)
- * - Tách exportingLeaderboard state để phân biệt "Export Pub" vs "Export Priv"
- * - Hỗ trợ pagination (page, size) và filter (status, q) đầy đủ
+ * - Thêm updatingRoleId: inline loading spinner khi cập nhật Role
+ * - Thêm togglingStatusId: inline loading spinner khi Khóa/Mở khóa
+ * - Tách exportingLeaderboard state: 2 nút Export Pub & Priv hoạt động độc lập
  * - Thay alert() bằng toast thông qua useToastStore
+ * - Confirmation modal được xử lý ở tầng View (không dùng window.confirm)
  */
 import { useCallback, useEffect, useState } from 'react';
 import { adminService } from '../services/adminService';
@@ -139,14 +140,15 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
   }, [fetchChallenges]);
 
   const createChallenge = useCallback(
-    async (payload: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
+    async (payload: ChallengeCreateRequest, groundTruthFile: File, metricScriptFile?: File, publicTestSplitRatio: number = 30) => {
       try {
-        await challengeService.create(payload, groundTruthFile, metricScriptFile);
+        const challenge = await challengeService.create(payload);
+        await challengeService.uploadSecrets(challenge.id, groundTruthFile, metricScriptFile, publicTestSplitRatio);
         await fetchChallenges();
         useToastStore.getState().showToast('Tạo bài thi thành công! 🎉', 'success');
       } catch (err) {
         useToastStore.getState().showToast(
-          err instanceof Error ? err.message : 'Lỗi tạo bài thi',
+          err instanceof Error ? err.message : 'Lỗi tạo bài thi hoặc upload file',
           'error'
         );
         throw err;
@@ -156,14 +158,17 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
   );
 
   const updateChallenge = useCallback(
-    async (id: string, payload: ChallengeUpdateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
+    async (id: string, payload: ChallengeUpdateRequest, groundTruthFile?: File, metricScriptFile?: File, publicTestSplitRatio: number = 30) => {
       try {
-        await challengeService.update(id, payload, groundTruthFile, metricScriptFile);
+        await challengeService.update(id, payload);
+        if (groundTruthFile) {
+          await challengeService.uploadSecrets(id, groundTruthFile, metricScriptFile, publicTestSplitRatio);
+        }
         await fetchChallenges();
         useToastStore.getState().showToast('Cập nhật bài thi thành công!', 'success');
       } catch (err) {
         useToastStore.getState().showToast(
-          err instanceof Error ? err.message : 'Lỗi cập nhật bài thi',
+          err instanceof Error ? err.message : 'Lỗi cập nhật bài thi hoặc file',
           'error'
         );
         throw err;
@@ -174,7 +179,7 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
 
   /**
    * Xóa bài thi — KHÔNG dùng window.confirm() nữa.
-   * Confirmation sẽ được xử lý bởi ConfirmationModal ở tầng View.
+   * Confirmation được xử lý bởi ConfirmationModal ở tầng View.
    */
   const deleteChallenge = useCallback(
     async (id: string) => {
@@ -194,14 +199,14 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
 
   /** Tải CSV bảng xếp hạng — Tách biệt state để 2 nút không ảnh hưởng nhau. */
   const downloadLeaderboardCSV = useCallback(
-    async (challengeId: string, type: 'public' | 'private', challengeTitle: string) => {
+    async (challengeId: string, type: 'public' | 'private' = 'private', challengeTitle: string = '') => {
       setExportingLeaderboard({ id: challengeId, type });
       try {
-        const blob = await adminService.downloadLeaderboardCSV(challengeId, type);
+        const blob = await adminService.exportLeaderboard(challengeId, type);
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `leaderboard_${type}_${challengeTitle.replace(/\s+/g, '_')}.csv`;
+        a.download = `leaderboard_${type}_${(challengeTitle || challengeId).replace(/\s+/g, '_')}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         useToastStore.getState().showToast(`Tải xuống ${type === 'public' ? 'Public' : 'Private'} Leaderboard thành công!`, 'success');

@@ -58,44 +58,44 @@ const ActionDropdown: React.FC<ActionDropdownProps> = ({
           disabled={isExportingPub}
           className="btn-ghost text-[12px] py-1.5 px-2.5 text-primary-600 dark:text-primary-400 disabled:opacity-50 flex items-center gap-1"
         >
-          {isExportingPub && (
-            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+          {isExportingPub ? (
+            <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-          )}
-          {isExportingPub ? 'Exporting...' : 'Export Pub'}
+          ) : null}
+          Export Pub
         </button>
         <button
           onClick={onExportPriv}
           disabled={isExportingPriv}
           className="btn-ghost text-[12px] py-1.5 px-2.5 text-purple-600 dark:text-purple-400 disabled:opacity-50 flex items-center gap-1"
         >
-          {isExportingPriv && (
-            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+          {isExportingPriv ? (
+            <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-          )}
-          {isExportingPriv ? 'Exporting...' : 'Export Priv'}
+          ) : null}
+          Export Priv
         </button>
         <button onClick={onEdit} className="btn-ghost text-[12px] py-1.5 px-2.5">Edit</button>
         <button onClick={onDelete} className="btn-ghost text-[12px] py-1.5 px-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
       </div>
 
-      {/* Mobile: Menu 3 chấm Dropdown (Issue #5) */}
-      <div className="relative md:hidden" ref={ref}>
+      {/* Mobile: Menu 3 chấm */}
+      <div className="md:hidden relative" ref={ref}>
         <button
-          onClick={() => setIsOpen(v => !v)}
-          className="btn-ghost p-2 text-content-secondary"
-          aria-label="More actions"
+          onClick={() => setIsOpen(o => !o)}
+          className="btn-ghost p-1.5 text-content-secondary"
+          aria-label="Mở menu hành động"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+            <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
           </svg>
         </button>
         {isOpen && (
-          <div className="absolute right-0 top-8 w-44 bg-surface dark:bg-surface-dark border border-surface-200 dark:border-gray-800 rounded-xl shadow-xl z-50 py-1 animate-scale-in origin-top-right">
+          <div className="absolute right-0 top-8 z-50 bg-surface dark:bg-surface-dark border border-surface-200 dark:border-gray-700 rounded-xl shadow-elevated min-w-[180px] py-1 animate-fade-in">
             <button
               onClick={() => { onExportPub(); setIsOpen(false); }}
               disabled={isExportingPub}
@@ -179,9 +179,10 @@ const ChallengeManagePage = () => {
   }>({ isOpen: false, challengeId: '', challengeTitle: '' });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const handleSubmit = async (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
-    if (editing) await updateChallenge(editing.id, data as ChallengeUpdateRequest, groundTruthFile, metricScriptFile);
-    else await createChallenge(data, groundTruthFile!, metricScriptFile);
+  // publicTestSplitRatio theo main — mặc định 30%
+  const handleSubmit = async (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File, publicTestSplitRatio: number = 30) => {
+    if (editing) await updateChallenge(editing.id, data as ChallengeUpdateRequest, groundTruthFile, metricScriptFile, publicTestSplitRatio);
+    else await createChallenge(data, groundTruthFile!, metricScriptFile, publicTestSplitRatio);
     setIsFormOpen(false);
     setEditing(null);
   };

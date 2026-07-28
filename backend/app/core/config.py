@@ -46,13 +46,18 @@ class Settings(BaseSettings):
     # ---- Security / JWT ----
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 giờ — dev-friendly (production nên set qua .env)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     COOKIE_NAME: str = "access_token"
 
     # ---- Google OAuth ----
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+
+    # ---- Authorization ----
+    ROOT_ADMIN_EMAIL: str | None = None
+    # Email duy nhất được tự động gán quyền ADMIN khi đăng nhập lần đầu qua Google OAuth.
+    # Để trống hoặc không set để tắt tính năng Root Admin tự động.
 
     # ---- Submission Defaults ----
     DEFAULT_RATE_LIMIT_MINUTES: int = 10

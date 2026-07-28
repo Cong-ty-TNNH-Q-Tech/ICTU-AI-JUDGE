@@ -1,10 +1,41 @@
-
-.commandcode/
-# Command Code
+# Environments
 .env
 .env.*
 !.env.example
-# Environment Variables
-*.pyc
+.venv
+env/
+venv/
+ENV/
+
+# Python
 __pycache__/
-__pycache__/  
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.npm/
+
+# IDEs / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Command Code
+.commandcode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Junk files generated during dev
+pr_*.txt
+test_*.py
+demo_challenge/
+!backend/tests/

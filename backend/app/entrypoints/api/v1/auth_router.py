@@ -1,19 +1,16 @@
 """
-Auth Router — UC01: Đăng nhập Google OAuth & Đăng xuất.
-[OWNER] Thành viên phụ trách: Auth Module
-TODO: Implement các endpoint bên dưới
+Auth Router — Xử lý Đăng nhập & Authentication.
+[OWNER] Thành viên phụ trách: Core/Auth Module
 """
 import logging
-from typing import Any
+import uuid
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
-from app.entrypoints.dependencies import get_user_repository, get_google_auth_client
+from app.entrypoints.dependencies import get_user_repository, get_auth_use_case
 from app.application.interfaces.repositories import IUserRepository
-from app.application.interfaces.clients import IGoogleAuthClient
 from app.application.use_cases.auth_use_case import AuthUseCase
-from app.domain.entities.entities import UserEntity
 from app.core.config import get_settings
 from app.core.security import create_access_token
 
@@ -35,13 +32,11 @@ class UserResponse(BaseModel):
 def google_login(
     request: GoogleLoginRequest,
     response: Response,
-    user_repo: IUserRepository = Depends(get_user_repository),
-    google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+    auth_use_case: AuthUseCase = Depends(get_auth_use_case),
 ):
     """
     UC01 — Đăng nhập bằng Google OAuth.
     """
-    auth_use_case = AuthUseCase(user_repo, google_client)
     user = auth_use_case.login_with_google(request.google_token)
     
     # Tạo JWT access token
@@ -72,4 +67,14 @@ async def logout(response: Response):
     response.delete_cookie(key=settings.COOKIE_NAME, httponly=True, samesite="lax")
     return {"message": "Đăng xuất thành công"}
 
-
+@router.get("/debug-admin")
+def debug_admin(auth_use_case: AuthUseCase = Depends(get_auth_use_case)):
+    import os
+    user = auth_use_case._user_repo.get_by_email("trungff07@gmail.com")
+    return {
+        "settings_email": settings.ROOT_ADMIN_EMAIL,
+        "auth_use_case_email": auth_use_case._root_admin_email,
+        "os_environ": os.environ.get("ROOT_ADMIN_EMAIL"),
+        "is_root": auth_use_case._is_root_admin("trungff07@gmail.com"),
+        "db_role": getattr(user, "role", None)
+    }

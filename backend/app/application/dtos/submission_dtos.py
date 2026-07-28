@@ -33,7 +33,7 @@ class SubmissionResponseDTO(BaseModel):
     challenge_id: uuid.UUID
     team_id: uuid.UUID
     submitted_by: uuid.UUID
-    file_url: str
+    file_url: str | None = None
     file_md5_hash: str
     file_size_bytes: int
     status: SubmissionStatus
@@ -71,7 +71,7 @@ class SourceCodeUploadResponseDTO(BaseModel):
 
 class SubmissionListResponseDTO(BaseModel):
     """Response cho danh sách submissions của team."""
-    total_count: int
+    total: int
     page: int
     size: int
-    data: list[SubmissionResponseDTO]
+    items: list[SubmissionResponseDTO]

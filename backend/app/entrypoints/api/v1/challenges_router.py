@@ -8,9 +8,9 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
+from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
@@ -19,13 +19,22 @@ from app.application.dtos.submission_dtos import (
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.application.use_cases.solution_use_case import SolutionUseCase
+from app.application.use_cases.admin_use_case import AdminUseCase
+from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
     get_current_user_id,
+    get_optional_current_user_id,
     get_current_user,
     get_db,
     get_solution_use_case,
+    get_challenge_use_case,
+    get_submission_use_case,
+    get_admin_use_case,
+    get_team_use_case,
+    require_admin,
+    get_user_repository,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,94 +42,148 @@ router = APIRouter()
 
 
 
-# ==========================================
-# Helper: khởi tạo SubmissionUseCase
-# ==========================================
-
-from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
-def _get_submission_use_case(db: Session) -> SubmissionUseCase:
-    return SubmissionUseCase(
-        submission_repo=SQLSubmissionRepository(db),
-        challenge_repo=SQLChallengeRepository(db),
-        team_repo=SQLTeamRepository(db),
-        storage_repo=S3StorageRepository(),
-        message_broker=CeleryMessageBroker(),
-    )
-
-
-# ==========================================
-# Helper: khởi tạo ChallengeUseCase
-# ==========================================
-
-def _get_challenge_use_case(db: Session) -> ChallengeUseCase:
-    return ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db)
-    )
-
-# ==========================================
 # Existing endpoints (skeleton — chưa implement)
 # ==========================================
 
-@router.get("")
+@router.get("", response_model=dict)
 async def list_challenges(
     status_filter: str | None = None,
+    tag_id: uuid.UUID | None = None,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
+    user_repo = Depends(get_user_repository),
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — trả None nếu chưa login
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    use_case = _get_challenge_use_case(db)
-    return use_case.list_challenges(page=page, size=size, status_filter=status_filter)
+    
+    # Check nếu user là Admin thì is_admin=True, nếu ko có thì False
+    is_admin = False
+    if user_id:
+        user = user_repo.get_by_id(user_id)
+        if user and user.role.value == "ADMIN":
+            is_admin = True
+
+    result = use_case.list_challenges(page=page, size=size, status_filter=status_filter, is_admin=is_admin, tag_id=tag_id)
+    return result.dict()
 
 
-@router.post("")
-async def create_challenge(db: Session = Depends(get_db)):
+@router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def create_challenge(
+    request: dict,
+    db: Session = Depends(get_db),
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
+):
     """UC09 — Tạo bài thi mới (Admin only)."""
-    # TODO: Validate Admin role từ JWT cookie
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.challenge_dtos import ChallengeCreateRequestDTO
+    
+    dto = ChallengeCreateRequestDTO(**request)
+    
+    result = use_case.create_challenge(admin_id=admin.id, data=dto)
+    db.commit()
+    return result.dict()
 
 
-@router.get("/{challenge_id}")
-async def get_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.get("/{challenge_id}", response_model=dict)
+async def get_challenge(
+    challenge_id: uuid.UUID,
+    user_repo = Depends(get_user_repository),
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — optional auth
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
+):
     """Chi tiết bài thi."""
-    use_case = _get_challenge_use_case(db)
-    challenge = use_case.get_challenge(challenge_id)
-    if not challenge:
-        raise HTTPException(status_code=404, detail="Challenge not found")
-    return challenge
+    
+    is_admin = False
+    if user_id:
+        user = user_repo.get_by_id(user_id)
+        if user and user.role.value == "ADMIN":
+            is_admin = True
+            
+    try:
+        result = use_case.get_challenge(challenge_id=challenge_id, is_admin=is_admin)
+        return result.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.patch("/{challenge_id}")
-async def update_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.patch("/{challenge_id}", response_model=dict)
+async def update_challenge(
+    challenge_id: uuid.UUID,
+    request: dict,
+    db: Session = Depends(get_db),
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
+):
     """UC09 — Cập nhật bài thi (Admin only). Bị khóa nếu đã có Submission."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.challenge_dtos import ChallengeUpdateRequestDTO
+    
+    dto = ChallengeUpdateRequestDTO(**request)
+    
+    try:
+        result = use_case.update_challenge(challenge_id=challenge_id, data=dto)
+        db.commit()
+        return result.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/{challenge_id}")
-async def delete_challenge(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.delete("/{challenge_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_challenge(
+    challenge_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
+):
     """UC09 — Soft delete bài thi (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    use_case.delete_challenge(challenge_id)
+    db.commit()
+    return None
 
 
-@router.post("/{challenge_id}/upload-secrets")
+@router.post("/{challenge_id}/upload-secrets", response_model=dict)
 async def upload_secrets(
     challenge_id: uuid.UUID,
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
+    public_test_split_ratio: int = Form(30, ge=0, le=100, description="Tỉ lệ % tập Public"),
     db: Session = Depends(get_db),
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    gt_bytes = await ground_truth_csv.read()
+    metric_bytes = await metric_script_py.read() if metric_script_py else None
+    
+    try:
+        result = use_case.upload_secrets(
+            challenge_id=challenge_id,
+            ground_truth_bytes=gt_bytes,
+            metric_script_bytes=metric_bytes,
+            public_test_split_ratio=public_test_split_ratio
+        )
+        db.commit()
+        return result.dict()
+    except ValueError as e:
+        if "Usage" in str(e):
+            raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/{challenge_id}/enroll")
-async def enroll(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.post("/{challenge_id}/enroll", response_model=dict)
+async def enroll(
+    challenge_id: uuid.UUID,
+    use_case: TeamUseCase = Depends(get_team_use_case),
+    user_id: uuid.UUID = Depends(get_current_user_id)
+):
     """UC03 — Ghi danh vào Public Challenge (tự động tạo Team of 1)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    result = use_case.auto_create_team_if_not_exists(user_id=user_id, challenge_id=challenge_id)
+    
+    return {
+        "detail": "Ghi danh thành công",
+        "team_id": result.id,
+        "team_name": result.name
+    }
 
 
 @router.get("/{challenge_id}/participants")
@@ -128,18 +191,25 @@ async def list_participants(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
+    admin: UserEntity = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Xem Whitelist (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    return use_case.get_whitelist(challenge_id=challenge_id, page=page, size=size)
 
 
 @router.post("/{challenge_id}/participants")
-async def add_participants(challenge_id: uuid.UUID, db: Session = Depends(get_db)):
+async def add_participants(
+    challenge_id: uuid.UUID,
+    request: dict, # expect {"user_ids": ["uuid"]}
+    admin: UserEntity = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
     """UC10 — Thêm sinh viên vào Whitelist (Admin only)."""
-    # TODO: Implement
-    raise NotImplementedError("Challenges router — chưa implement")
+    from app.application.dtos.admin_dtos import WhitelistAddRequestDTO
+    
+    dto = WhitelistAddRequestDTO(**request)
+    return use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
 
 
 # ==========================================
@@ -151,11 +221,10 @@ async def list_submissions(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
     """UC04 — Lịch sử nộp bài của Đội (cần auth)."""
-    use_case = _get_submission_use_case(db)
     return use_case.list_team_submissions(
         challenge_id=challenge_id,
         user_id=user_id,
@@ -176,12 +245,11 @@ async def list_submissions(
 async def submit(
     challenge_id: uuid.UUID,
     file: UploadFile = File(..., description="File CSV dự đoán, tối đa max_file_size_mb"),
-    db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
+    use_case: SubmissionUseCase = Depends(get_submission_use_case),
 ):
     """
     UC04 — Nộp bài dự thi.
-
 
     Pipeline (theo đúng thứ tự bắt buộc):
     1. JWT Cookie → user_id → team_id
@@ -200,7 +268,6 @@ async def submit(
     filename = file.filename or "submission.csv"
     content_type = file.content_type or "text/csv"
 
-    use_case = _get_submission_use_case(db)
 
     # Use Case thực hiện toàn bộ pipeline validate + S3 + DB lưu
     result = use_case.submit_prediction(
@@ -211,10 +278,7 @@ async def submit(
         content_type=content_type,
     )
 
-    # [CRITICAL] Commit DB TRƯỚC khi Celery Worker consume job từ Redis.
-    # Đã di chuyển việc enqueue ra controller sau khi commit để fix Race Condition.
-    db.commit()
-    
+    # Trigger quá trình chấm điểm sau khi use case đã commit
     use_case.trigger_scoring(str(result.submission_id))
 
     return result

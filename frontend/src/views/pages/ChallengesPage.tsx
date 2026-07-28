@@ -3,41 +3,6 @@ import { Link } from 'react-router-dom';
 import { useChallengeListVM } from '../../viewmodels/useChallengeVM';
 import type { Challenge } from '../../models/api.types';
 
-const MOCK_CHALLENGES: Challenge[] = [
-  {
-    id: '1', title: 'Titanic — Machine Learning from Disaster',
-    description: 'Predict survival on the Titanic using passenger data. A classic binary classification challenge for beginners.',
-    type: 'PUBLIC', status: 'PUBLISHED', is_public: true,
-    start_time: '2026-07-01T00:00:00Z', end_time: '2026-08-31T23:59:59Z',
-    rate_limit_minutes: 10, max_file_size_mb: 50, max_team_size: 4,
-    metric_name: 'Accuracy', metric_direction: 'HIGHER_IS_BETTER', dataset_url: '#',
-  },
-  {
-    id: '2', title: 'House Prices — Advanced Regression Techniques',
-    description: 'Predict house prices in Ames, Iowa. Practice feature engineering and advanced regression models.',
-    type: 'PUBLIC', status: 'PUBLISHED', is_public: true,
-    start_time: '2026-06-15T00:00:00Z', end_time: '2026-09-15T23:59:59Z',
-    rate_limit_minutes: 15, max_file_size_mb: 30, max_team_size: 3,
-    metric_name: 'RMSE', metric_direction: 'LOWER_IS_BETTER', dataset_url: '#',
-  },
-  {
-    id: '3', title: 'Olympic AI ICTU 2026 — Medical Image Classification',
-    description: 'Official ICTU AI Olympiad. Classify chest X-ray images to assist medical diagnosis using deep learning.',
-    type: 'COMPETITION', status: 'PUBLISHED', is_public: false,
-    start_time: '2026-08-01T08:00:00Z', end_time: '2026-08-01T17:00:00Z',
-    rate_limit_minutes: 5, max_file_size_mb: 100, max_team_size: 3,
-    metric_name: 'F1 Score', metric_direction: 'HIGHER_IS_BETTER', dataset_url: '#',
-  },
-  {
-    id: '4', title: 'Vietnamese Sentiment Analysis Challenge',
-    description: 'Build NLP models to classify sentiment in Vietnamese e-commerce reviews. Real-world dataset included.',
-    type: 'PUBLIC', status: 'DRAFT', is_public: true,
-    start_time: '2026-09-01T00:00:00Z', end_time: '2026-10-01T23:59:59Z',
-    rate_limit_minutes: 10, max_file_size_mb: 50, max_team_size: 5,
-    metric_name: 'Accuracy', metric_direction: 'HIGHER_IS_BETTER', dataset_url: '#',
-  },
-];
-
 const getStatusConfig = (c: Challenge) => {
   const now = new Date();
   if (c.status === 'DRAFT') return { label: 'Upcoming', cls: 'badge-warning' };
@@ -57,10 +22,11 @@ const getTimeRemaining = (end: string) => {
 type Filter = 'all' | 'active' | 'upcoming' | 'completed';
 
 const ChallengesPage = () => {
-  const { challenges: api, loading, error } = useChallengeListVM();
+  const [page, setPage] = useState(1);
+  const { challenges: api, meta, loading } = useChallengeListVM({ page, size: 9 });
   const [filter, setFilter] = useState<Filter>('all');
 
-  const challenges = (api.length > 0 && !error) ? api : MOCK_CHALLENGES;
+  const challenges = api;
 
   const filtered = challenges.filter(c => {
     if (filter === 'all') return true;
@@ -155,6 +121,29 @@ const ChallengesPage = () => {
                 </Link>
               );
             })}
+          </div>
+        )}
+        
+        {/* Pagination controls */}
+        {meta && meta.total_pages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-surface dark:bg-slate-800 border border-gray-200 dark:border-slate-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-sm font-medium text-content-secondary dark:text-content-dark-secondary">
+              Page {page} of {meta.total_pages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(meta.total_pages, p + 1))}
+              disabled={page === meta.total_pages}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-surface dark:bg-slate-800 border border-gray-200 dark:border-slate-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Next
+            </button>
           </div>
         )}
         </>

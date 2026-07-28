@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 interface ChallengeTimerProps {
   endTime: string;
   variant?: 'compact' | 'full';
+  className?: string;
 }
 
-const ChallengeTimer: React.FC<ChallengeTimerProps> = ({ endTime, variant = 'compact' }) => {
+const ChallengeTimer: React.FC<ChallengeTimerProps> = ({ endTime, variant = 'compact', className }) => {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -55,7 +56,7 @@ const ChallengeTimer: React.FC<ChallengeTimerProps> = ({ endTime, variant = 'com
 
   if (variant === 'compact') {
     return (
-      <div className="flex items-center gap-1.5 text-sm text-amber-400 font-medium">
+      <div className={`flex items-center gap-1.5 font-medium ${className || 'text-sm text-amber-400'}`}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>

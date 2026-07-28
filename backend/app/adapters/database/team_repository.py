@@ -3,13 +3,14 @@ Team Repository Adapter (SQLAlchemy).
 Implements ITeamRepository.
 """
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.adapters.database.models import SubmissionModel, TeamMemberModel, TeamModel
 from app.application.interfaces.repositories import ITeamRepository
-from app.domain.entities.entities import TeamEntity
+from app.domain.entities.entities import TeamEntity, TeamInviteEntity, InviteStatus
 
 
 class SQLTeamRepository(ITeamRepository):
@@ -32,11 +33,14 @@ class SQLTeamRepository(ITeamRepository):
     def get_by_id(self, team_id: uuid.UUID) -> TeamEntity | None:
         model = (
             self.db.execute(
-                select(TeamModel).where(
+                select(TeamModel)
+                .options(joinedload(TeamModel.members))
+                .where(
                     TeamModel.id == team_id,
                     TeamModel.deleted_at == None,  # noqa: E711
                 )
             )
+            .unique()
             .scalars()
             .first()
         )
@@ -54,6 +58,7 @@ class SQLTeamRepository(ITeamRepository):
         model = (
             self.db.execute(
                 select(TeamModel)
+                .options(joinedload(TeamModel.members))
                 .join(TeamMemberModel, TeamModel.id == TeamMemberModel.team_id)
                 .where(
                     TeamModel.challenge_id == challenge_id,
@@ -61,6 +66,7 @@ class SQLTeamRepository(ITeamRepository):
                     TeamModel.deleted_at == None,  # noqa: E711
                 )
             )
+            .unique()
             .scalars()
             .first()
         )
@@ -91,3 +97,136 @@ class SQLTeamRepository(ITeamRepository):
             .first()
         )
         return result is not None
+
+    def create_invite(self, team_id: uuid.UUID, inviter_id: uuid.UUID, token: str, expires_at: datetime) -> str:
+        from app.adapters.database.models import TeamInviteModel
+        
+        model = TeamInviteModel(
+            team_id=team_id,
+            inviter_id=inviter_id,
+            invitee_email="", # Chưa sử dụng tính năng invite bằng email trực tiếp nên để rỗng
+            token=token,
+            expires_at=expires_at
+        )
+        self.db.add(model)
+        self.db.flush()
+        return token
+
+    def get_invite_by_token(self, token: str) -> "TeamInviteEntity | None":
+        from app.adapters.database.models import TeamInviteModel
+        from app.domain.entities.entities import TeamInviteEntity
+        
+        model = (
+            self.db.execute(
+                select(TeamInviteModel).where(TeamInviteModel.token == token)
+            )
+            .scalars()
+            .first()
+        )
+        if not model:
+            return None
+            
+        return TeamInviteEntity(
+            id=model.id,
+            team_id=model.team_id,
+            inviter_id=model.inviter_id,
+            invitee_email=model.invitee_email,
+            token=model.token,
+            status=model.status,
+            expires_at=model.expires_at,
+            created_at=model.created_at
+        )
+
+    def update_invite_status(self, token: str, status: "InviteStatus") -> None:
+        from app.adapters.database.models import TeamInviteModel
+        
+        model = (
+            self.db.execute(
+                select(TeamInviteModel).where(TeamInviteModel.token == token)
+            )
+            .scalars()
+            .first()
+        )
+        if model:
+            model.status = status
+            self.db.flush()
+
+    def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        from app.adapters.database.models import TeamMemberModel
+        
+        model = TeamMemberModel(
+            team_id=team_id,
+            user_id=user_id
+        )
+        self.db.add(model)
+        self.db.flush()
+
+    def remove_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        from app.adapters.database.models import TeamMemberModel
+        
+        model = (
+            self.db.execute(
+                select(TeamMemberModel).where(
+                    TeamMemberModel.team_id == team_id,
+                    TeamMemberModel.user_id == user_id
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.flush()
+
+    def delete(self, team_id: uuid.UUID) -> None:
+        from datetime import timezone
+        
+        model = (
+            self.db.execute(select(TeamModel).where(TeamModel.id == team_id))
+            .scalars()
+            .first()
+        )
+        if model:
+            model.deleted_at = datetime.now(timezone.utc)
+            self.db.flush()
+
+    def invalidate_invites(self, team_id: uuid.UUID) -> None:
+        from app.adapters.database.models import TeamInviteModel
+        
+        invites = (
+            self.db.execute(
+                select(TeamInviteModel).where(
+                    TeamInviteModel.team_id == team_id,
+                    TeamInviteModel.status == InviteStatus.PENDING
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for invite in invites:
+            invite.status = InviteStatus.EXPIRED
+        self.db.flush()
+
+    def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> tuple[list[TeamEntity], int]:
+        from sqlalchemy import func
+        
+        # Base query joining team_members
+        stmt = (
+            select(TeamModel)
+            .join(TeamModel.members)
+            .options(joinedload(TeamModel.members))
+            .where(
+                TeamMemberModel.user_id == user_id,
+                TeamModel.deleted_at.is_(None)
+            )
+        )
+        
+        # Count total
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = self.db.execute(count_stmt).scalar() or 0
+        
+        # Paginate
+        paginated_stmt = stmt.order_by(TeamModel.created_at.desc()).offset((page - 1) * size).limit(size)
+        models = self.db.execute(paginated_stmt).unique().scalars().all()
+        
+        return [self._to_entity(m) for m in models], total

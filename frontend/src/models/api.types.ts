@@ -33,7 +33,37 @@ export interface UserResponse {
   role: UserRole;
   is_active: boolean;
   student_id?: string;
-  avatar_url?: string;
+  // Profile fields (Issue #30)
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  avatar_url?: string | null;  // Presigned URL (generated on-the-fly)
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  avatar_url?: string | null;  // Presigned URL
+  // Stats
+  total_submissions: number;
+  total_solutions: number;
+  best_rank?: number | null;
+}
+
+export interface UpdateProfileRequest {
+  github_url?: string | null;
+  linkedin_url?: string | null;
+}
+
+export interface UserSolution {
+  id: string;
+  challenge_id: string;
+  challenge_title: string;
+  title: string;
+  upvotes: number;
+  created_at: string;  // ISO datetime string
 }
 
 export interface Team {
@@ -42,6 +72,56 @@ export interface Team {
   challenge_id: string;
   leader_id: string;
 }
+
+// ==========================================
+// TEAM TYPES (UC02) — Dựa trên TeamResponseDTO backend
+// ==========================================
+
+/** Khớp với TeamResponseDTO từ backend (team_dtos.py) */
+export interface TeamResponse {
+  id: string;
+  name: string;
+  challenge_id: string;
+  leader_id: string;
+  created_at: string;
+  member_ids: string[];  // chỉ UUID, theo backend thực tế
+}
+
+/** Member info đầy đủ — cần join với User data */
+export interface TeamMemberInfo {
+  user_id: string;
+  full_name: string;
+  email: string;
+  joined_at: string;
+}
+
+/** ViewModel-level enriched Team — sau khi merge data */
+export interface TeamDetailVM {
+  id: string;
+  name: string;
+  challenge_id: string;
+  leader_id: string;
+  created_at: string;
+  member_ids: string[];
+  // Enriched fields (populated bởi ViewModel từ API)
+  members: TeamMemberInfo[];
+  has_submissions: boolean;   // từ future API field
+  challenge_title?: string;
+}
+
+/** Khớp với CreateInviteResponseDTO backend */
+export interface CreateInviteResponse {
+  token: string;
+  invite_url: string;
+  expires_at: string;
+}
+
+export interface JoinTeamRequest {
+  token: string;
+}
+
+/** POST /teams/join trả về TeamResponseDTO */
+export type JoinTeamResponse = TeamResponse;
 
 export interface Challenge {
   id: string;
@@ -78,8 +158,16 @@ export interface LeaderboardEntry {
   team_name: string;
   best_public_score: number;
   best_private_score: number | null;
+  entries: number;
   last_submission_time: string;
   is_selected_for_private: boolean;
+}
+
+export interface LeaderboardResponse {
+  total: number;
+  page: number;
+  size: number;
+  items: LeaderboardEntry[];
 }
 
 export interface Participant {
@@ -140,6 +228,10 @@ export interface UpdateUserStatusRequest {
   is_active: boolean;
 }
 
+export interface UpdateUserRoleRequest {
+  role: UserRole;
+}
+
 // ==========================================
 // PAGINATION
 // ==========================================
@@ -154,6 +246,9 @@ export interface PaginationMeta {
 export interface PaginatedResponse<T> extends PaginationMeta {
   items: T[];
 }
+
+/** GET /users/me/teams trả về paginated Team list */
+export type MyTeamsResponse = PaginatedResponse<TeamResponse>;
 
 // ==========================================
 // ERROR

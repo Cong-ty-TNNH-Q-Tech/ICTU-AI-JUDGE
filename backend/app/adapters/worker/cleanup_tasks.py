@@ -62,12 +62,12 @@ def cleanup_s3_storage() -> dict:
     from app.adapters.database.submission_repository import SQLSubmissionRepository
     from app.application.use_cases.cleanup_use_case import CleanupStaleStorageUseCase
     
-    # Try to import MinIO storage or use a mock if not implemented yet (Issue #14)
+    from app.adapters.storage.s3_repository import S3StorageRepository
+    
     try:
-        from app.adapters.storage.minio_storage import MinIOStorageRepository
-        storage_repo = MinIOStorageRepository()
-    except ImportError:
-        logger.warning("MinIOStorageRepository chưa được implement (Issue #14). Bỏ qua xóa vật lý thực sự.")
+        storage_repo = S3StorageRepository()
+    except Exception as e:
+        logger.warning("Không thể khởi tạo S3StorageRepository: %s", e)
         storage_repo = None
 
     cutoff = datetime.now(tz=timezone.utc) - timedelta(days=1)

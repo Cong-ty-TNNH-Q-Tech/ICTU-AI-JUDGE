@@ -1,36 +1,57 @@
-/**
- * toastStore — Zustand store toàn cục cho thông báo Toast.
- * Cho phép gọi showToast từ bất kỳ file nào (kể cả ViewModels).
- */
 import { create } from 'zustand';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = "success" | "error" | "warning" | "info";
 
-export interface Toast {
-  id: string;
+export interface ToastItem {
+  id: number;
   message: string;
   type: ToastType;
-  duration?: number;
+  visible: boolean;
 }
 
 interface ToastState {
-  toasts: Toast[];
+  toasts: ToastItem[];
   showToast: (message: string, type?: ToastType, duration?: number) => void;
-  closeToast: (id: string) => void;
+  closeToast: (id: number) => void;
 }
 
-export const useToastStore = create<ToastState>((set) => ({
+let _counter = 0;
+
+export const useToastStore = create<ToastState>((set, get) => ({
   toasts: [],
-  showToast: (message, type = 'info', duration = 4000) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    set((state) => ({ toasts: [...state.toasts, { id, message, type, duration }] }));
-    if (duration && duration > 0) {
-      setTimeout(() => {
-        set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
-      }, duration);
-    }
+
+  showToast: (message: string, type: ToastType = "info", duration = 4000) => {
+    const id = ++_counter;
+
+    // Add toast initially hidden
+    set((state) => ({
+      toasts: [...state.toasts, { id, message, type, visible: false }]
+    }));
+
+    // Trigger animation in next frame
+    requestAnimationFrame(() => {
+      set((state) => ({
+        toasts: state.toasts.map(t => t.id === id ? { ...t, visible: true } : t)
+      }));
+    });
+
+    // Auto close
+    setTimeout(() => {
+      get().closeToast(id);
+    }, duration);
   },
-  closeToast: (id) => {
-    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
-  },
+
+  closeToast: (id: number) => {
+    // Start hide animation
+    set((state) => ({
+      toasts: state.toasts.map(t => t.id === id ? { ...t, visible: false } : t)
+    }));
+
+    // Remove from array after animation completes
+    setTimeout(() => {
+      set((state) => ({
+        toasts: state.toasts.filter(t => t.id !== id)
+      }));
+    }, 300);
+  }
 }));

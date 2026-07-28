@@ -1,5 +1,6 @@
 import React from 'react';
 import IctuLogo from '../../assets/ictu-logo.png';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -16,7 +17,9 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
             <h2 className="text-xl font-bold text-content-primary dark:text-content-dark-primary">ICTU AI Judge</h2>
             <p className="text-[13px] text-content-tertiary mt-1">AI Competition Platform for ICTU Students</p>
           </div>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </div>
     </div>

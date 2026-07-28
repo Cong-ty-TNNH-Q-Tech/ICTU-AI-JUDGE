@@ -20,24 +20,24 @@ export const adminService = {
     await apiClient.patch(`/admin/users/${id}`, { is_active });
   },
 
-  /** Cập nhật Role của người dùng (Student / Admin). */
+  /** Cấp/Đổi quyền sinh viên. */
   async updateUserRole(id: string, role: UserRole): Promise<void> {
-    await apiClient.patch(`/admin/users/${id}`, { role });
+    await apiClient.patch(`/admin/users/${id}/role`, { role });
   },
 
-  /** Test metric script trước khi tạo bài thi. */
-  async testMetric(formData: FormData): Promise<{ score: number }> {
-    const { data } = await apiClient.post<{ score: number }>('/admin/test-metric', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  /** Xuất Bảng xếp hạng chung cuộc ra file CSV. */
+  async exportLeaderboard(challengeId: string, type: 'public' | 'private' = 'private'): Promise<Blob> {
+    const { data } = await apiClient.get<Blob>(
+      `/admin/challenges/${challengeId}/export-leaderboard`,
+      { params: { type }, responseType: 'blob', timeout: 60_000 }
+    );
     return data;
   },
 
-  /** Tải xuống bảng xếp hạng dưới dạng CSV. */
-  async downloadLeaderboardCSV(challengeId: string, type: 'public' | 'private'): Promise<Blob> {
-    const { data } = await apiClient.get<Blob>(`/admin/challenges/${challengeId}/leaderboard-csv`, {
-      params: { type },
-      responseType: 'blob',
+  /** Chạy thử Metric với file mẫu. */
+  async testMetric(formData: FormData): Promise<{ score: number }> {
+    const { data } = await apiClient.post<{ score: number }>('/admin/challenges/test-metric', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data;
   },

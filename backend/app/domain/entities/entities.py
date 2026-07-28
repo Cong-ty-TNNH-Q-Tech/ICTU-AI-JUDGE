@@ -62,12 +62,25 @@ class UserEntity:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    # Profile fields (Issue #30)
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    avatar_url: str | None = None   # Lưu S3 key — URL generate on-the-fly
 
     def is_admin(self) -> bool:
         return self.role == UserRole.ADMIN
 
     def is_active(self) -> bool:
         return self.deleted_at is None
+
+
+
+@dataclass
+class TagEntity:
+    id: uuid.UUID
+    name: str
+    color_hex: str
+    created_at: datetime
 
 
 @dataclass
@@ -80,6 +93,7 @@ class ChallengeEntity:
     start_time: datetime
     end_time: datetime
     rate_limit_minutes: int
+    max_team_size: int
     max_file_size_mb: int
     metric_name: str
     metric_direction: MetricDirection
@@ -90,6 +104,7 @@ class ChallengeEntity:
     custom_metric_url: str = ""
     team_lock_deadline: datetime | None = None
     deleted_at: datetime | None = None
+    tags: list[TagEntity] = field(default_factory=list)
 
     def is_accepting_submissions(self, now: datetime) -> bool:
         """
@@ -134,6 +149,24 @@ class TeamEntity:
 
 
 @dataclass
+class TeamInviteEntity:
+    id: uuid.UUID
+    team_id: uuid.UUID
+    inviter_id: uuid.UUID
+    invitee_email: str
+    token: str
+    status: InviteStatus
+    expires_at: datetime
+    created_at: datetime
+
+    def is_expired(self, now: datetime) -> bool:
+        return now >= self.expires_at
+
+    def is_valid(self, now: datetime) -> bool:
+        return self.status == InviteStatus.PENDING and not self.is_expired(now)
+
+
+@dataclass
 class SubmissionEntity:
     id: uuid.UUID
     challenge_id: uuid.UUID
@@ -159,11 +192,13 @@ class LeaderboardEntryEntity:
     team_id: uuid.UUID
     best_public_score: float
     last_submission_time: datetime
-    rank: int
-    updated_at: datetime
+    rank: int = 0
+    entries: int = 0
+    updated_at: datetime | None = None
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None
+    is_source_code_submitted: bool = False
 
 
 @dataclass
