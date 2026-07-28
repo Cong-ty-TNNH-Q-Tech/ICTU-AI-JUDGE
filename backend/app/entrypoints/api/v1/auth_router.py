@@ -66,6 +66,3 @@ async def logout(response: Response):
     """
     response.delete_cookie(key=settings.COOKIE_NAME, httponly=True, samesite="lax")
     return {"message": "Đăng xuất thành công"}
-
-
-
