@@ -271,3 +271,11 @@ def get_auth_use_case(
     )
 
 get_current_admin = require_admin
+
+from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
+
+def get_leaderboard_use_case(
+    leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+) -> LeaderboardUseCase:
+    return LeaderboardUseCase(leaderboard_repo, challenge_repo)

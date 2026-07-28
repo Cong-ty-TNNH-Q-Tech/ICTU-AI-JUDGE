@@ -34,6 +34,7 @@ from app.entrypoints.dependencies import (
     get_admin_use_case,
     get_team_use_case,
     require_admin,
+    get_user_repository,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,17 +51,15 @@ async def list_challenges(
     tag_id: uuid.UUID | None = None,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
+    user_repo = Depends(get_user_repository),
     user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — trả None nếu chưa login
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    from app.adapters.database.user_repository import SQLUserRepository
     
     # Check nếu user là Admin thì is_admin=True, nếu ko có thì False
     is_admin = False
     if user_id:
-        user_repo = SQLUserRepository(db)
         user = user_repo.get_by_id(user_id)
         if user and user.role.value == "ADMIN":
             is_admin = True
@@ -89,16 +88,14 @@ async def create_challenge(
 @router.get("/{challenge_id}", response_model=dict)
 async def get_challenge(
     challenge_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    user_repo = Depends(get_user_repository),
     user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — optional auth
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Chi tiết bài thi."""
-    from app.adapters.database.user_repository import SQLUserRepository
     
     is_admin = False
     if user_id:
-        user_repo = SQLUserRepository(db)
         user = user_repo.get_by_id(user_id)
         if user and user.role.value == "ADMIN":
             is_admin = True
