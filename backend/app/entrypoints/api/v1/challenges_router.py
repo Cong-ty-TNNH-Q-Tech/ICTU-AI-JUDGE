@@ -135,15 +135,10 @@ async def update_challenge(
 async def delete_challenge(
     challenge_id: uuid.UUID,
     db: Session = Depends(get_db),
-    admin: UserEntity = Depends(require_admin)
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Soft delete bài thi (Admin only)."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
-    
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     use_case.delete_challenge(challenge_id)
     db.commit()
     return None
@@ -155,16 +150,10 @@ async def upload_secrets(
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    admin: UserEntity = Depends(require_admin)
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
-    
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
-    
     gt_bytes = await ground_truth_csv.read()
     metric_bytes = await metric_script_py.read() if metric_script_py else None
     
