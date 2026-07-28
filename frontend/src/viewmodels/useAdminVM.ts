@@ -256,13 +256,18 @@ export function useWhitelistVM(challengeId: string) {
   const fetchParticipants = useCallback(async () => {
     setLoading(true);
     try {
-      // Backend trả về { data: [...], total, page, size } (không phải items)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // Backend trả về { data: [...], total, page, size } thay vì { items: [...] }
+      // Dùng unknown → interface cụ thể để tránh any
+      type WhitelistApiResponse = {
+        data?: Participant[];
+        items?: Participant[];
+        total?: number;
+      };
       const res = await challengeService.listParticipants(challengeId, {
         page,
         size: PAGE_SIZE,
-      }) as any;
-      // Hỗ trợ cả 2 format: { data: [] } và { items: [] }
+      }) as unknown as WhitelistApiResponse;
+
       const list: Participant[] = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.items)
@@ -279,6 +284,7 @@ export function useWhitelistVM(challengeId: string) {
       setLoading(false);
     }
   }, [challengeId, page]);
+
 
 
   useEffect(() => {

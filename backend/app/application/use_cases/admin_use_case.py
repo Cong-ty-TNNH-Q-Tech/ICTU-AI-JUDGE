@@ -162,7 +162,7 @@ class AdminUseCase:
 
         if not resolved_ids:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Không tìm thấy user nào khớp với {len(identifiers)} identifier đã nhập.",
             )
 
