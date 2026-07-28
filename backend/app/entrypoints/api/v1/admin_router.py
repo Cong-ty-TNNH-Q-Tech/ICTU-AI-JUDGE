@@ -6,7 +6,7 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,28 @@ from app.entrypoints.dependencies import get_db, require_admin, get_admin_use_ca
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_admin)])
+
+
+@router.post("/challenges/test-metric")
+async def test_metric(
+    ground_truth: UploadFile = File(...),
+    submission: UploadFile = File(...),
+    metric_script: UploadFile = File(None),
+    metric_name: str = Form(...),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
+    """Admin — Chạy thử metric script trong Sandbox."""
+    gt_bytes = await ground_truth.read()
+    sub_bytes = await submission.read()
+    script_bytes = await metric_script.read() if metric_script else None
+    
+    score = use_case.test_metric(
+        ground_truth=gt_bytes,
+        submission=sub_bytes,
+        metric_script=script_bytes,
+        metric_name=metric_name,
+    )
+    return {"score": score}
 
 
 @router.get("/users", response_model=UserListResponseDTO)

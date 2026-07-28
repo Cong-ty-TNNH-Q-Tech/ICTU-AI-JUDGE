@@ -33,4 +33,12 @@ export const adminService = {
     );
     return data;
   },
+
+  /** Chạy thử Metric với file mẫu. */
+  async testMetric(formData: FormData): Promise<{ score: number }> {
+    const { data } = await apiClient.post<{ score: number }>('/admin/challenges/test-metric', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
 };
