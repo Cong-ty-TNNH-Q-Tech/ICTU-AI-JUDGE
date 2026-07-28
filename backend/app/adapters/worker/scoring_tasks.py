@@ -207,7 +207,7 @@ try:
         sys.exit(1)
 
     if len(gt) != len(sub):
-        print(f'Số lượng dòng không khớp. Kì vọng {len(gt)} dòng, nhưng nhận được {len(sub)} dòng.')
+        print(f'Số lượng dòng không khớp. Kì vọng {{len(gt)}} dòng, nhưng nhận được {{len(sub)}} dòng.')
         sys.exit(1)
 
     y_true = gt[target_col]
