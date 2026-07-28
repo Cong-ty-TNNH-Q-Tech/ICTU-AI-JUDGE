@@ -141,6 +141,7 @@ class ChallengeUseCase:
         challenge_id: uuid.UUID,
         ground_truth_bytes: bytes,
         metric_script_bytes: bytes | None,
+        public_test_split_ratio: int = 30,
     ) -> ChallengeResponseDTO:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
@@ -149,13 +150,36 @@ class ChallengeUseCase:
         if self.challenge_repo.has_successful_submission(challenge_id):
             raise ValueError("Không thể đổi file chấm điểm do đã có người nộp thành công.")
 
-        # Validate ground_truth_bytes has 'Usage' column
+        # Validate ground_truth_bytes has 'Usage' column, if not, generate it
         try:
             content = ground_truth_bytes.decode("utf-8")
             reader = csv.reader(io.StringIO(content))
-            headers = next(reader)
+            rows = list(reader)
+            
+            if not rows:
+                raise ValueError("File CSV rỗng.")
+                
+            headers = rows[0]
             if "Usage" not in headers:
-                raise ValueError("Thiếu cột 'Usage' trong file Ground Truth.")
+                import random
+                headers.append("Usage")
+                data_rows = rows[1:]
+                
+                n_total = len(data_rows)
+                n_public = int(n_total * (public_test_split_ratio / 100))
+                n_private = n_total - n_public
+                
+                usages = ["Public"] * n_public + ["Private"] * n_private
+                random.shuffle(usages)
+                
+                for row, usage in zip(data_rows, usages):
+                    row.append(usage)
+                    
+                out_stream = io.StringIO()
+                writer = csv.writer(out_stream)
+                writer.writerow(headers)
+                writer.writerows(data_rows)
+                ground_truth_bytes = out_stream.getvalue().encode("utf-8")
         except ValueError as e:
             raise e
         except Exception as e:

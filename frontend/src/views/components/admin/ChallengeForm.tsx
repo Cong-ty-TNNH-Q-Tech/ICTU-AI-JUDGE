@@ -9,7 +9,7 @@ import 'katex/dist/katex.min.css';
 
 interface Props {
   initialData?: Challenge | null;
-  onSubmit: (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => Promise<void>;
+  onSubmit: (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File, publicTestSplitRatio?: number) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -87,6 +87,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   const [testResult, setTestResult] = useState<string | null>(null);
   
   const [previewMarkdown, setPreviewMarkdown] = useState(false);
+  const [publicTestSplitRatio, setPublicTestSplitRatio] = useState(30);
 
   useEffect(() => {
     if (initialData) {
@@ -139,7 +140,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
       if (form.metric_name === 'CUSTOM' && !isEdit && !metricScriptFile) {
         throw new Error('Custom Metric script is required');
       }
-      await onSubmit(form, groundTruthFile || undefined, metricScriptFile || undefined); 
+      await onSubmit(form, groundTruthFile || undefined, metricScriptFile || undefined, publicTestSplitRatio); 
     } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
     finally { setLoading(false); }
   };
@@ -281,6 +282,29 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     onChange={setGroundTruthFile}
                     hint={isEdit && !isLocked ? "Upload a new CSV to replace the existing ground truth file." : "Contains the actual labels/values used for scoring submissions."}
                   />
+                  {groundTruthFile && (
+                    <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary">
+                          Tỉ lệ tập Public Test
+                        </label>
+                        <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                          {publicTestSplitRatio}%
+                        </span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" max="100" step="5"
+                        value={publicTestSplitRatio}
+                        onChange={(e) => setPublicTestSplitRatio(parseInt(e.target.value))}
+                        disabled={isLocked}
+                        className="w-full h-1.5 bg-surface-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                      <p className="text-[11px] text-content-tertiary mt-2">
+                        Nếu file CSV chưa có cột <b>Usage</b>, hệ thống sẽ tự động gán {publicTestSplitRatio}% số dòng làm tập Public ngẫu nhiên.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {form.metric_name === 'CUSTOM' && (

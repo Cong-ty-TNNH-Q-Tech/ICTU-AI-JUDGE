@@ -8,9 +8,9 @@ const ChallengeManagePage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Challenge | null>(null);
 
-  const handleSubmit = async (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
-    if (editing) await updateChallenge(editing.id, data as ChallengeUpdateRequest, groundTruthFile, metricScriptFile);
-    else await createChallenge(data, groundTruthFile!, metricScriptFile);
+  const handleSubmit = async (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File, publicTestSplitRatio: number = 30) => {
+    if (editing) await updateChallenge(editing.id, data as ChallengeUpdateRequest, groundTruthFile, metricScriptFile, publicTestSplitRatio);
+    else await createChallenge(data, groundTruthFile!, metricScriptFile, publicTestSplitRatio);
     setIsFormOpen(false);
   };
 

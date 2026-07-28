@@ -146,6 +146,7 @@ async def upload_secrets(
     challenge_id: uuid.UUID,
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
+    public_test_split_ratio: int = Form(30, ge=0, le=100, description="Tỉ lệ % tập Public"),
     db: Session = Depends(get_db),
     admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
@@ -158,7 +159,8 @@ async def upload_secrets(
         result = use_case.upload_secrets(
             challenge_id=challenge_id,
             ground_truth_bytes=gt_bytes,
-            metric_script_bytes=metric_bytes
+            metric_script_bytes=metric_bytes,
+            public_test_split_ratio=public_test_split_ratio
         )
         db.commit()
         return result.dict()

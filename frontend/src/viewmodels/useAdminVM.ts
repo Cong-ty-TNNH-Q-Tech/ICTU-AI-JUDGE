@@ -74,10 +74,10 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
     fetchChallenges();
   }, [fetchChallenges]);
 
-  const createChallenge = useCallback(async (payload: ChallengeCreateRequest, groundTruthFile: File, metricScriptFile?: File) => {
+  const createChallenge = useCallback(async (payload: ChallengeCreateRequest, groundTruthFile: File, metricScriptFile?: File, publicTestSplitRatio: number = 30) => {
     try {
       const challenge = await challengeService.create(payload);
-      await challengeService.uploadSecrets(challenge.id, groundTruthFile, metricScriptFile);
+      await challengeService.uploadSecrets(challenge.id, groundTruthFile, metricScriptFile, publicTestSplitRatio);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Lỗi tạo bài thi hoặc upload file');
       throw err;
@@ -86,11 +86,11 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
     }
   }, [fetchChallenges]);
 
-  const updateChallenge = useCallback(async (id: string, payload: ChallengeUpdateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
+  const updateChallenge = useCallback(async (id: string, payload: ChallengeUpdateRequest, groundTruthFile?: File, metricScriptFile?: File, publicTestSplitRatio: number = 30) => {
     try {
       await challengeService.update(id, payload);
       if (groundTruthFile) {
-        await challengeService.uploadSecrets(id, groundTruthFile, metricScriptFile);
+        await challengeService.uploadSecrets(id, groundTruthFile, metricScriptFile, publicTestSplitRatio);
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Lỗi cập nhật bài thi hoặc file');
