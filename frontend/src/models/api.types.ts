@@ -228,6 +228,10 @@ export interface UpdateUserStatusRequest {
   is_active: boolean;
 }
 
+export interface UpdateUserRoleRequest {
+  role: UserRole;
+}
+
 // ==========================================
 // PAGINATION
 // ==========================================

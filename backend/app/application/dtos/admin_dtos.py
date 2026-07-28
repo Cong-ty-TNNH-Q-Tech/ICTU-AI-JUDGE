@@ -27,5 +27,8 @@ class UserListResponseDTO(BaseModel):
 class UserStatusUpdateRequestDTO(BaseModel):
     is_active: bool
 
+class UserRoleUpdateRequestDTO(BaseModel):
+    role: UserRole
+
 class WhitelistAddRequestDTO(BaseModel):
     user_ids: list[uuid.UUID]

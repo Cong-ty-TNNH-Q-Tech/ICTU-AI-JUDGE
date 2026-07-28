@@ -45,6 +45,17 @@ def test_update_user_status_not_found(admin_use_case):
         admin_use_case.update_user_status(uuid.uuid4(), True)
     assert exc.value.status_code == 404
 
+def test_update_user_role_success(admin_use_case):
+    admin_use_case.user_repo.update_role.return_value = True
+    result = admin_use_case.update_user_role(uuid.uuid4(), "ADMIN")
+    assert result["detail"] == "Cập nhật quyền thành công"
+
+def test_update_user_role_not_found(admin_use_case):
+    admin_use_case.user_repo.update_role.return_value = False
+    with pytest.raises(HTTPException) as exc:
+        admin_use_case.update_user_role(uuid.uuid4(), "ADMIN")
+    assert exc.value.status_code == 404
+
 def test_get_whitelist_success(admin_use_case):
     challenge_id = uuid.uuid4()
     admin_use_case.challenge_repo.get_by_id.return_value = MagicMock()

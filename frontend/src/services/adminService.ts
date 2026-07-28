@@ -2,7 +2,7 @@
  * Admin Service — Gọi API Admin endpoints (UC12).
  */
 import { apiClient } from '../core/apiClient';
-import type { PaginatedResponse, UserResponse } from '../models/api.types';
+import type { PaginatedResponse, UserResponse, UserRole } from '../models/api.types';
 
 export const adminService = {
   /** Lấy danh sách sinh viên. */
@@ -18,6 +18,11 @@ export const adminService = {
   /** Khóa/Mở khóa tài khoản sinh viên. */
   async updateUserStatus(id: string, is_active: boolean): Promise<void> {
     await apiClient.patch(`/admin/users/${id}`, { is_active });
+  },
+
+  /** Cấp/Đổi quyền sinh viên. */
+  async updateUserRole(id: string, role: UserRole): Promise<void> {
+    await apiClient.patch(`/admin/users/${id}/role`, { role });
   },
 
   /** Xuất Bảng xếp hạng chung cuộc ra file CSV. */

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAdminUsersVM } from '../../../viewmodels/useAdminVM';
+import type { UserRole } from '../../../models/api.types';
 
 const UserManagePage = () => {
   const [search, setSearch] = useState('');
-  const { users, loading, error, toggleUserStatus } = useAdminUsersVM({ q: search });
+  const { users, loading, error, toggleUserStatus, updateUserRole } = useAdminUsersVM({ q: search });
 
   return (
     <div className="card p-0 overflow-hidden">
@@ -30,6 +31,7 @@ const UserManagePage = () => {
               <tr className="text-[11px] text-content-tertiary uppercase tracking-wider bg-surface-50 dark:bg-gray-900/40">
                 <th className="px-5 py-2.5 text-left font-medium">User</th>
                 <th className="px-5 py-2.5 text-left font-medium hidden sm:table-cell">Student ID</th>
+                <th className="px-5 py-2.5 text-left font-medium">Role</th>
                 <th className="px-5 py-2.5 text-left font-medium">Status</th>
                 <th className="px-5 py-2.5 text-right font-medium">Action</th>
               </tr>
@@ -52,6 +54,16 @@ const UserManagePage = () => {
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary dark:text-content-dark-secondary hidden sm:table-cell">{u.student_id || '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <select 
+                        value={u.role} 
+                        onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
+                        className="bg-surface-100 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 text-[11px] rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary-500 transition-shadow"
+                      >
+                        <option value="STUDENT">Student</option>
+                        <option value="ADMIN">Admin</option>
+                      </select>
+                    </td>
                     <td className="px-5 py-3.5">
                       <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'}`}>{u.is_active ? 'Active' : 'Locked'}</span>
                     </td>
