@@ -221,7 +221,7 @@ class ILeaderboardRepository(ABC):
 
     @abstractmethod
     def upsert_with_lock(
-        self, entry: LeaderboardEntryEntity
+        self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
     ) -> LeaderboardEntryEntity:
         """
         [CHỐNG RACE CONDITION] Bắt buộc dùng SELECT ... FOR UPDATE (Pessimistic Locking)
