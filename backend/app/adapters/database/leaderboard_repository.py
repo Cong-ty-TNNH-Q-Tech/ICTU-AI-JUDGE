@@ -49,10 +49,11 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             return None
         return self._to_entity(model, rank=model.rank)
 
-    def upsert_with_lock(self, entry: LeaderboardEntryEntity) -> LeaderboardEntryEntity:
+    def upsert_with_lock(self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER) -> LeaderboardEntryEntity:
         """
         Sử dụng PostgreSQL INSERT ... ON CONFLICT DO UPDATE để chống Race Condition 
         hiệu quả mà không gặp lỗi IntegrityError khi 2 requests cùng INSERT.
+        Điểm số sẽ được update Atomic trực tiếp bằng mệnh đề WHERE.
         """
         from sqlalchemy.dialects.postgresql import insert
 
@@ -71,22 +72,35 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
 
         update_dict = {
             "best_public_score": stmt.excluded.best_public_score,
-            "best_private_score": stmt.excluded.best_private_score,
+            "best_private_score": func.coalesce(stmt.excluded.best_private_score, LeaderboardModel.best_private_score),
             "best_public_submission_id": stmt.excluded.best_public_submission_id,
-            "best_private_submission_id": stmt.excluded.best_private_submission_id,
+            "best_private_submission_id": func.coalesce(stmt.excluded.best_private_submission_id, LeaderboardModel.best_private_submission_id),
             "last_submission_time": stmt.excluded.last_submission_time,
-            "rank": stmt.excluded.rank,
             "updated_at": func.now()
         }
 
+        if direction == MetricDirection.HIGHER_IS_BETTER:
+            condition = LeaderboardModel.best_public_score < stmt.excluded.best_public_score
+        else:
+            condition = LeaderboardModel.best_public_score > stmt.excluded.best_public_score
+
         do_update_stmt = stmt.on_conflict_do_update(
             constraint="uq_leaderboard_challenge_team",
-            set_=update_dict
+            set_=update_dict,
+            where=condition
         ).returning(LeaderboardModel)
 
-        model = self.db.execute(do_update_stmt).scalar_one()
+        model = self.db.execute(do_update_stmt).scalar_one_or_none()
         self.db.flush()
         
+        if not model:
+            # If the WHERE condition fails, DO UPDATE is skipped, and returning() yields nothing.
+            # We fetch and return the existing record.
+            existing = self.get_by_team_and_challenge(entry.team_id, entry.challenge_id)
+            if not existing:
+                raise RuntimeError("Race condition: Leaderboard entry should exist but wasn't found.")
+            return existing
+
         return self._to_entity(model, rank=model.rank)
 
     def list_public(

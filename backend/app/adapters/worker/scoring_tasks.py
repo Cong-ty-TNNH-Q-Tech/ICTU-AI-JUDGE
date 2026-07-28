@@ -105,29 +105,19 @@ def score_submission(self, submission_id: str) -> dict:
 
             # 5. Upsert Leaderboard với Pessimistic Locking
             from app.domain.entities.entities import LeaderboardEntryEntity
-            existing = leaderboard_repo.get_by_team_and_challenge(
-                submission.team_id, submission.challenge_id
+            entry = LeaderboardEntryEntity(
+                id=uuid.uuid4(),
+                challenge_id=submission.challenge_id,
+                team_id=submission.team_id,
+                best_public_score=score,
+                best_private_score=None,
+                best_public_submission_id=sub_uuid,
+                best_private_submission_id=None,
+                last_submission_time=submission.submitted_at,
+                rank=0,
+                updated_at=datetime.now(tz=timezone.utc),
             )
-            is_better = _is_better_score(
-                new_score=score,
-                current_best=existing.best_public_score if existing else None,
-                direction=challenge.metric_direction,
-            )
-            if is_better or existing is None:
-                entry = LeaderboardEntryEntity(
-                    id=existing.id if existing else uuid.uuid4(),
-                    challenge_id=submission.challenge_id,
-                    team_id=submission.team_id,
-                    best_public_score=score,
-                    best_private_score=existing.best_private_score if existing else None,
-                    best_public_submission_id=sub_uuid,
-                    best_private_submission_id=existing.best_private_submission_id if existing else None,
-                    last_submission_time=submission.submitted_at,
-                    rank=0,
-                    updated_at=datetime.now(tz=timezone.utc),
-                )
-                leaderboard_repo.upsert_with_lock(entry)
-
+            leaderboard_repo.upsert_with_lock(entry, direction=challenge.metric_direction)
 
             # Commit the transaction explicitly if using a standalone session
             db.commit()
@@ -202,17 +192,7 @@ def _run_sandbox(
         return float(output)
 
 
-def _is_better_score(
-    new_score: float,
-    current_best: float | None,
-    direction: str,
-) -> bool:
-    if current_best is None:
-        return True
-    from app.domain.entities.entities import MetricDirection
-    if direction == MetricDirection.HIGHER_IS_BETTER:
-        return new_score > current_best
-    return new_score < current_best
+
 
 
 def _mark_submission_failed(
