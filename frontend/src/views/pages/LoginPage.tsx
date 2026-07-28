@@ -26,7 +26,11 @@ const LoginPage = () => {
         avatar_url: null,
         is_active: true,
       });
-      navigate('/challenges');
+      if (data.role === 'ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/challenges');
+      }
     } catch (e) {
       alert('Dev login thất bại: ' + String(e));
     } finally {
@@ -36,8 +40,12 @@ const LoginPage = () => {
 
   const handleGoogleSuccess = async (token: string) => {
     try {
-      await loginWithGoogle(token);
-      navigate('/challenges');
+      const userData = await loginWithGoogle(token);
+      if (userData.role === 'ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/challenges');
+      }
     } catch (e) {
       alert('Đăng nhập Google thất bại: ' + String(e));
     }
