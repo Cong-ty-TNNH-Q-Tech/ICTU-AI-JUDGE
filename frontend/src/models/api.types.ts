@@ -33,6 +33,7 @@ export interface UserResponse {
   role: UserRole;
   is_active: boolean;
   student_id?: string;
+  avatar_url?: string;
 }
 
 export interface Team {

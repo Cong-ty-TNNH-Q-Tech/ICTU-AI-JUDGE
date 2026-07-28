@@ -3,7 +3,7 @@ import type { Challenge, ChallengeCreateRequest } from '../../../models/api.type
 
 interface Props {
   initialData?: Challenge | null;
-  onSubmit: (data: ChallengeCreateRequest) => Promise<void>;
+  onSubmit: (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -19,6 +19,29 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [groundTruthFile, setGroundTruthFile] = useState<File | null>(null);
+  const [metricScriptFile, setMetricScriptFile] = useState<File | null>(null);
+
+  /**
+   * Issue #4: Validate các trường hợp phi logic trước khi gọi API.
+   * Trả về chuỗi lỗi (tiếng Việt) hoặc null nếu hợp lệ.
+   */
+  const validateForm = (): string | null => {
+    if (!form.title.trim()) return 'Tiêu đề không được để trống.';
+    if (!form.start_time) return 'Vui lòng chọn Thời gian bắt đầu.';
+    if (!form.end_time) return 'Vui lòng chọn Thời gian kết thúc.';
+    if (new Date(form.end_time) <= new Date(form.start_time)) {
+      return 'Thời gian kết thúc phải lớn hơn thời gian bắt đầu.';
+    }
+    if ((form.max_file_size_mb ?? 0) < 1 || (form.max_file_size_mb ?? 0) > 500) {
+      return 'Kích thước file tối đa phải từ 1 đến 500 MB.';
+    }
+    if ((form.rate_limit_minutes ?? 0) < 0) return 'Cooldown không được âm.';
+    if ((form.max_team_size ?? 0) < 1) return 'Số thành viên tối đa phải í nhất là 1.';
+    if (!isEdit && !groundTruthFile) return 'File Ground Truth là bắt buộc khi tạo bài thi mới.';
+    if (form.metric_name === 'CUSTOM' && !isEdit && !metricScriptFile) return 'File Custom Metric Script là bắt buộc khi chọn CUSTOM metric.';
+    return null;
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -40,8 +63,14 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setLoading(true); setError('');
-    try { await onSubmit(form); } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
+    try { await onSubmit(form, groundTruthFile || undefined, metricScriptFile || undefined); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
     finally { setLoading(false); }
   };
 
@@ -99,6 +128,41 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 <div><label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Type</label><select name="type" value={form.type} onChange={set} className="input-field"><option value="PUBLIC">Public</option><option value="COMPETITION">Competition</option></select></div>
                 <div><label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Status</label><select name="status" value={form.status} onChange={set} className="input-field"><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></div>
               </div>
+            </div>
+          </div>
+
+          {/* Issue #4: File uploads for Ground Truth + Custom Metric */}
+          <div className="space-y-3 pt-4 border-t border-surface-200 dark:border-gray-800">
+            <h3 className="text-[13px] font-semibold text-content-primary dark:text-content-dark-primary">Files <span className="text-[11px] font-normal text-content-tertiary">(Ground Truth bắt buộc khi tạo mới)</span></h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">
+                  Ground Truth CSV {!isEdit && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  disabled={isLocked}
+                  onChange={e => setGroundTruthFile(e.target.files?.[0] || null)}
+                  className="w-full text-[12px] text-content-secondary dark:text-content-dark-secondary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[12px] file:font-medium file:bg-primary-50 file:text-primary-600 dark:file:bg-primary-900/30 dark:file:text-primary-400 hover:file:bg-primary-100 dark:hover:file:bg-primary-900/50 cursor-pointer disabled:opacity-50"
+                />
+                {groundTruthFile && <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">✓ {groundTruthFile.name}</p>}
+              </div>
+              {form.metric_name === 'CUSTOM' && (
+                <div>
+                  <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">
+                    Custom Metric Script (.py) {!isEdit && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="file"
+                    accept=".py"
+                    disabled={isLocked}
+                    onChange={e => setMetricScriptFile(e.target.files?.[0] || null)}
+                    className="w-full text-[12px] text-content-secondary dark:text-content-dark-secondary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[12px] file:font-medium file:bg-purple-50 file:text-purple-600 dark:file:bg-purple-900/30 dark:file:text-purple-400 hover:file:bg-purple-100 dark:hover:file:bg-purple-900/50 cursor-pointer disabled:opacity-50"
+                  />
+                  {metricScriptFile && <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">✓ {metricScriptFile.name}</p>}
+                </div>
+              )}
             </div>
           </div>
 

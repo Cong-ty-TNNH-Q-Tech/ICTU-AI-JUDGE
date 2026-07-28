@@ -54,3 +54,5 @@ export const useThemeStore = create<ThemeState>()(
     { name: 'ictu-theme' }
   )
 );
+
+export * from './toastStore';

@@ -32,15 +32,31 @@ export const challengeService = {
     return data;
   },
 
-  /** UC09 — Tạo bài thi mới (Admin). */
-  async create(payload: ChallengeCreateRequest): Promise<Challenge> {
-    const { data } = await apiClient.post<Challenge>('/challenges', payload);
+  /** UC09 — Tạo bài thi mới (Admin). Gửi multipart/form-data khi có file đính kèm. */
+  async create(payload: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File): Promise<Challenge> {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') formData.append(k, String(v));
+    });
+    if (groundTruthFile) formData.append('ground_truth_csv', groundTruthFile);
+    if (metricScriptFile) formData.append('metric_script_py', metricScriptFile);
+    const { data } = await apiClient.post<Challenge>('/challenges', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return data;
   },
 
-  /** UC09 — Cập nhật bài thi (Admin). */
-  async update(id: string, payload: ChallengeUpdateRequest): Promise<Challenge> {
-    const { data } = await apiClient.patch<Challenge>(`/challenges/${id}`, payload);
+  /** UC09 — Cập nhật bài thi (Admin). Gửi multipart/form-data khi có file đính kèm. */
+  async update(id: string, payload: ChallengeUpdateRequest, groundTruthFile?: File, metricScriptFile?: File): Promise<Challenge> {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') formData.append(k, String(v));
+    });
+    if (groundTruthFile) formData.append('ground_truth_csv', groundTruthFile);
+    if (metricScriptFile) formData.append('metric_script_py', metricScriptFile);
+    const { data } = await apiClient.patch<Challenge>(`/challenges/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return data;
   },
 
