@@ -128,6 +128,9 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
+    
+    @abstractmethod
+    def remove_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
 
     @abstractmethod
     def delete(self, team_id: uuid.UUID) -> None: ...

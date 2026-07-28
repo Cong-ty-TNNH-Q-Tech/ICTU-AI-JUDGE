@@ -1,7 +1,6 @@
 """
 Teams Router — UC02: Quản lý Đội thi.
 [OWNER] Thành viên phụ trách: Team Module
-TODO: Implement các endpoint bên dưới
 """
 import logging
 import uuid
@@ -40,3 +39,16 @@ async def join_team(
     Kiểm tra: Token hợp lệ? Đã thuộc đội khác chưa?
     """
     return use_case.join_team(user_id, body.token)
+
+
+@router.delete("/{team_id}/members/{user_id}", status_code=204)
+async def remove_member(
+    team_id: uuid.UUID,
+    user_id: uuid.UUID,
+    use_case: TeamUseCase = Depends(get_team_use_case),
+    requester_id: uuid.UUID = Depends(get_current_user_id)
+):
+    """
+    Xóa thành viên khỏi đội (Chỉ dành cho trưởng nhóm).
+    """
+    use_case.kick_member(team_id, user_id, requester_id)

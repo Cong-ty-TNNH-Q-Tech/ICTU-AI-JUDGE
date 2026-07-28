@@ -180,6 +180,23 @@ class TeamUseCase:
             challenge_id=team.challenge_id,
             leader_id=team.leader_id,
             created_at=team.created_at,
-            member_ids=team.member_ids
+        member_ids=team.member_ids
         )
 
+    def kick_member(self, team_id: uuid.UUID, user_id: uuid.UUID, requester_id: uuid.UUID) -> None:
+        team = self.team_repo.get_by_id(team_id)
+        if not team:
+            raise NotFoundError("Không tìm thấy đội")
+            
+        if team.leader_id != requester_id:
+            raise PermissionDeniedError("Chỉ trưởng nhóm mới được phép xóa thành viên")
+            
+        if user_id not in team.member_ids:
+            raise NotFoundError("Người dùng không nằm trong đội này")
+            
+        if user_id == team.leader_id:
+            raise PermissionDeniedError("Không thể xóa trưởng nhóm khỏi đội")
+            
+        self.team_repo.remove_member(team_id, user_id)
+        self.uow.commit()
+        logger.info(f"User {requester_id} kicked user {user_id} from team {team_id}")

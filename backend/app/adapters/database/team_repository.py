@@ -161,6 +161,23 @@ class SQLTeamRepository(ITeamRepository):
         self.db.add(model)
         self.db.flush()
 
+    def remove_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        from app.adapters.database.models import TeamMemberModel
+        
+        model = (
+            self.db.execute(
+                select(TeamMemberModel).where(
+                    TeamMemberModel.team_id == team_id,
+                    TeamMemberModel.user_id == user_id
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.flush()
+
     def delete(self, team_id: uuid.UUID) -> None:
         from datetime import timezone
         

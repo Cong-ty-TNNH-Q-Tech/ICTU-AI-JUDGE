@@ -352,6 +352,32 @@ paths:
         '400':
           description: Bạn đã thuộc đội khác hoặc mã hết hạn.
 
+  /teams/{id}/members/{user_id}:
+    delete:
+      summary: Xóa thành viên khỏi đội
+      tags:
+        - Teams
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Xóa thành viên thành công.
+        '403':
+          description: Bạn không phải là đội trưởng.
+        '404':
+          description: Không tìm thấy thành viên trong đội.
+
   # ==========================================
   # SUBMISSION ENDPOINTS
   # ==========================================
