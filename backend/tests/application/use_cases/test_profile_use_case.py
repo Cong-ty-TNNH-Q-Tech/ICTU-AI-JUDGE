@@ -81,7 +81,7 @@ def test_get_profile_with_avatar(profile_use_case):
 
     assert result.avatar_url == "http://minio/presigned"
     profile_use_case._storage_repo.get_download_url.assert_called_once_with(
-        "avatars/uid/avatar.jpg", expires_in=3600
+        "avatars/uid/avatar.jpg"
     )
 
 
