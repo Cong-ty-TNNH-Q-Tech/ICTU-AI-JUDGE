@@ -11,7 +11,7 @@ import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
 import AdminPage from './views/pages/AdminPage';
 // Issue #30 — Profile
 import ProfilePage from './views/pages/ProfilePage';
-import DevLoginPage from './views/pages/DevLoginPage';
+
 // Team pages — từ nhánh main
 import TeamPage from './views/pages/TeamPage';
 import JoinTeamPage from './views/pages/JoinTeamPage';
@@ -44,8 +44,7 @@ function App() {
         </AuthLayout>
       } />
 
-      {/* DEV ONLY — Đăng nhập không cần Google OAuth */}
-      <Route path="/dev-login" element={<DevLoginPage />} />
+
 
       <Route path="/challenges" element={
         <ProtectedRoute>
