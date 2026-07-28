@@ -37,4 +37,5 @@ Thumbs.db
 # Junk files generated during dev
 pr_*.txt
 test_*.py
+demo_challenge/
 !backend/tests/
