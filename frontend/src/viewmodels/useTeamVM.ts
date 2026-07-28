@@ -87,6 +87,19 @@ export function useTeamVM(teamId: string | undefined) {
     }
   }, [teamId, showToast]);
 
+  const kickMember = useCallback(async (userId: string) => {
+    if (!teamId) return;
+    try {
+      await teamService.kickMember(teamId, userId);
+      showToast('Đã xóa thành viên', 'success');
+      fetchTeam(); // refetch after kick
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
+      const detail = errorObj.response?.data?.detail || 'Lỗi khi xóa thành viên';
+      showToast(detail, 'error');
+    }
+  }, [teamId, showToast, fetchTeam]);
+
   const isLeader = Boolean(user && team && team.leader_id === user.id);
   // Optional: check against challenge deadline. Hardcoded as false for now until challenge fetch.
   const isDeadlinePassed = false; 
@@ -100,6 +113,7 @@ export function useTeamVM(teamId: string | undefined) {
     isLeader,
     canInvite: isLeader && !isDeadlinePassed,
     createInvite,
+    kickMember,
     showToast,
     ToastContainer,
   };

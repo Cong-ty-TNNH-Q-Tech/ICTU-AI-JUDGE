@@ -22,7 +22,8 @@ const getTimeRemaining = (end: string) => {
 type Filter = 'all' | 'active' | 'upcoming' | 'completed';
 
 const ChallengesPage = () => {
-  const { challenges: api, loading, error } = useChallengeListVM();
+  const [page, setPage] = useState(1);
+  const { challenges: api, meta, loading, error } = useChallengeListVM({ page, size: 9 });
   const [filter, setFilter] = useState<Filter>('all');
 
   const challenges = api;
@@ -120,6 +121,29 @@ const ChallengesPage = () => {
                 </Link>
               );
             })}
+          </div>
+        )}
+        
+        {/* Pagination controls */}
+        {meta && meta.total_pages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-surface dark:bg-slate-800 border border-gray-200 dark:border-slate-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-sm font-medium text-content-secondary dark:text-content-dark-secondary">
+              Page {page} of {meta.total_pages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(meta.total_pages, p + 1))}
+              disabled={page === meta.total_pages}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-surface dark:bg-slate-800 border border-gray-200 dark:border-slate-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Next
+            </button>
           </div>
         )}
         </>

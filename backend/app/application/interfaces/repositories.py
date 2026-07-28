@@ -138,6 +138,8 @@ class ITeamRepository(ABC):
     @abstractmethod
     def invalidate_invites(self, team_id: uuid.UUID) -> None: ...
 
+    @abstractmethod
+    def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> tuple[list[TeamEntity], int]: ...
 
 class ISubmissionRepository(ABC):
     @abstractmethod

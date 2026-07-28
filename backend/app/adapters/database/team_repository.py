@@ -206,3 +206,27 @@ class SQLTeamRepository(ITeamRepository):
         for invite in invites:
             invite.status = InviteStatus.EXPIRED
         self.db.flush()
+
+    def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> tuple[list[TeamEntity], int]:
+        from sqlalchemy import func
+        
+        # Base query joining team_members
+        stmt = (
+            select(TeamModel)
+            .join(TeamModel.members)
+            .options(joinedload(TeamModel.members))
+            .where(
+                TeamMemberModel.user_id == user_id,
+                TeamModel.deleted_at.is_(None)
+            )
+        )
+        
+        # Count total
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = self.db.execute(count_stmt).scalar() or 0
+        
+        # Paginate
+        paginated_stmt = stmt.order_by(TeamModel.created_at.desc()).offset((page - 1) * size).limit(size)
+        models = self.db.execute(paginated_stmt).unique().scalars().all()
+        
+        return [self._to_entity(m) for m in models], total

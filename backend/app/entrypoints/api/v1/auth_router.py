@@ -1,7 +1,6 @@
 """
-Auth Router — UC01: Đăng nhập Google OAuth & Đăng xuất.
-[OWNER] Thành viên phụ trách: Auth Module
-TODO: Implement các endpoint bên dưới
+Auth Router — Xử lý Đăng nhập & Authentication.
+[OWNER] Thành viên phụ trách: Core/Auth Module
 """
 import logging
 import uuid

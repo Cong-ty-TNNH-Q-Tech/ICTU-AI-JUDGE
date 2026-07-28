@@ -24,7 +24,9 @@ from app.entrypoints.dependencies import (
     get_current_user,
     get_db,
     get_profile_use_case,
+    get_team_use_case,
 )
+from app.application.use_cases.team_use_case import TeamUseCase
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -63,12 +65,14 @@ async def get_me(user: UserEntity = Depends(get_current_user)):
 # ==========================================
 
 @router.get("/me/teams")
-async def get_my_teams(page: int = 1, size: int = 20, db: Session = Depends(get_db)):
+async def get_my_teams(
+    page: int = 1, 
+    size: int = 20, 
+    user: UserEntity = Depends(get_current_user),
+    use_case: TeamUseCase = Depends(get_team_use_case)
+):
     """Lấy danh sách Đội thi của user hiện tại (phân trang)."""
-    # TODO: Implement — Issue #UC07
-    return {"items": [], "total": 0, "page": page, "size": size, "total_pages": 0}
-
-
+    return use_case.get_user_teams(user.id, page, size)
 # ==========================================
 # Issue #30 — Profile endpoints
 # ==========================================
