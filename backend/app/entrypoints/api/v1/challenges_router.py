@@ -73,7 +73,7 @@ async def list_challenges(
 async def create_challenge(
     request: dict,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Tạo bài thi mới (Admin only)."""
@@ -81,7 +81,7 @@ async def create_challenge(
     
     dto = ChallengeCreateRequestDTO(**request)
     
-    result = use_case.create_challenge(admin_id=admin_id, data=dto)
+    result = use_case.create_challenge(admin_id=admin.id, data=dto)
     db.commit()
     return result.dict()
 
@@ -115,7 +115,7 @@ async def update_challenge(
     challenge_id: uuid.UUID,
     request: dict,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Cập nhật bài thi (Admin only). Bị khóa nếu đã có Submission."""
@@ -135,7 +135,7 @@ async def update_challenge(
 async def delete_challenge(
     challenge_id: uuid.UUID,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin: UserEntity = Depends(require_admin)
 ):
     """UC09 — Soft delete bài thi (Admin only)."""
     from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -155,7 +155,7 @@ async def upload_secrets(
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin: UserEntity = Depends(require_admin)
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
     from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -203,7 +203,7 @@ async def list_participants(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Xem Whitelist (Admin only)."""
@@ -214,7 +214,7 @@ async def list_participants(
 async def add_participants(
     challenge_id: uuid.UUID,
     request: dict, # expect {"user_ids": ["uuid"]}
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Thêm sinh viên vào Whitelist (Admin only)."""
