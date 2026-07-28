@@ -78,10 +78,11 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
     try {
       const challenge = await challengeService.create(payload);
       await challengeService.uploadSecrets(challenge.id, groundTruthFile, metricScriptFile);
-      await fetchChallenges();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Lỗi tạo bài thi hoặc upload file');
       throw err;
+    } finally {
+      await fetchChallenges();
     }
   }, [fetchChallenges]);
 
@@ -91,10 +92,11 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
       if (groundTruthFile) {
         await challengeService.uploadSecrets(id, groundTruthFile, metricScriptFile);
       }
-      await fetchChallenges();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Lỗi cập nhật bài thi hoặc file');
       throw err;
+    } finally {
+      await fetchChallenges();
     }
   }, [fetchChallenges]);
 
