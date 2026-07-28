@@ -166,7 +166,7 @@ def _run_sandbox(
             script_info = tarfile.TarInfo(name='metric.py')
             script_info.size = len(metric_script)
             tar.addfile(script_info, io.BytesIO(metric_script))
-            cmd = "python /sandbox/metric.py /sandbox/ground_truth.csv /sandbox/submission.csv"
+            cmd = "python /tmp/metric.py /tmp/ground_truth.csv /tmp/submission.csv"
         else:
             # Strategy Pattern cho Built-in metrics
             built_in_script = f"""
@@ -175,8 +175,8 @@ import sys
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
 
 try:
-    gt = pd.read_csv('/sandbox/ground_truth.csv')
-    sub = pd.read_csv('/sandbox/submission.csv')
+    gt = pd.read_csv('/tmp/ground_truth.csv')
+    sub = pd.read_csv('/tmp/submission.csv')
 
     if 'Usage' in gt.columns:
         gt = gt.drop(columns=['Usage'])
@@ -218,7 +218,7 @@ except Exception as e:
             script_info = tarfile.TarInfo(name='built_in_metric.py')
             script_info.size = len(built_in_script)
             tar.addfile(script_info, io.BytesIO(built_in_script))
-            cmd = "python /sandbox/built_in_metric.py"
+            cmd = "python /tmp/built_in_metric.py"
 
     tar_stream.seek(0)
 
@@ -234,8 +234,8 @@ except Exception as e:
     )
 
     try:
-        # 2. Inject files via put_archive (Docker automatically creates /sandbox if it doesn't exist)
-        container.put_archive("/sandbox", tar_stream)
+        # 2. Inject files via put_archive (Docker automatically creates /tmp if it doesn't exist)
+        container.put_archive("/tmp", tar_stream)
 
         # 3. Start container and wait for it to finish
         container.start()
