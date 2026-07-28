@@ -594,6 +594,53 @@ paths:
         '403':
           description: Không có quyền Admin.
 
+  /admin/challenges/test-metric:
+    post:
+      summary: Chạy thử Metric (Admin)
+      tags:
+        - Admin
+      description: Chạy thử file Ground Truth, Submission và Metric Script trong Sandbox để kiểm tra.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - ground_truth
+                - submission
+                - metric_name
+              properties:
+                ground_truth:
+                  type: string
+                  format: binary
+                  description: File đáp án mẫu (CSV)
+                submission:
+                  type: string
+                  format: binary
+                  description: File bài nộp mẫu (CSV)
+                metric_script:
+                  type: string
+                  format: binary
+                  description: (Tùy chọn) Script python chấm điểm thủ công
+                metric_name:
+                  type: string
+                  description: Tên metric (ví dụ ACCURACY, F1_SCORE, CUSTOM)
+      responses:
+        '200':
+          description: Chạy Sandbox thành công, trả về điểm.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score:
+                    type: number
+        '400':
+          description: Lỗi Sandbox hoặc lỗi file, trả về chi tiết.
+        '403':
+          description: Không có quyền Admin.
+
   /admin/challenges/{challenge_id}/submissions:
     get:
       summary: Lấy danh sách tất cả bài nộp của cuộc thi (Admin)

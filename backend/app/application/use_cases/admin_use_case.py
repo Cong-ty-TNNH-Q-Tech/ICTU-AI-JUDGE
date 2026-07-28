@@ -11,8 +11,27 @@ from app.application.dtos.submission_dtos import SubmissionListResponseDTO, Subm
 from app.application.interfaces.repositories import ILeaderboardRepository
 from app.domain.entities.entities import ChallengeType
 
+from app.adapters.worker.scoring_tasks import _run_sandbox
 
 class AdminUseCase:
+    def test_metric(
+        self,
+        ground_truth: bytes,
+        submission: bytes,
+        metric_script: bytes | None,
+        metric_name: str,
+    ) -> float:
+        try:
+            score = _run_sandbox(
+                submission_csv=submission,
+                ground_truth_csv=ground_truth,
+                metric_script=metric_script,
+                metric_name=metric_name,
+            )
+            return score
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     def __init__(
         self,
         user_repo: UserRepository,
