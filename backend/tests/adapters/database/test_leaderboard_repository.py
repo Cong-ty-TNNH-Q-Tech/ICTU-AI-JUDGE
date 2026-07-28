@@ -172,7 +172,8 @@ def test_upsert_with_lock_race_condition(db_session: Session):
         best_public_submission_id=uuid.uuid4(),
         best_private_submission_id=None,
         last_submission_time=datetime.now(),
-        rank=0,
+        rank=1,
+        is_source_code_submitted=True,
         updated_at=datetime.now()
     )
     res1 = repo.upsert_with_lock(entry1, direction=MetricDirection.HIGHER_IS_BETTER)
@@ -189,6 +190,7 @@ def test_upsert_with_lock_race_condition(db_session: Session):
         best_private_submission_id=None,
         last_submission_time=datetime.now(),
         rank=0,
+        is_source_code_submitted=False,
         updated_at=datetime.now()
     )
     res2 = repo.upsert_with_lock(entry2, direction=MetricDirection.HIGHER_IS_BETTER)
@@ -206,7 +208,10 @@ def test_upsert_with_lock_race_condition(db_session: Session):
         best_private_submission_id=None,
         last_submission_time=datetime.now(),
         rank=0,
+        is_source_code_submitted=False,
         updated_at=datetime.now()
     )
     res3 = repo.upsert_with_lock(entry3, direction=MetricDirection.HIGHER_IS_BETTER)
     assert res3.best_public_score == 0.8
+    assert res3.is_source_code_submitted is True
+    assert res3.rank == 1

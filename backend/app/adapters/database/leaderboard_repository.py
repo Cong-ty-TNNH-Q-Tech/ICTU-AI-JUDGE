@@ -76,7 +76,6 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             "best_public_submission_id": stmt.excluded.best_public_submission_id,
             "best_private_submission_id": func.coalesce(stmt.excluded.best_private_submission_id, LeaderboardModel.best_private_submission_id),
             "last_submission_time": stmt.excluded.last_submission_time,
-            "is_source_code_submitted": func.coalesce(stmt.excluded.is_source_code_submitted, LeaderboardModel.is_source_code_submitted),
             "updated_at": func.now()
         }
 
