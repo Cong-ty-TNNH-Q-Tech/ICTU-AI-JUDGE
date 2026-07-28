@@ -313,8 +313,8 @@ def test_list_team_submissions_success(use_case, mock_repos, mock_team):
     )
     mock_repos['submission_repo'].list_by_team.return_value = ([mock_sub], 1)
     res = use_case.list_team_submissions(uuid.uuid4(), uuid.uuid4(), 1, 10)
-    assert res.total_count == 1
-    assert len(res.data) == 1
+    assert res.total == 1
+    assert len(res.items) == 1
 
 def test_list_team_submissions_no_team(use_case, mock_repos):
     mock_repos['team_repo'].get_by_challenge_and_user.return_value = None

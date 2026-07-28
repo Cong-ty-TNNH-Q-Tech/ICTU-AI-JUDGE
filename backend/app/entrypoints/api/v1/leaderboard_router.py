@@ -25,11 +25,15 @@ async def get_leaderboard(
     use_case: LeaderboardUseCase = Depends(get_leaderboard_use_case),
 ):
     """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    current_time = datetime.now(tz=timezone.utc)
-    return use_case.get_leaderboard(
-        challenge_id=challenge_id,
-        lb_type=type,
-        page=page,
-        size=size,
-        current_time=current_time,
-    )
+    from fastapi import HTTPException
+    try:
+        current_time = datetime.now(tz=timezone.utc)
+        return use_case.get_leaderboard(
+            challenge_id=challenge_id,
+            lb_type=type,
+            page=page,
+            size=size,
+            current_time=current_time,
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))

@@ -107,8 +107,8 @@ class AdminUseCase:
         entities, total = self.submission_repo.list_all_by_challenge(challenge_id, page, size)
         dtos = [SubmissionResponseDTO.model_validate(e) for e in entities]
         return SubmissionListResponseDTO(
-            data=dtos,
-            total_count=total,
+            items=dtos,
+            total=total,
             page=page,
             size=size
         )

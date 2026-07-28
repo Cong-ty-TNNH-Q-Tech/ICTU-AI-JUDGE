@@ -107,8 +107,8 @@ def test_list_all_submissions_success(admin_use_case):
     admin_use_case.submission_repo.list_all_by_challenge.return_value = ([sub], 1)
     
     result = admin_use_case.list_all_submissions(uuid.uuid4(), 1, 10)
-    assert result.total_count == 1
-    assert len(result.data) == 1
+    assert result.total == 1
+    assert len(result.items) == 1
 
 def test_list_all_submissions_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
