@@ -20,6 +20,7 @@ import type {
   ChallengeCreateRequest,
   ChallengeUpdateRequest,
   UserRole,
+  Participant,
 } from '../models/api.types';
 
 // ==========================================
@@ -233,5 +234,101 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
     deleteChallenge,
     downloadLeaderboardCSV,
     exportingLeaderboard,
+  };
+}
+
+// ==========================================
+// Whitelist Management ViewModel (Issue #91)
+// ==========================================
+
+/**
+ * useWhitelistVM — Quản lý Whitelist thí sinh cho bài thi COMPETITION (UC10).
+ * Chỉ dùng trong WhitelistManageModal.
+ */
+export function useWhitelistVM(challengeId: string) {
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+
+  const fetchParticipants = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await challengeService.listParticipants(challengeId, {
+        page,
+        size: PAGE_SIZE,
+      });
+      setParticipants(res.items);
+      setTotal(res.total);
+    } catch (err) {
+      useToastStore.getState().showToast(
+        err instanceof Error ? err.message : 'Lỗi tải danh sách whitelist',
+        'error'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [challengeId, page]);
+
+  useEffect(() => {
+    fetchParticipants();
+  }, [fetchParticipants]);
+
+  /**
+   * addByUserIds — Nhập chuỗi thô (mỗi UUID một dòng hoặc phân cách bằng dấu phẩy/space).
+   * Phân tích, loại bỏ trắng, rồi gọi addParticipants API.
+   * Returns true nếu thành công (báo hiệu cho View reset textarea).
+   */
+  const addByUserIds = useCallback(
+    async (rawInput: string): Promise<boolean> => {
+      const user_ids = rawInput
+        .split(/[\n,\s]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+      if (user_ids.length === 0) {
+        useToastStore.getState().showToast(
+          'Vui lòng nhập ít nhất 1 User ID.',
+          'warning'
+        );
+        return false;
+      }
+
+      setAdding(true);
+      try {
+        await challengeService.addParticipants(challengeId, { user_ids });
+        await fetchParticipants();
+        useToastStore.getState().showToast(
+          `Đã thêm ${user_ids.length} thí sinh vào Whitelist! ✅`,
+          'success'
+        );
+        return true;
+      } catch (err) {
+        useToastStore.getState().showToast(
+          err instanceof Error ? err.message : 'Lỗi thêm thí sinh vào Whitelist',
+          'error'
+        );
+        return false;
+      } finally {
+        setAdding(false);
+      }
+    },
+    [challengeId, fetchParticipants]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  return {
+    participants,
+    total,
+    totalPages,
+    page,
+    setPage,
+    loading,
+    adding,
+    refetch: fetchParticipants,
+    addByUserIds,
   };
 }
