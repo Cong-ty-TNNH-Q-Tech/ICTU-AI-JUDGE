@@ -15,6 +15,7 @@ const TeamPage: React.FC = () => {
     inviteResult,
     canInvite,
     createInvite,
+    kickMember,
     ToastContainer
   } = useTeamVM(teamId);
 
@@ -97,7 +98,7 @@ const TeamPage: React.FC = () => {
              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Thành viên đội ({team.members.length})</h3>
            </div>
            
-           <TeamMemberList team={team} />
+           <TeamMemberList team={team} onKick={kickMember} />
         </div>
       </div>
 

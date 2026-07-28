@@ -103,9 +103,9 @@ export interface TeamDetailVM {
   leader_id: string;
   created_at: string;
   member_ids: string[];
-  // Enriched fields (populated bởi ViewModel từ mock hoặc API)
+  // Enriched fields (populated bởi ViewModel từ API)
   members: TeamMemberInfo[];
-  has_submissions: boolean;   // từ mock hoặc future API field
+  has_submissions: boolean;   // từ future API field
   challenge_title?: string;
 }
 

@@ -45,4 +45,9 @@ export const teamService = {
     const { data } = await apiClient.post<JoinTeamResponse>('/teams/join', payload);
     return data;
   },
+
+  /** DELETE /teams/{id}/members/{userId} — Kick thành viên */
+  async kickMember(teamId: string, userId: string): Promise<void> {
+    await apiClient.delete(`/teams/${teamId}/members/${userId}`);
+  },
 };

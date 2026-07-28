@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { teamService } from '../services/teamService';
 import { useAuthStore } from '../store';
+import { userService } from '../services/userService';
 import type { TeamDetailVM, CreateInviteResponse, TeamMemberInfo } from '../models/api.types';
 import { useToast } from '../views/components/Toast';
 
@@ -25,17 +26,30 @@ export function useTeamVM(teamId: string | undefined) {
         throw new Error('Không tìm thấy đội');
       }
 
-      // Enrich with mock members (Development)
-      const mockMembers: TeamMemberInfo[] = teamData.member_ids.map(id => ({
-        user_id: id,
-        full_name: id === teamData.leader_id ? 'Trưởng nhóm' : 'Thành viên',
-        email: 'mock@ictu.edu.vn',
-        joined_at: teamData.created_at,
-      }));
+      // Fetch real members info
+      const membersPromises = teamData.member_ids.map(async (id) => {
+        try {
+          const profile = await userService.getProfile(id);
+          return {
+            user_id: id,
+            full_name: profile.full_name || 'Thành viên',
+            email: profile.email || 'Không rõ',
+            joined_at: teamData.created_at, // Ideally should be from team_members table
+          } as TeamMemberInfo;
+        } catch {
+          return {
+            user_id: id,
+            full_name: id === teamData.leader_id ? 'Trưởng nhóm' : 'Thành viên',
+            email: 'Lỗi tải email',
+            joined_at: teamData.created_at,
+          } as TeamMemberInfo;
+        }
+      });
+      const realMembers = await Promise.all(membersPromises);
 
       const enriched: TeamDetailVM = {
         ...teamData,
-        members: mockMembers,
+        members: realMembers,
         has_submissions: false,
       };
 
@@ -73,6 +87,19 @@ export function useTeamVM(teamId: string | undefined) {
     }
   }, [teamId, showToast]);
 
+  const kickMember = useCallback(async (userId: string) => {
+    if (!teamId) return;
+    try {
+      await teamService.kickMember(teamId, userId);
+      showToast('Đã xóa thành viên', 'success');
+      fetchTeam(); // refetch after kick
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
+      const detail = errorObj.response?.data?.detail || 'Lỗi khi xóa thành viên';
+      showToast(detail, 'error');
+    }
+  }, [teamId, showToast, fetchTeam]);
+
   const isLeader = Boolean(user && team && team.leader_id === user.id);
   // Optional: check against challenge deadline. Hardcoded as false for now until challenge fetch.
   const isDeadlinePassed = false; 
@@ -86,6 +113,7 @@ export function useTeamVM(teamId: string | undefined) {
     isLeader,
     canInvite: isLeader && !isDeadlinePassed,
     createInvite,
+    kickMember,
     showToast,
     ToastContainer,
   };

@@ -24,7 +24,7 @@ def _get_leaderboard_use_case(db: Session) -> LeaderboardUseCase:
         challenge_repo=SQLChallengeRepository(db),
     )
 
-@router.get("/{challenge_id}", response_model=LeaderboardResponseDTO)
+@router.get("/{challenge_id}/leaderboard", response_model=LeaderboardResponseDTO)
 async def get_leaderboard(
     challenge_id: uuid.UUID,
     type: LeaderboardType = LeaderboardType.PUBLIC,
