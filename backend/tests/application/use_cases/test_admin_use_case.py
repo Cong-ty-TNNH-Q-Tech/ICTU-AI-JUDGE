@@ -31,8 +31,8 @@ def test_list_users(admin_use_case):
     
     result = admin_use_case.list_users(q="test", page=1, size=10)
     assert result.total == 1
-    assert len(result.data) == 1
-    assert result.data[0].email == "test@example.com"
+    assert len(result.items) == 1
+    assert result.items[0].email == "test@example.com"
 
 def test_update_user_status_success(admin_use_case):
     admin_use_case.user_repo.update_status.return_value = True

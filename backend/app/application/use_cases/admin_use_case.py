@@ -28,7 +28,7 @@ class AdminUseCase:
     def list_users(self, q: str, page: int, size: int) -> UserListResponseDTO:
         users, total = self.user_repo.list_all(query=q, page=page, size=size)
         return UserListResponseDTO(
-            data=[UserDTO.model_validate(u) for u in users],
+            items=[UserDTO.model_validate(u) for u in users],
             total=total,
             page=page,
             size=size
