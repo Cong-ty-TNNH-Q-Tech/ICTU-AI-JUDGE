@@ -54,12 +54,14 @@ export const challengeService = {
     id: string,
     groundTruthFile: File,
     metricScriptFile?: File,
+    publicTestSplitRatio: number = 30,
   ): Promise<void> {
     const formData = new FormData();
     formData.append('ground_truth_csv', groundTruthFile);
     if (metricScriptFile) {
       formData.append('metric_script_py', metricScriptFile);
     }
+    formData.append('public_test_split_ratio', publicTestSplitRatio.toString());
     await apiClient.post(`/challenges/${id}/upload-secrets`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

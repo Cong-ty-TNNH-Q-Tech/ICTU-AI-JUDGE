@@ -161,6 +161,10 @@ paths:
                   type: string
                   format: binary
                   description: (Tùy chọn) Script python chấm điểm thủ công
+                public_test_split_ratio:
+                  type: integer
+                  description: Tỉ lệ % tập Public (0-100)
+                  default: 30
       responses:
         '200':
           description: Upload thành công.

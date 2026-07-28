@@ -96,7 +96,7 @@ services:
     container_name: ictu_ai_judge_frontend
     restart: always
     ports:
-      - "3456:80"
+      - "8386:80"
     depends_on:
       - backend
 

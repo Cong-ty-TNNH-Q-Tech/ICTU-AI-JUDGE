@@ -7,7 +7,7 @@ export default defineConfig({
   envDir: '../', // Load .env from root directory
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 8386,
     open: false,
     proxy: {
       '/api/v1': {
