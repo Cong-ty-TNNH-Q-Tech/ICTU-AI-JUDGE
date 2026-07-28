@@ -14,10 +14,10 @@ from app.adapters.database.user_repository import UserRepository
 from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO
 from app.application.use_cases.admin_use_case import AdminUseCase
-from app.entrypoints.dependencies import get_db, get_current_admin_user
+from app.entrypoints.dependencies import get_db, require_admin
 
 logger = logging.getLogger(__name__)
-router = APIRouter(dependencies=[Depends(get_current_admin_user)])
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 def _get_admin_use_case(db: Session) -> AdminUseCase:
