@@ -378,10 +378,10 @@ class SubmissionUseCase:
             for e in entities
         ]
         return SubmissionListResponseDTO(
-            total_count=total,
+            total=total,
             page=page,
             size=size,
-            data=data,
+            items=data,
         )
 
 
