@@ -96,6 +96,13 @@ services:
     depends_on:
       - backend
 
+  sandbox_builder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.sandbox
+    image: ictu-ai-judge-sandbox:latest
+    profiles: ["donotstart"]
+
 volumes:
   pgdata:
   minio_data:
