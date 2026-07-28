@@ -10,7 +10,6 @@ from app.application.dtos.admin_dtos import UserDTO, UserListResponseDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO, SubmissionResponseDTO
 from app.application.interfaces.repositories import ILeaderboardRepository
 from app.domain.entities.entities import ChallengeType
-from app.core.config import settings
 
 from app.adapters.worker.scoring_tasks import _run_sandbox
 
@@ -39,11 +38,13 @@ class AdminUseCase:
         challenge_repo: SQLChallengeRepository,
         submission_repo: SQLSubmissionRepository,
         leaderboard_repo: ILeaderboardRepository,
+        root_admin_email: str | None = None,
     ):
         self.user_repo = user_repo
         self.challenge_repo = challenge_repo
         self.submission_repo = submission_repo
         self.leaderboard_repo = leaderboard_repo
+        self.root_admin_email = root_admin_email
 
     def list_users(self, q: str, page: int, size: int) -> UserListResponseDTO:
         users, total = self.user_repo.list_all(query=q, page=page, size=size)
@@ -62,7 +63,7 @@ class AdminUseCase:
                 detail=f"Không tìm thấy user với id {user_id}"
             )
             
-        if settings.ROOT_ADMIN_EMAIL and user.email == settings.ROOT_ADMIN_EMAIL:
+        if self.root_admin_email and user.email == self.root_admin_email:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Không thể thay đổi trạng thái của Root Admin"
@@ -84,7 +85,7 @@ class AdminUseCase:
                 detail="Không tìm thấy user hoặc user đã bị khóa"
             )
             
-        if settings.ROOT_ADMIN_EMAIL and user.email == settings.ROOT_ADMIN_EMAIL:
+        if self.root_admin_email and user.email == self.root_admin_email:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Không thể thay đổi quyền của Root Admin"

@@ -237,8 +237,15 @@ def get_admin_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     submission_repo: ISubmissionRepository = Depends(get_submission_repository),
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
+    settings: Settings = Depends(get_settings_dep),
 ) -> AdminUseCase:
-    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo)
+    return AdminUseCase(
+        user_repo=user_repo,
+        challenge_repo=challenge_repo,
+        submission_repo=submission_repo,
+        leaderboard_repo=leaderboard_repo,
+        root_admin_email=settings.ROOT_ADMIN_EMAIL,
+    )
 
 
 def get_team_use_case(
