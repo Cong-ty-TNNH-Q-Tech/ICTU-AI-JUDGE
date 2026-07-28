@@ -212,6 +212,28 @@ async def add_participants(
     return use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
 
 
+@router.post("/{challenge_id}/participants/by-identifiers")
+async def add_participants_by_identifiers(
+    challenge_id: uuid.UUID,
+    request: dict,  # expect {"identifiers": ["email|MSSV|uuid", ...]}
+    admin: UserEntity = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
+    """
+    UC10 — Thêm sinh viên vào Whitelist bằng Email / MSSV / UUID (Issue #91).
+    Backend tự phân loại và tra cứu user_id tương ứng.
+    Body: { "identifiers": ["dtc235210026", "student@ictu.edu.vn", "uuid..."] }
+    Response: { "added": int, "resolved": int, "not_found": [...], "detail": str }
+    """
+    identifiers: list[str] = request.get("identifiers", [])
+    if not identifiers:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(status_code=422, detail="Trường 'identifiers' không được để trống.")
+    return use_case.add_whitelist_by_identifiers(
+        challenge_id=challenge_id, identifiers=identifiers
+    )
+
+
 # ==========================================
 # UC04 — Lịch sử nộp bài
 # ==========================================

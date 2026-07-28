@@ -202,9 +202,10 @@ const WhitelistManageModal: React.FC<Props> = ({ isOpen, challenge, onClose }) =
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-xl px-3.5 py-3 text-[12px] text-blue-700 dark:text-blue-300 leading-relaxed">
                 <p className="font-semibold mb-1">📋 Hướng dẫn:</p>
                 <ul className="space-y-1 list-disc list-inside text-[11px]">
-                  <li>Nhập <strong>User ID</strong> (UUID) của thí sinh</li>
-                  <li>Mỗi ID một dòng, hoặc phân cách bằng dấu phẩy</li>
-                  <li>Có thể nhập nhiều ID cùng lúc</li>
+                  <li>Nhập <strong>Email</strong> (dtc001@ictu.edu.vn)</li>
+                  <li>Hoặc <strong>MSSV</strong> (dtc235210026)</li>
+                  <li>Hoặc <strong>User UUID</strong></li>
+                  <li>Mỗi định danh một dòng</li>
                   <li>Nhấn <kbd className="bg-blue-100 dark:bg-blue-800 px-1 rounded text-[10px]">Ctrl+Enter</kbd> để gửi nhanh</li>
                 </ul>
               </div>
@@ -212,20 +213,20 @@ const WhitelistManageModal: React.FC<Props> = ({ isOpen, challenge, onClose }) =
               {/* Textarea nhập User IDs */}
               <div className="flex flex-col gap-1.5 flex-1">
                 <label className="text-[12px] font-medium text-content-secondary dark:text-content-dark-secondary">
-                  User IDs <span className="text-red-500">*</span>
+                  Email / MSSV / UUID <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={adding}
-                  placeholder={`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\nyyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy\n...`}
+                  placeholder={`dtc235210001@ictu.edu.vn\ndtc235210002\nxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`}
                   rows={8}
                   className="flex-1 resize-none w-full text-[12px] font-mono bg-surface-100 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 rounded-xl px-3.5 py-3 text-content-primary dark:text-content-dark-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow disabled:opacity-60 disabled:cursor-not-allowed leading-relaxed"
                 />
                 {/* Counter */}
                 <p className="text-[11px] text-content-tertiary text-right">
-                  {inputValue.split(/[\n,\s]+/).filter(s => s.trim().length > 0).length} ID đã nhập
+                  {inputValue.split(/[\n,]+/).filter(s => s.trim().length > 0).length} định danh đã nhập
                 </p>
               </div>
 

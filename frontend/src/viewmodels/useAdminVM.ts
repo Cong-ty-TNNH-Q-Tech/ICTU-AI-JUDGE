@@ -256,12 +256,20 @@ export function useWhitelistVM(challengeId: string) {
   const fetchParticipants = useCallback(async () => {
     setLoading(true);
     try {
+      // Backend trả về { data: [...], total, page, size } (không phải items)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res = await challengeService.listParticipants(challengeId, {
         page,
         size: PAGE_SIZE,
-      });
-      setParticipants(res.items);
-      setTotal(res.total);
+      }) as any;
+      // Hỗ trợ cả 2 format: { data: [] } và { items: [] }
+      const list: Participant[] = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.items)
+        ? res.items
+        : [];
+      setParticipants(list);
+      setTotal(typeof res.total === 'number' ? res.total : list.length);
     } catch (err) {
       useToastStore.getState().showToast(
         err instanceof Error ? err.message : 'Lỗi tải danh sách whitelist',
@@ -272,25 +280,26 @@ export function useWhitelistVM(challengeId: string) {
     }
   }, [challengeId, page]);
 
+
   useEffect(() => {
     fetchParticipants();
   }, [fetchParticipants]);
 
   /**
-   * addByUserIds — Nhập chuỗi thô (mỗi UUID một dòng hoặc phân cách bằng dấu phẩy/space).
-   * Phân tích, loại bỏ trắng, rồi gọi addParticipants API.
+   * addByUserIds — Nhập chuỗi thô (Email / MSSV / UUID).
+   * Backend tự resolve identifier → user_id.
    * Returns true nếu thành công (báo hiệu cho View reset textarea).
    */
   const addByUserIds = useCallback(
     async (rawInput: string): Promise<boolean> => {
-      const user_ids = rawInput
-        .split(/[\n,\s]+/)
+      const identifiers = rawInput
+        .split(/[\n,]+/)
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
-      if (user_ids.length === 0) {
+      if (identifiers.length === 0) {
         useToastStore.getState().showToast(
-          'Vui lòng nhập ít nhất 1 User ID.',
+          'Vui lòng nhập ít nhất 1 định danh (Email, MSSV hoặc UUID).',
           'warning'
         );
         return false;
@@ -298,12 +307,21 @@ export function useWhitelistVM(challengeId: string) {
 
       setAdding(true);
       try {
-        await challengeService.addParticipants(challengeId, { user_ids });
+        const result = await challengeService.addParticipantsByIdentifiers(challengeId, identifiers);
         await fetchParticipants();
-        useToastStore.getState().showToast(
-          `Đã thêm ${user_ids.length} thí sinh vào Whitelist! ✅`,
-          'success'
-        );
+
+        // Cảnh báo nếu có identifier không tìm thấy
+        if (result.not_found && result.not_found.length > 0) {
+          useToastStore.getState().showToast(
+            `✅ Thêm ${result.added} thí sinh. ⚠️ Không tìm thấy: ${result.not_found.join(', ')}`,
+            'warning'
+          );
+        } else {
+          useToastStore.getState().showToast(
+            `✅ ${result.detail}`,
+            'success'
+          );
+        }
         return true;
       } catch (err) {
         useToastStore.getState().showToast(

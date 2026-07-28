@@ -95,9 +95,27 @@ export const challengeService = {
     return data;
   },
 
-  /** UC10 — Thêm participants vào Whitelist (Admin). */
+  /** UC10 — Thêm participants vào Whitelist bằng UUID (Admin). */
   async addParticipants(id: string, payload: AddParticipantsRequest): Promise<void> {
     await apiClient.post(`/challenges/${id}/participants`, payload);
+  },
+
+  /**
+   * UC10 — Thêm participants vào Whitelist bằng Email / MSSV / UUID (Issue #91).
+   * Backend tự resolve identifier → user_id.
+   * Returns { added, resolved, not_found, detail }
+   */
+  async addParticipantsByIdentifiers(
+    id: string,
+    identifiers: string[],
+  ): Promise<{ added: number; resolved: number; not_found: string[]; detail: string }> {
+    const { data } = await apiClient.post<{
+      added: number;
+      resolved: number;
+      not_found: string[];
+      detail: string;
+    }>(`/challenges/${id}/participants/by-identifiers`, { identifiers });
+    return data;
   },
 
   /** UC04 — Lịch sử nộp bài của Đội. */

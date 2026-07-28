@@ -133,6 +133,63 @@ class UserRepository(IUserRepository):
         self._session.commit()
         return True
 
+    def find_by_identifiers(self, identifiers: list[str]) -> list[UserEntity]:
+        """
+        UC10 — Tra cứu users từ danh sách định danh linh hoạt (Issue #91).
+        Hỗ trợ 3 loại:
+          - Email: chứa ký tự '@'
+          - UUID: đúng 36 ký tự dạng xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+          - MSSV/student_id: các định danh còn lại
+        Dedup bằng set(id) — tránh trả về trùng khi dùng cả UUID + email cùng 1 người.
+        """
+        emails, uuids, student_ids = [], [], []
+
+        for raw in identifiers:
+            token = raw.strip()
+            if not token:
+                continue
+            if "@" in token:
+                emails.append(token.lower())
+            else:
+                try:
+                    uuid.UUID(token)
+                    uuids.append(uuid.UUID(token))
+                except ValueError:
+                    student_ids.append(token)
+
+        from sqlalchemy import or_
+        conditions = []
+        if emails:
+            conditions.append(UserModel.email.in_(emails))
+        if uuids:
+            conditions.append(UserModel.id.in_(uuids))
+        if student_ids:
+            conditions.append(UserModel.student_id.in_(student_ids))
+
+        if not conditions:
+            return []
+
+        stmt = (
+            select(UserModel)
+            .where(UserModel.deleted_at.is_(None))
+            .where(or_(*conditions))
+        )
+        models = self._session.execute(stmt).scalars().all()
+
+        # Dedup theo id
+        seen: set[uuid.UUID] = set()
+        result = []
+        for m in models:
+            if m.id not in seen:
+                seen.add(m.id)
+                result.append(self._to_entity(m))
+
+        logger.info(
+            "find_by_identifiers: input=%d → resolved=%d users",
+            len(identifiers), len(result)
+        )
+        return result
+
     # ==========================================
     # Profile methods (Issue #30)
     # ==========================================
