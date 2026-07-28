@@ -33,10 +33,13 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+import ErrorBoundary from './views/components/ErrorBoundary';
+
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
 
       <Route path="/login" element={
         <AuthLayout>
@@ -100,7 +103,8 @@ function App() {
       } />
 
       <Route path="*" element={<Navigate to="/challenges" replace />} />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 }
 
