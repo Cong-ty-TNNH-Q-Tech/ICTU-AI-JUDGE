@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store';
+import ErrorBoundary from './views/components/ErrorBoundary';
 
 import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
@@ -32,8 +33,6 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
-
-import ErrorBoundary from './views/components/ErrorBoundary';
 
 function App() {
   return (
