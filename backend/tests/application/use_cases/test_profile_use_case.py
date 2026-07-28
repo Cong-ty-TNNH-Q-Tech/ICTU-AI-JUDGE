@@ -55,7 +55,7 @@ def test_get_profile_success(profile_use_case):
         "total_solutions": 2,
         "best_rank": 1,
     }
-    profile_use_case._storage_repo.get_presigned_url.return_value = None
+    profile_use_case._storage_repo.get_download_url.return_value = None
 
     result = profile_use_case.get_profile(user.id)
 
@@ -75,12 +75,12 @@ def test_get_profile_with_avatar(profile_use_case):
         "total_solutions": 0,
         "best_rank": None,
     }
-    profile_use_case._storage_repo.get_presigned_url.return_value = "http://minio/presigned"
+    profile_use_case._storage_repo.get_download_url.return_value = "http://minio/presigned"
 
     result = profile_use_case.get_profile(user.id)
 
     assert result.avatar_url == "http://minio/presigned"
-    profile_use_case._storage_repo.get_presigned_url.assert_called_once_with(
+    profile_use_case._storage_repo.get_download_url.assert_called_once_with(
         "avatars/uid/avatar.jpg", expires_in=3600
     )
 
@@ -99,7 +99,7 @@ def test_get_profile_avatar_presigned_url_failure_returns_none(profile_use_case)
     profile_use_case._user_repo.get_profile_stats.return_value = {
         "total_submissions": 0, "total_solutions": 0, "best_rank": None,
     }
-    profile_use_case._storage_repo.get_presigned_url.side_effect = Exception("MinIO down")
+    profile_use_case._storage_repo.get_download_url.side_effect = Exception("MinIO down")
 
     result = profile_use_case.get_profile(user.id)
 
@@ -123,7 +123,7 @@ def test_update_profile_success(profile_use_case):
     profile_use_case._user_repo.get_profile_stats.return_value = {
         "total_submissions": 0, "total_solutions": 0, "best_rank": None,
     }
-    profile_use_case._storage_repo.get_presigned_url.return_value = None
+    profile_use_case._storage_repo.get_download_url.return_value = None
 
     payload = UpdateProfileRequest(
         github_url="https://github.com/user",
@@ -165,7 +165,7 @@ VALID_JPEG = b"\xff\xd8\xff" + b"\x00" * 100  # fake JPEG bytes
 
 def test_upload_avatar_success(profile_use_case):
     user = _make_user()
-    profile_use_case._storage_repo.get_presigned_url.return_value = "http://minio/new-avatar"
+    profile_use_case._storage_repo.get_download_url.return_value = "http://minio/new-avatar"
 
     result = profile_use_case.upload_avatar(
         current_user=user,
@@ -184,7 +184,7 @@ def test_upload_avatar_success(profile_use_case):
 
 def test_upload_avatar_png_success(profile_use_case):
     user = _make_user()
-    profile_use_case._storage_repo.get_presigned_url.return_value = "http://minio/png"
+    profile_use_case._storage_repo.get_download_url.return_value = "http://minio/png"
 
     result = profile_use_case.upload_avatar(
         current_user=user,
@@ -241,7 +241,7 @@ def test_upload_avatar_invalid_mime_raises(profile_use_case):
 
 def test_upload_avatar_webp_success(profile_use_case):
     user = _make_user()
-    profile_use_case._storage_repo.get_presigned_url.return_value = "http://minio/webp"
+    profile_use_case._storage_repo.get_download_url.return_value = "http://minio/webp"
 
     result = profile_use_case.upload_avatar(
         current_user=user,

@@ -129,7 +129,7 @@ class SolutionUseCase:
             author_name=user.full_name or str(user.id),
             title=saved.title,
             content=saved.content,
-            notebook_url=self._build_presigned_url(saved.notebook_url, filename),
+            notebook_url=self._build_download_url(saved.notebook_url, filename),
             upvotes=saved.upvotes,
             created_at=saved.created_at,
         )
