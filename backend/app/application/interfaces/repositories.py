@@ -279,13 +279,16 @@ class IStorageRepository(ABC):
     def delete(self, key: str) -> None: ...
 
     @abstractmethod
-    def get_presigned_url(self, key: str, expires_in: int = 3600, filename: str | None = None) -> str:
-        """
-        Tạo presigned URL cho phép Frontend download trực tiếp (không qua API).
-        URL trả về phải dùng public endpoint (có thể truy cập từ browser),
-        không phải internal Docker hostname.
-        """
+    def stream_download(self, key: str):
+        """Stream bytes từ Storage theo key."""
         ...
+
+    @abstractmethod
+    def get_download_url(self, key: str, filename: str | None = None) -> str:
+        """Tạo đường dẫn proxy để Frontend tải file thông qua Backend."""
+        ...
+
+
 
 
 class ISolutionRepository(ABC):
