@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
+    # ---- Authorization ----
+    ROOT_ADMIN_EMAIL: str | None = None
+    # Email duy nhất được tự động gán quyền ADMIN khi đăng nhập lần đầu qua Google OAuth.
+    # Để trống hoặc không set để tắt tính năng Root Admin tự động.
+
     # ---- Submission Defaults ----
     DEFAULT_RATE_LIMIT_MINUTES: int = 10
     DEFAULT_MAX_FILE_SIZE_MB: int = 50
