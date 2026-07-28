@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store';
+import ErrorBoundary from './views/components/ErrorBoundary';
 
 import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
@@ -35,8 +36,9 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
 
       <Route path="/login" element={
         <AuthLayout>
@@ -100,7 +102,8 @@ function App() {
       } />
 
       <Route path="*" element={<Navigate to="/challenges" replace />} />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 }
 

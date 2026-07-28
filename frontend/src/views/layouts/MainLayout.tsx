@@ -3,6 +3,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store';
 import { useAuthVM } from '../../viewmodels/useAuthVM';
 import IctuLogo from '../../assets/ictu-logo.png';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useAuthStore();
@@ -151,7 +152,11 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
         )}
       </nav>
 
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 py-8">{children}</main>
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 py-8">
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </main>
 
       <footer className="border-t border-surface-200/60 dark:border-gray-800/60 mt-auto">
         <div className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-between">
