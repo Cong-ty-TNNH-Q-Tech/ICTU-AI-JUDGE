@@ -144,24 +144,28 @@ def _run_sandbox(
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
     """
-    import tempfile
-    import os
+    import tarfile
+    import io
 
     client = docker.from_env()
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        sub_path = os.path.join(tmpdir, "submission.csv")
-        gt_path = os.path.join(tmpdir, "ground_truth.csv")
-        script_path = os.path.join(tmpdir, "metric.py")
+    # Create tar stream in memory
+    tar_stream = io.BytesIO()
+    with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+        # Add submission.csv
+        sub_info = tarfile.TarInfo(name='submission.csv')
+        sub_info.size = len(submission_csv)
+        tar.addfile(sub_info, io.BytesIO(submission_csv))
 
-        with open(sub_path, "wb") as f:
-            f.write(submission_csv)
-        with open(gt_path, "wb") as f:
-            f.write(ground_truth_csv)
+        # Add ground_truth.csv
+        gt_info = tarfile.TarInfo(name='ground_truth.csv')
+        gt_info.size = len(ground_truth_csv)
+        tar.addfile(gt_info, io.BytesIO(ground_truth_csv))
 
         if metric_script:
-            with open(script_path, "wb") as f:
-                f.write(metric_script)
+            script_info = tarfile.TarInfo(name='metric.py')
+            script_info.size = len(metric_script)
+            tar.addfile(script_info, io.BytesIO(metric_script))
             cmd = "python /sandbox/metric.py /sandbox/ground_truth.csv /sandbox/submission.csv"
         else:
             # Built-in metrics
@@ -174,22 +178,37 @@ def _run_sandbox(
                 f"print(accuracy_score(gt['label'], sub['label']))\""
             )
 
-        container = client.containers.run(
-            image="python:3.12-slim",
-            command=f"bash -c '{cmd}'",
-            volumes={tmpdir: {"bind": "/sandbox", "mode": "ro"}},
-            mem_limit=settings.SANDBOX_MEMORY_LIMIT,
-            cpu_period=settings.SANDBOX_CPU_PERIOD,
-            cpu_quota=settings.SANDBOX_CPU_QUOTA,
-            network_disabled=True,          # [SECURITY] Chặn network
-            remove=True,                    # Tự hủy sau khi chạy xong
-            detach=False,
-            stdout=True,
-            stderr=False,
-        )
+    tar_stream.seek(0)
 
-        output = container.decode("utf-8").strip()
+    # 1. Create the container (do not start yet)
+    container = client.containers.create(
+        image="python:3.12-slim",
+        command=f"bash -c '{cmd}'",
+        mem_limit=settings.SANDBOX_MEMORY_LIMIT,
+        cpu_period=settings.SANDBOX_CPU_PERIOD,
+        cpu_quota=settings.SANDBOX_CPU_QUOTA,
+        network_disabled=True,          # [SECURITY] Chặn network
+        detach=True,
+    )
+
+    try:
+        # 2. Inject files via put_archive (Docker automatically creates /sandbox if it doesn't exist)
+        container.put_archive("/sandbox", tar_stream)
+
+        # 3. Start container and wait for it to finish
+        container.start()
+        result = container.wait(timeout=30)
+        
+        output = container.logs(stdout=True, stderr=False).decode("utf-8").strip()
+        
+        if result['StatusCode'] != 0:
+            error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
+            raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
+
         return float(output)
+    finally:
+        # Ensure container is destroyed even on error
+        container.remove(force=True)
 
 
 
