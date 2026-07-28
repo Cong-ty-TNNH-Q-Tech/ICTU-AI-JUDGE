@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import type { Challenge, ChallengeCreateRequest } from '../../../models/api.types';
 import { adminService } from '../../../services/adminService';
 import ReactMarkdown from 'react-markdown';
@@ -286,7 +286,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-2">
                         <label className="text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary">
-                          Tỉ lệ tập Public Test
+                          Tß╗ë lß╗ç tß║¡p Public Test
                         </label>
                         <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
                           {publicTestSplitRatio}%
@@ -301,7 +301,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                         className="w-full h-1.5 bg-surface-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                       <p className="text-[11px] text-content-tertiary mt-2">
-                        Nếu file CSV chưa có cột <b>Usage</b>, hệ thống sẽ tự động gán {publicTestSplitRatio}% số dòng làm tập Public ngẫu nhiên.
+                        Nß║┐u file CSV ch╞░a c├│ cß╗Öt <b>Usage</b>, hß╗ç thß╗æng sß║╜ tß╗▒ ─æß╗Öng g├ín {publicTestSplitRatio}% sß╗æ d├▓ng l├ám tß║¡p Public ngß║½u nhi├¬n.
                       </p>
                     </div>
                   )}

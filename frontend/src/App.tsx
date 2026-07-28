@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store';
 import ErrorBoundary from './views/components/ErrorBoundary';
+import { ToastContainer } from './views/components/Toast';
 
 import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
@@ -34,8 +35,6 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-import { ToastContainer } from './views/components/Toast';
-
 function App() {
   return (
     <ErrorBoundary>
@@ -43,68 +42,66 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
 
-      <Route path="/login" element={
-        <AuthLayout>
-          <LoginPage />
-        </AuthLayout>
-      } />
+        <Route path="/login" element={
+          <AuthLayout>
+            <LoginPage />
+          </AuthLayout>
+        } />
 
+        <Route path="/challenges" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ChallengesPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
 
+        <Route path="/challenges/:id" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ChallengeDetailPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="/challenges" element={
-        <ProtectedRoute>
+        <Route path="/admin" element={
+          <AdminRoute>
+            <MainLayout>
+              <AdminPage />
+            </MainLayout>
+          </AdminRoute>
+        } />
+
+        {/* Issue #30 — Profile page */}
+        <Route path="/profile/me" element={
+          <ProtectedRoute>
+            <Navigate to={`/profile/${useAuthStore.getState().user?.id ?? ''}`} replace />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/:userId" element={
           <MainLayout>
-            <ChallengesPage />
+            <ProfilePage />
           </MainLayout>
-        </ProtectedRoute>
-      } />
+        } />
 
-      <Route path="/challenges/:id" element={
-        <ProtectedRoute>
-          <MainLayout>
-            <ChallengeDetailPage />
-          </MainLayout>
-        </ProtectedRoute>
-      } />
+        {/* Team pages */}
+        <Route path="/teams/join" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <JoinTeamPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="/admin" element={
-        <AdminRoute>
-          <MainLayout>
-            <AdminPage />
-          </MainLayout>
-        </AdminRoute>
-      } />
+        <Route path="/teams/:teamId" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <TeamPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
 
-      {/* Issue #30 — Profile page (công khai, không cần đăng nhập) */}
-      <Route path="/profile/me" element={
-        <ProtectedRoute>
-          <Navigate to={`/profile/${useAuthStore.getState().user?.id ?? ''}`} replace />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/:userId" element={
-        <MainLayout>
-          <ProfilePage />
-        </MainLayout>
-      } />
-
-      {/* Team pages */}
-      <Route path="/teams/join" element={
-        <ProtectedRoute>
-          <MainLayout>
-            <JoinTeamPage />
-          </MainLayout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/teams/:teamId" element={
-        <ProtectedRoute>
-          <MainLayout>
-            <TeamPage />
-          </MainLayout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="*" element={<Navigate to="/challenges" replace />} />
+        <Route path="*" element={<Navigate to="/challenges" replace />} />
       </Routes>
     </ErrorBoundary>
   );

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 /**
- * Toast — H? th?ng thông báo popup d?p, d?ng nh?t v?i dark theme c?a web.
- * Thay th? hoàn toàn browser alert().
+ * Toast — Hệ thống thông báo popup đẹp, dùng chung với dark theme của web.
+ * Thay thế hoàn toàn browser alert().
  *
  * Cách dùng:
  *   import { showToast } from "../../store/toastStore";
@@ -9,7 +9,8 @@
  *   <ToastContainer />
  */
 import React from "react";
-import { useToastStore, ToastType, ToastItem } from "../../store/toastStore";
+import { useToastStore } from "../../store/toastStore";
+import type { ToastType, ToastItem } from "../../store/toastStore";
 
 const TOAST_STYLES: Record<ToastType, { bg: string; border: string; icon: string; iconCls: string; textColor: string }> = {
   success: { bg: "bg-[#0f2b1a]", border: "border-green-500/50", icon: "✓", iconCls: "text-green-400 bg-green-500/20", textColor: "text-green-100" },
@@ -34,7 +35,7 @@ const SingleToast: React.FC<SingleToastProps> = ({ item, onClose }) => {
         {s.icon}
       </span>
       <p className={`flex-1 text-sm font-medium leading-snug pt-0.5 ${s.textColor}`}>{item.message}</p>
-      <button onClick={() => onClose(item.id)} className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors text-xl leading-none">×</button>
+      <button onClick={() => onClose(item.id)} className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors text-xl leading-none" aria-label="Đóng thông báo">×</button>
     </div>
   );
 };

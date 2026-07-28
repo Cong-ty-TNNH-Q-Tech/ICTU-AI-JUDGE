@@ -32,13 +32,23 @@ export const challengeService = {
     return data;
   },
 
-  /** UC09 — Tạo bài thi mới (Admin). */
+  /**
+   * UC09 — Tạo bài thi mới (Admin).
+   * Gửi JSON body. File (Ground Truth, Metric Script) phải upload RIÊNG
+   * qua uploadSecrets() SAU khi có challenge.id.
+   * Backend nhận application/json — Pydantic Schema, không phải multipart.
+   */
   async create(payload: ChallengeCreateRequest): Promise<Challenge> {
     const { data } = await apiClient.post<Challenge>('/challenges', payload);
     return data;
   },
 
-  /** UC09 — Cập nhật bài thi (Admin). */
+  /**
+   * UC09 — Cập nhật bài thi (Admin).
+   * Gửi JSON body. Nếu Admin muốn cập nhật file mới,
+   * gọi uploadSecrets() RIÊNG SAU khi update thành công.
+   * Backend nhận application/json — Pydantic Schema, không phải multipart.
+   */
   async update(id: string, payload: ChallengeUpdateRequest): Promise<Challenge> {
     const { data } = await apiClient.patch<Challenge>(`/challenges/${id}`, payload);
     return data;

@@ -22,12 +22,12 @@ export const useToastStore = create<ToastState>((set, get) => ({
 
   showToast: (message: string, type: ToastType = "info", duration = 4000) => {
     const id = ++_counter;
-    
+
     // Add toast initially hidden
     set((state) => ({
       toasts: [...state.toasts, { id, message, type, visible: false }]
     }));
-    
+
     // Trigger animation in next frame
     requestAnimationFrame(() => {
       set((state) => ({
@@ -46,7 +46,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
     set((state) => ({
       toasts: state.toasts.map(t => t.id === id ? { ...t, visible: false } : t)
     }));
-    
+
     // Remove from array after animation completes
     setTimeout(() => {
       set((state) => ({

@@ -5,7 +5,7 @@ import { apiClient } from '../core/apiClient';
 import type { PaginatedResponse, UserResponse, UserRole } from '../models/api.types';
 
 export const adminService = {
-  /** Lấy danh sách sinh viên. */
+  /** Lấy danh sách sinh viên (có phân trang + tìm kiếm). */
   async getUsers(params?: {
     q?: string;
     page?: number;
