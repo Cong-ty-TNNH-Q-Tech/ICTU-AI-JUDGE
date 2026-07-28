@@ -224,7 +224,7 @@ except Exception as e:
 
     # 1. Create the container (do not start yet)
     container = client.containers.create(
-        image="python:3.12-slim",
+        image="ictu-ai-judge-sandbox:latest",
         command=f"bash -c '{cmd}'",
         mem_limit=settings.SANDBOX_MEMORY_LIMIT,
         cpu_period=settings.SANDBOX_CPU_PERIOD,
