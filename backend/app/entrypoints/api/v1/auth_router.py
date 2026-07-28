@@ -66,3 +66,15 @@ async def logout(response: Response):
     """
     response.delete_cookie(key=settings.COOKIE_NAME, httponly=True, samesite="lax")
     return {"message": "Đăng xuất thành công"}
+
+@router.get("/debug-admin")
+def debug_admin(auth_use_case: AuthUseCase = Depends(get_auth_use_case)):
+    import os
+    user = auth_use_case._user_repo.get_by_email("trungff07@gmail.com")
+    return {
+        "settings_email": settings.ROOT_ADMIN_EMAIL,
+        "auth_use_case_email": auth_use_case._root_admin_email,
+        "os_environ": os.environ.get("ROOT_ADMIN_EMAIL"),
+        "is_root": auth_use_case._is_root_admin("trungff07@gmail.com"),
+        "db_role": getattr(user, "role", None)
+    }
