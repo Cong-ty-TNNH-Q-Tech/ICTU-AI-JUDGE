@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import type { Challenge, ChallengeCreateRequest } from '../../../models/api.types';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Props {
   initialData?: Challenge | null;
-  onSubmit: (data: ChallengeCreateRequest) => Promise<void>;
+  onSubmit: (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -19,6 +21,9 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [groundTruthFile, setGroundTruthFile] = useState<File | null>(null);
+  const [metricScriptFile, setMetricScriptFile] = useState<File | null>(null);
+  const [previewMarkdown, setPreviewMarkdown] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -41,7 +46,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
-    try { await onSubmit(form); } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
+    try { 
+      if (!isEdit && !groundTruthFile) {
+        throw new Error('Ground Truth file is required for new competitions');
+      }
+      if (form.metric_name === 'CUSTOM' && !isEdit && !metricScriptFile) {
+        throw new Error('Custom Metric script is required');
+      }
+      await onSubmit(form, groundTruthFile || undefined, metricScriptFile || undefined); 
+    } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
     finally { setLoading(false); }
   };
 
@@ -64,8 +77,19 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 <input required type="text" name="title" value={form.title} onChange={set} className="input-field" />
               </div>
               <div>
-                <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Description</label>
-                <textarea name="description" value={form.description} onChange={set} rows={4} className="input-field resize-none"></textarea>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary">Description <span className="text-[11px] text-content-tertiary font-normal">(Markdown supported)</span></label>
+                  <button type="button" onClick={() => setPreviewMarkdown(!previewMarkdown)} className="text-[11px] text-primary-600 dark:text-primary-400 hover:underline">
+                    {previewMarkdown ? 'Edit' : 'Preview'}
+                  </button>
+                </div>
+                {previewMarkdown ? (
+                  <div className="input-field min-h-[100px] overflow-y-auto max-h-[200px] prose prose-sm dark:prose-invert">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.description || '*No description provided*'}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <textarea name="description" value={form.description} onChange={set} rows={5} className="input-field resize-none font-mono text-[13px]" placeholder="# Markdown is supported&#10;Write your description here..."></textarea>
+                )}
               </div>
               <div>
                 <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Dataset URL</label>
@@ -98,6 +122,23 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Type</label><select name="type" value={form.type} onChange={set} className="input-field"><option value="PUBLIC">Public</option><option value="COMPETITION">Competition</option></select></div>
                 <div><label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Status</label><select name="status" value={form.status} onChange={set} className="input-field"><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></div>
+              </div>
+              <div className="pt-4 border-t border-surface-200 dark:border-gray-800 mt-4 space-y-4">
+                <div>
+                  <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">
+                    Ground Truth (CSV) {(!isEdit) && <span className="text-red-500">*</span>}
+                  </label>
+                  <input type="file" accept=".csv" required={!isEdit} onChange={e => setGroundTruthFile(e.target.files?.[0] || null)} className="input-field py-1.5 text-[13px]" disabled={isLocked} />
+                  {isEdit && !isLocked && <p className="text-[11px] text-content-tertiary mt-1">Leave empty to keep existing file</p>}
+                </div>
+                {form.metric_name === 'CUSTOM' && (
+                  <div>
+                    <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">
+                      Metric Script (Python) {(!isEdit) && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="file" accept=".py" required={!isEdit} onChange={e => setMetricScriptFile(e.target.files?.[0] || null)} className="input-field py-1.5 text-[13px]" disabled={isLocked} />
+                  </div>
+                )}
               </div>
             </div>
           </div>

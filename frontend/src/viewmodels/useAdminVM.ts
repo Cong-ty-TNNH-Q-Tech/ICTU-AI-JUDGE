@@ -74,23 +74,29 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
     fetchChallenges();
   }, [fetchChallenges]);
 
-  const createChallenge = useCallback(async (payload: ChallengeCreateRequest) => {
+  const createChallenge = useCallback(async (payload: ChallengeCreateRequest, groundTruthFile: File, metricScriptFile?: File) => {
     try {
-      await challengeService.create(payload);
-      await fetchChallenges();
+      const challenge = await challengeService.create(payload);
+      await challengeService.uploadSecrets(challenge.id, groundTruthFile, metricScriptFile);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Lỗi tạo bài thi');
+      alert(err instanceof Error ? err.message : 'Lỗi tạo bài thi hoặc upload file');
       throw err;
+    } finally {
+      await fetchChallenges();
     }
   }, [fetchChallenges]);
 
-  const updateChallenge = useCallback(async (id: string, payload: ChallengeUpdateRequest) => {
+  const updateChallenge = useCallback(async (id: string, payload: ChallengeUpdateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
     try {
       await challengeService.update(id, payload);
-      await fetchChallenges();
+      if (groundTruthFile) {
+        await challengeService.uploadSecrets(id, groundTruthFile, metricScriptFile);
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Lỗi cập nhật bài thi');
+      alert(err instanceof Error ? err.message : 'Lỗi cập nhật bài thi hoặc file');
       throw err;
+    } finally {
+      await fetchChallenges();
     }
   }, [fetchChallenges]);
 

@@ -2,17 +2,15 @@ import React, { useState } from 'react';
 import { useAdminChallengesVM } from '../../../viewmodels/useAdminVM';
 import type { Challenge, ChallengeCreateRequest, ChallengeUpdateRequest } from '../../../models/api.types';
 import ChallengeForm from '../../components/admin/ChallengeForm';
-import UploadSecrets from '../../components/admin/UploadSecrets';
 
 const ChallengeManagePage = () => {
   const { challenges, loading, error, exportingId, createChallenge, updateChallenge, deleteChallenge, downloadLeaderboardCSV } = useAdminChallengesVM();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Challenge | null>(null);
-  const [uploadTarget, setUploadTarget] = useState<Challenge | null>(null);
 
-  const handleSubmit = async (data: ChallengeCreateRequest) => {
-    if (editing) await updateChallenge(editing.id, data as ChallengeUpdateRequest);
-    else await createChallenge(data);
+  const handleSubmit = async (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File) => {
+    if (editing) await updateChallenge(editing.id, data as ChallengeUpdateRequest, groundTruthFile, metricScriptFile);
+    else await createChallenge(data, groundTruthFile!, metricScriptFile);
     setIsFormOpen(false);
   };
 
@@ -80,7 +78,6 @@ const ChallengeManagePage = () => {
                         >
                           {exportingId === c.id ? 'Exporting...' : 'Export Priv'}
                         </button>
-                        <button onClick={() => setUploadTarget(c)} className="btn-ghost text-[12px] py-1.5 px-2.5">Upload</button>
                         <button onClick={() => { setEditing(c); setIsFormOpen(true); }} className="btn-ghost text-[12px] py-1.5 px-2.5">Edit</button>
                         <button onClick={() => deleteChallenge(c.id)} className="btn-ghost text-[12px] py-1.5 px-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
                       </div>
@@ -94,7 +91,6 @@ const ChallengeManagePage = () => {
       </div>
 
       {isFormOpen && <ChallengeForm initialData={editing} onSubmit={handleSubmit} onCancel={() => setIsFormOpen(false)} />}
-      {uploadTarget && <UploadSecrets challengeId={uploadTarget.id} metricName={uploadTarget.metric_name} onClose={() => setUploadTarget(null)} />}
     </div>
   );
 };
