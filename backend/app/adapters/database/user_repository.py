@@ -164,7 +164,8 @@ class UserRepository(IUserRepository):
         if uuids:
             conditions.append(UserModel.id.in_(uuids))
         if student_ids:
-            conditions.append(UserModel.student_id.in_(student_ids))
+            upper_student_ids = [s.upper() for s in student_ids]
+            conditions.append(func.upper(UserModel.student_id).in_(upper_student_ids))
 
         if not conditions:
             return []
