@@ -26,7 +26,7 @@ const getTypeGradient = (type: string) => {
   return 'from-primary-400 to-primary-600';
 };
 
-const stripMarkdown = (md: string) => {
+const stripMarkdown = (md?: string | null) => {
   if (!md) return 'Chưa có mô tả';
   return md
     .replace(/^#+\s+/gm, '') // Remove headers
