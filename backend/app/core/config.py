@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     PROJECT_NAME: str = "ICTU AI JUDGE"
     API_V1_PREFIX: str = "/api/v1"
+    FRONTEND_URL: str = "http://localhost:5173"
 
     # ---- Database ----
     DATABASE_URL: str
