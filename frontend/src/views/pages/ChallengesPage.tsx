@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChallengeListVM } from '../../viewmodels/useChallengeVM';
 import type { Challenge } from '../../models/api.types';
+import HeroIllustration from '../../assets/hero-competition.png';
 
 const getStatusConfig = (c: Challenge) => {
   const now = new Date();
-  if (c.status === 'DRAFT') return { label: 'Upcoming', cls: 'badge-warning' };
-  if (now < new Date(c.start_time)) return { label: 'Upcoming', cls: 'badge-warning' };
-  if (c.end_time && now > new Date(c.end_time)) return { label: 'Completed', cls: 'badge-danger' };
-  return { label: 'Active', cls: 'badge-success' };
+  if (c.status === 'DRAFT') return { label: 'Upcoming', color: 'amber' };
+  if (now < new Date(c.start_time)) return { label: 'Upcoming', color: 'amber' };
+  if (now > new Date(c.end_time)) return { label: 'Completed', color: 'slate' };
+  return { label: 'Active', color: 'emerald' };
 };
 
 const getTimeRemaining = (end: string | null) => {
@@ -17,14 +18,33 @@ const getTimeRemaining = (end: string | null) => {
   if (diff <= 0) return 'Ended';
   const d = Math.floor(diff / 864e5);
   const h = Math.floor((diff % 864e5) / 36e5);
-  return d > 0 ? `${d}d ${h}h remaining` : `${h}h remaining`;
+  return d > 0 ? `${d} ngày ${h} giờ còn lại` : `${h} giờ còn lại`;
+};
+
+const getTypeGradient = (type: string) => {
+  if (type === 'COMPETITION') return 'from-amber-400 to-orange-500';
+  return 'from-primary-400 to-primary-600';
 };
 
 type Filter = 'all' | 'active' | 'upcoming' | 'completed';
 
+const StatusBadge = ({ label, color }: { label: string; color: string }) => {
+  const styles: Record<string, string> = {
+    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30',
+    amber: 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30',
+    slate: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/30',
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${styles[color] || styles.slate}`}>
+      {color === 'emerald' && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse-soft" />}
+      {label}
+    </span>
+  );
+};
+
 const ChallengesPage = () => {
   const [page, setPage] = useState(1);
-  const { challenges: api, meta, loading } = useChallengeListVM({ page, size: 9 });
+  const { challenges: api, meta, loading } = useChallengeListVM({ page, size: 12 });
   const [filter, setFilter] = useState<Filter>('all');
 
   const challenges = api;
@@ -38,115 +58,193 @@ const ChallengesPage = () => {
   });
 
   const filters: { key: Filter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'active', label: 'Active' },
-    { key: 'upcoming', label: 'Upcoming' },
-    { key: 'completed', label: 'Completed' },
+    { key: 'all', label: 'Tất cả' },
+    { key: 'active', label: 'Đang diễn ra' },
+    { key: 'upcoming', label: 'Sắp diễn ra' },
+    { key: 'completed', label: 'Đã kết thúc' },
   ];
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-[28px] font-bold text-content-primary dark:text-content-dark-primary tracking-tight">
-          Competitions
-        </h1>
-        <p className="text-[15px] text-content-secondary dark:text-content-dark-secondary mt-1">
-          Grow your data science skills by competing in AI challenges
-        </p>
+      {/* ===== HERO BANNER ===== */}
+      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 mb-8">
+        <div className="flex items-center justify-between px-8 py-10 lg:px-12 lg:py-12">
+          <div className="max-w-xl">
+            <h1 className="text-3xl lg:text-[40px] font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+              Competitions
+            </h1>
+            <p className="mt-3 text-base lg:text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
+              Thử thách bản thân với các bài toán AI thực tế.
+              <br className="hidden sm:block" />
+              Thi đấu cùng các bạn sinh viên ICTU để nâng cao kỹ năng Data Science.
+            </p>
+          </div>
+          <div className="hidden lg:block flex-shrink-0 ml-8">
+            <img
+              src={HeroIllustration}
+              alt="AI Competition"
+              className="w-52 h-52 object-contain animate-float select-none pointer-events-none"
+              draggable={false}
+            />
+          </div>
+        </div>
+        {/* Decorative gradient bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-400 via-primary-500 to-accent-500" />
       </div>
 
-      <div className="flex items-center gap-2 mb-6">
-        {filters.map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`px-3.5 py-[7px] rounded-lg text-[13px] font-medium transition-all duration-150 ${
-              filter === f.key
-                ? 'bg-content-primary dark:bg-content-dark-primary text-surface dark:text-surface-dark shadow-sm'
-                : 'text-content-secondary dark:text-content-dark-secondary hover:bg-surface-100 dark:hover:bg-gray-800'
-            }`}>
-            {f.label}
-          </button>
-        ))}
-        <span className="ml-auto text-[13px] text-content-tertiary">{filtered.length} competitions</span>
+      {/* ===== FILTER BAR ===== */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl">
+          {filters.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filter === f.key
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium tabular-nums">
+          {filtered.length} cuộc thi
+        </span>
       </div>
 
+      {/* ===== COMPETITION LIST ===== */}
       {loading ? (
         <div className="space-y-4">
-          {[1,2,3].map(i => <div key={i} className="skeleton h-28 w-full rounded-2xl"></div>)}
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="skeleton h-[108px] w-full rounded-xl" />
+          ))}
         </div>
       ) : (
         <>
-        {filtered.length === 0 ? (
-          <div className="card px-6 py-16 text-center">
-            <p className="text-content-tertiary text-sm">No competitions found for this filter.</p>
-          </div>
-        ) : (
-          <div className="space-y-3 stagger-children">
-            {filtered.map(c => {
-              const status = getStatusConfig(c);
-              return (
-                <Link key={c.id} to={`/challenges/${c.id}`}
-                  className="card flex items-start gap-5 p-5 group">
-                  {/* Left color indicator */}
-                  <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${
-                    c.type === 'COMPETITION' ? 'bg-amber-400' : 'bg-primary-400'
-                  }`} />
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-6 bg-white dark:bg-surface-dark rounded-2xl border border-surface-200 dark:border-slate-800">
+              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5">
+                <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9.75m3 0l-3-3m3 3l-3 3M5.625 5.25H9.75m-4.125 0A2.625 2.625 0 003 7.875v8.25A2.625 2.625 0 005.625 18.75h12.75A2.625 2.625 0 0021 16.125V7.875a2.625 2.625 0 00-2.625-2.625H14.25" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Không tìm thấy cuộc thi nào
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Thử chọn bộ lọc khác để xem thêm kết quả.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 stagger-children">
+              {filtered.map(c => {
+                const status = getStatusConfig(c);
+                return (
+                  <Link
+                    key={c.id}
+                    to={`/challenges/${c.id}`}
+                    className="group block bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/60 dark:hover:shadow-slate-900/40 hover:-translate-y-[2px] hover:border-slate-300 dark:hover:border-slate-700"
+                  >
+                    <div className="flex items-stretch">
+                      {/* Color indicator bar */}
+                      <div className={`w-1.5 flex-shrink-0 bg-gradient-to-b ${getTypeGradient(c.type)}`} />
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2.5 mb-1.5">
-                      <h3 className="text-[15px] font-semibold text-content-primary dark:text-content-dark-primary group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
-                        {c.title}
-                      </h3>
-                    </div>
-                    <p className="text-[13px] text-content-secondary dark:text-content-dark-secondary line-clamp-1 mb-3">
-                      {c.description}
-                    </p>
-                    <div className="flex items-center gap-4 text-[12px] text-content-tertiary">
-                      <span className={`badge ${status.cls}`}>{status.label}</span>
-                      {c.type === 'COMPETITION' && <span className="badge bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Featured</span>}
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-                        {c.metric_name}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-                        Up to {c.max_team_size}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {getTimeRemaining(c.end_time)}
-                      </span>
-                    </div>
-                  </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 px-6 py-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            {/* Title row */}
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-[15px] font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                {c.title}
+                              </h3>
+                              <StatusBadge label={status.label} color={status.color} />
+                              {c.type === 'COMPETITION' && (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 px-2.5 py-0.5 text-[11px] font-semibold dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30">
+                                  Featured
+                                </span>
+                              )}
+                            </div>
 
-                  <svg className="w-5 h-5 text-content-tertiary group-hover:text-primary-500 transition-colors flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-        
-        {/* Pagination controls */}
-        {meta && meta.total_pages > 1 && (
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-surface dark:bg-slate-800 border border-gray-200 dark:border-slate-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              Previous
-            </button>
-            <span className="text-sm font-medium text-content-secondary dark:text-content-dark-secondary">
-              Page {page} of {meta.total_pages}
-            </span>
-            <button
-              onClick={() => setPage(p => Math.min(meta.total_pages, p + 1))}
-              disabled={page === meta.total_pages}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-surface dark:bg-slate-800 border border-gray-200 dark:border-slate-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        )}
+                            {/* Description */}
+                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mb-3 leading-relaxed">
+                              {c.description || 'Chưa có mô tả'}
+                            </p>
+
+                            {/* Metadata row */}
+                            <div className="flex items-center gap-5 text-xs text-slate-500 dark:text-slate-400">
+                              <span className="flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                </svg>
+                                <span className="font-medium text-slate-600 dark:text-slate-300">{c.metric_name}</span>
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                </svg>
+                                Tối đa {c.max_team_size} người
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {getTimeRemaining(c.end_time)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Arrow */}
+                          <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {meta && meta.total_pages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-10">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+              >
+                Trang trước
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: meta.total_pages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                      page === p
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setPage(p => Math.min(meta.total_pages, p + 1))}
+                disabled={page === meta.total_pages}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+              >
+                Trang sau
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
