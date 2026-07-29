@@ -107,7 +107,7 @@ class AdminUseCase:
         participants, total = self.challenge_repo.list_participants(challenge_id, page, size)
         
         return {
-            "data": participants,
+            "items": participants,
             "total": total,
             "page": page,
             "size": size
@@ -126,6 +126,56 @@ class AdminUseCase:
             
         added_count = self.challenge_repo.add_participants(challenge_id, user_ids)
         return {"detail": f"Đã thêm {added_count} sinh viên vào whitelist thành công"}
+
+    def add_whitelist_by_identifiers(
+        self, challenge_id: uuid.UUID, identifiers: list[str]
+    ) -> dict:
+        """
+        UC10 — Thêm sinh viên vào Whitelist bằng Email / MSSV / UUID (Issue #91).
+        Backend tự tra cứu user_id từ các định danh được cung cấp.
+        Trả về báo cáo: số lượng tìm thấy, thêm thành công, và các identifier không tìm thấy.
+        """
+        challenge = self.challenge_repo.get_by_id(challenge_id)
+        if not challenge:
+            raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
+
+        if challenge.type != ChallengeType.COMPETITION:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tính năng whitelist chỉ áp dụng cho loại bài thi COMPETITION",
+            )
+
+        # Resolve identifiers → UserEntity list
+        resolved_users = self.user_repo.find_by_identifiers(identifiers)
+        resolved_ids = [u.id for u in resolved_users]
+
+        # Tìm identifier nào không resolve được
+        resolved_raw = set()
+        for u in resolved_users:
+            if u.email:
+                resolved_raw.add(u.email.lower())
+            if u.student_id:
+                resolved_raw.add(u.student_id.lower())
+            resolved_raw.add(str(u.id).lower())
+
+        not_found = [i for i in identifiers if i.strip().lower() not in resolved_raw]
+
+        if not resolved_ids:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Không tìm thấy user nào khớp với {len(identifiers)} identifier đã nhập.",
+            )
+
+        added_count = self.challenge_repo.add_participants(challenge_id, resolved_ids)
+        return {
+            "added": added_count,
+            "resolved": len(resolved_ids),
+            "not_found": not_found,
+            "detail": (
+                f"Đã thêm {added_count} thí sinh vào Whitelist."
+                + (f" {len(not_found)} identifier không tìm thấy." if not_found else "")
+            ),
+        }
 
     def list_all_submissions(self, challenge_id: uuid.UUID, page: int, size: int) -> SubmissionListResponseDTO:
         challenge = self.challenge_repo.get_by_id(challenge_id)

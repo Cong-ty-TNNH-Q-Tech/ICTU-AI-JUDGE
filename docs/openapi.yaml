@@ -306,6 +306,40 @@ paths:
         '403':
           description: Không có quyền Admin.
 
+  /challenges/{id}/participants/by-identifiers:
+    post:
+      summary: Thêm Whitelist Participant bằng định danh (Admin)
+      tags:
+        - Challenges
+        - Admin
+      description: Thêm một hoặc nhiều user vào danh sách được phép tham gia Competition bằng Email, MSSV, hoặc UUID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identifiers:
+                  type: array
+                  items:
+                    type: string
+                  description: Danh sách định danh (Email, MSSV, UUID)
+      responses:
+        '200':
+          description: Thêm whitelist thành công, trả về số lượng thành công và các lỗi.
+        '403':
+          description: Không có quyền Admin.
+        '422':
+          description: Validation Error (Ví dụ trường identifiers trống).
+
   # ==========================================
   # TEAM ENDPOINTS
   # ==========================================

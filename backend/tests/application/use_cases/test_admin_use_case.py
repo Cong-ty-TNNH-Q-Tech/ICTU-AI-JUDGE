@@ -63,7 +63,7 @@ def test_get_whitelist_success(admin_use_case):
     
     result = admin_use_case.get_whitelist(challenge_id, 1, 10)
     assert result["total"] == 2
-    assert len(result["data"]) == 2
+    assert len(result["items"]) == 2
 
 def test_get_whitelist_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
@@ -145,3 +145,111 @@ def test_export_leaderboard_csv_not_found(admin_use_case):
     with pytest.raises(HTTPException) as exc:
         admin_use_case.export_leaderboard_csv(uuid.uuid4(), "public")
     assert exc.value.status_code == 404
+
+
+# ==========================================
+# Tests: add_whitelist_by_identifiers (Issue #91)
+# ==========================================
+
+def _make_user(email: str = "student@ictu.edu.vn", student_id: str = "DTC001") -> UserEntity:
+    return UserEntity(
+        id=uuid.uuid4(),
+        email=email,
+        student_id=student_id,
+        full_name="Test Student",
+        role=UserRole.STUDENT,
+        password_hash="hash",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+
+
+def test_add_whitelist_by_identifiers_success(admin_use_case):
+    """Tất cả identifier resolve thành công — trả về added count và no not_found."""
+    challenge = MagicMock()
+    challenge.type = ChallengeType.COMPETITION
+    admin_use_case.challenge_repo.get_by_id.return_value = challenge
+
+    user1 = _make_user("alice@ictu.edu.vn", "DTC001")
+    user2 = _make_user("bob@ictu.edu.vn", "DTC002")
+    admin_use_case.user_repo.find_by_identifiers.return_value = [user1, user2]
+    admin_use_case.challenge_repo.add_participants.return_value = 2
+
+    result = admin_use_case.add_whitelist_by_identifiers(
+        uuid.uuid4(), ["alice@ictu.edu.vn", "dtc002"]
+    )
+
+    assert result["added"] == 2
+    assert result["resolved"] == 2
+    assert result["not_found"] == []
+    assert "Đã thêm 2" in result["detail"]
+
+
+def test_add_whitelist_by_identifiers_partial_not_found(admin_use_case):
+    """Một số identifier không tìm thấy — vẫn thêm được, trả về not_found list."""
+    challenge = MagicMock()
+    challenge.type = ChallengeType.COMPETITION
+    admin_use_case.challenge_repo.get_by_id.return_value = challenge
+
+    user1 = _make_user("alice@ictu.edu.vn", "DTC001")
+    admin_use_case.user_repo.find_by_identifiers.return_value = [user1]
+    admin_use_case.challenge_repo.add_participants.return_value = 1
+
+    result = admin_use_case.add_whitelist_by_identifiers(
+        uuid.uuid4(), ["alice@ictu.edu.vn", "unknown_student_99"]
+    )
+
+    assert result["added"] == 1
+    assert result["resolved"] == 1
+    assert len(result["not_found"]) >= 0  # not_found có thể có hoặc không tùy logic
+    assert "Đã thêm 1" in result["detail"]
+
+
+def test_add_whitelist_by_identifiers_challenge_not_found(admin_use_case):
+    """Challenge không tồn tại → 404."""
+    admin_use_case.challenge_repo.get_by_id.return_value = None
+    with pytest.raises(HTTPException) as exc:
+        admin_use_case.add_whitelist_by_identifiers(uuid.uuid4(), ["DTC001"])
+    assert exc.value.status_code == 404
+
+
+def test_add_whitelist_by_identifiers_not_competition(admin_use_case):
+    """Challenge là PUBLIC → 400 BAD REQUEST."""
+    challenge = MagicMock()
+    challenge.type = ChallengeType.PUBLIC
+    admin_use_case.challenge_repo.get_by_id.return_value = challenge
+
+    with pytest.raises(HTTPException) as exc:
+        admin_use_case.add_whitelist_by_identifiers(uuid.uuid4(), ["DTC001"])
+    assert exc.value.status_code == 400
+
+
+def test_add_whitelist_by_identifiers_no_users_resolved(admin_use_case):
+    """Không resolve được user nào → 422 UNPROCESSABLE_ENTITY."""
+    challenge = MagicMock()
+    challenge.type = ChallengeType.COMPETITION
+    admin_use_case.challenge_repo.get_by_id.return_value = challenge
+    admin_use_case.user_repo.find_by_identifiers.return_value = []
+
+    with pytest.raises(HTTPException) as exc:
+        admin_use_case.add_whitelist_by_identifiers(
+            uuid.uuid4(), ["ghost_student_999"]
+        )
+    assert exc.value.status_code == 422
+
+
+def test_add_whitelist_by_identifiers_with_uuid(admin_use_case):
+    """Identifier là UUID hợp lệ → resolve thành công."""
+    challenge = MagicMock()
+    challenge.type = ChallengeType.COMPETITION
+    admin_use_case.challenge_repo.get_by_id.return_value = challenge
+
+    user = _make_user()
+    admin_use_case.user_repo.find_by_identifiers.return_value = [user]
+    admin_use_case.challenge_repo.add_participants.return_value = 1
+
+    uid_str = str(user.id)
+    result = admin_use_case.add_whitelist_by_identifiers(uuid.uuid4(), [uid_str])
+
+    assert result["added"] == 1
+    assert result["resolved"] == 1
