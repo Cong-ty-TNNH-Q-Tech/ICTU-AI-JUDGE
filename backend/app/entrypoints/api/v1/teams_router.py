@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from app.application.dtos.team_dtos import CreateInviteResponseDTO, JoinTeamRequestDTO, TeamResponseDTO
 from app.application.use_cases.team_use_case import TeamUseCase
 from app.entrypoints.dependencies import get_current_user_id, get_team_use_case
+from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -18,13 +19,14 @@ async def create_invite(
     team_id: uuid.UUID,
     request: Request,
     use_case: TeamUseCase = Depends(get_team_use_case),
-    user_id: uuid.UUID = Depends(get_current_user_id)
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    settings: Settings = Depends(get_settings)
 ):
     """
     UC02 — Trưởng nhóm tạo mã mời (Invite Token).
     Kiểm tra: Đã qua team_lock_deadline? Đội đã full chưa?
     """
-    base_url = str(request.base_url).rstrip("/") + "/api/v1/teams"
+    base_url = settings.FRONTEND_URL.rstrip("/") + "/teams"
     return use_case.create_invite(team_id, user_id, base_url)
 
 
