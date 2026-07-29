@@ -8,7 +8,7 @@ const getStatusConfig = (c: Challenge) => {
   const now = new Date();
   if (c.status === 'DRAFT') return { label: 'Upcoming', color: 'amber' };
   if (now < new Date(c.start_time)) return { label: 'Upcoming', color: 'amber' };
-  if (now > new Date(c.end_time)) return { label: 'Completed', color: 'slate' };
+  if (c.end_time && now > new Date(c.end_time)) return { label: 'Completed', color: 'slate' };
   return { label: 'Active', color: 'emerald' };
 };
 
