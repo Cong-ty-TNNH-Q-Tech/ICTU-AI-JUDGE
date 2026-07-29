@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store';
 
 interface Props {
   team: TeamDetailVM;
-  onKick?: (userId: string) => void;
+  onKick?: (userId: string, userName: string) => void;
 }
 
 const TeamMemberList: React.FC<Props> = ({ team, onKick }) => {
@@ -61,7 +61,7 @@ const TeamMemberList: React.FC<Props> = ({ team, onKick }) => {
             {/* Nút kick member */}
             {isLeader && !isMe && !team.has_submissions && onKick && (
                <button 
-                onClick={() => onKick(member.user_id)}
+                 onClick={() => onKick(member.user_id, member.full_name)}
                 className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors border border-red-100 dark:border-red-900/30"
                >
                  Đá ra
