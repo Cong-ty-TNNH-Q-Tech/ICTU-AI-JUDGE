@@ -155,10 +155,10 @@ class AdminUseCase:
             if u.email:
                 resolved_raw.add(u.email.lower())
             if u.student_id:
-                resolved_raw.add(u.student_id)
-            resolved_raw.add(str(u.id))
+                resolved_raw.add(u.student_id.lower())
+            resolved_raw.add(str(u.id).lower())
 
-        not_found = [i for i in identifiers if i.strip().lower() not in resolved_raw and i.strip() not in resolved_raw]
+        not_found = [i for i in identifiers if i.strip().lower() not in resolved_raw]
 
         if not resolved_ids:
             raise HTTPException(

@@ -176,7 +176,7 @@ def test_add_whitelist_by_identifiers_success(admin_use_case):
     admin_use_case.challenge_repo.add_participants.return_value = 2
 
     result = admin_use_case.add_whitelist_by_identifiers(
-        uuid.uuid4(), ["alice@ictu.edu.vn", "DTC002"]
+        uuid.uuid4(), ["alice@ictu.edu.vn", "dtc002"]
     )
 
     assert result["added"] == 2
