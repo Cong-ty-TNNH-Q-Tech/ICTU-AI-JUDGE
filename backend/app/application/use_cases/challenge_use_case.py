@@ -123,11 +123,18 @@ class ChallengeUseCase:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
             raise ValueError("Bài thi không tồn tại.")
+
+        if not is_admin and challenge.status != ChallengeStatus.PUBLISHED:
+            raise ValueError("Bài thi không tồn tại.")
+
         return self._to_dto(challenge, is_admin=is_admin)
 
     def list_challenges(
         self, page: int, size: int, status_filter: str | None = None, is_admin: bool = False, tag_id: uuid.UUID | None = None
     ) -> ChallengeListResponseDTO:
+        if not is_admin:
+            status_filter = ChallengeStatus.PUBLISHED.value
+
         entities, total = self.challenge_repo.list_all(
             page=page, size=size, status_filter=status_filter, tag_id=tag_id
         )
