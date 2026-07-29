@@ -191,6 +191,7 @@ except Exception as e:
             built_in_script = f"""
 import pandas as pd
 import sys
+import math
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
 
 try:
@@ -224,7 +225,7 @@ try:
     elif metric_name == 'F1_SCORE':
         score = f1_score(y_true, y_pred, average='macro')
     elif metric_name == 'RMSE':
-        score = mean_squared_error(y_true, y_pred, squared=False)
+        score = math.sqrt(mean_squared_error(y_true, y_pred))
     else:
         print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
         sys.exit(1)
