@@ -77,7 +77,7 @@ class ChallengeModel(Base):
         default=ChallengeStatus.DRAFT,
     )
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     team_lock_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rate_limit_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     max_team_size: Mapped[int] = mapped_column(Integer, nullable=False, default=5)

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 interface ChallengeTimerProps {
-  endTime: string;
+  endTime: string | null;
   variant?: 'compact' | 'full';
   className?: string;
 }
@@ -44,7 +44,23 @@ const ChallengeTimer: React.FC<ChallengeTimerProps> = ({ endTime, variant = 'com
     return () => clearInterval(timer);
   }, [endTime]);
 
-  if (!endTime) return <span className="text-slate-500">--:--:--</span>;
+  if (!endTime) {
+    if (variant === 'compact') {
+      return (
+        <div className={`flex items-center gap-1.5 font-medium ${className || 'text-sm text-green-400'}`}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Không giới hạn
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center py-2 px-6 bg-surface-dark/40 border border-white/10 rounded-xl shadow-inner">
+        <span className="text-2xl font-bold text-green-400 tracking-wider">∞ Không giới hạn</span>
+      </div>
+    );
+  }
 
   if (timeLeft.isEnded) {
     return (

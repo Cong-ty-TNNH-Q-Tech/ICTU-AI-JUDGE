@@ -7,11 +7,12 @@ const getStatusConfig = (c: Challenge) => {
   const now = new Date();
   if (c.status === 'DRAFT') return { label: 'Upcoming', cls: 'badge-warning' };
   if (now < new Date(c.start_time)) return { label: 'Upcoming', cls: 'badge-warning' };
-  if (now > new Date(c.end_time)) return { label: 'Completed', cls: 'badge-danger' };
+  if (c.end_time && now > new Date(c.end_time)) return { label: 'Completed', cls: 'badge-danger' };
   return { label: 'Active', cls: 'badge-success' };
 };
 
-const getTimeRemaining = (end: string) => {
+const getTimeRemaining = (end: string | null) => {
+  if (!end) return 'Không giới hạn';
   const diff = new Date(end).getTime() - Date.now();
   if (diff <= 0) return 'Ended';
   const d = Math.floor(diff / 864e5);
@@ -31,9 +32,9 @@ const ChallengesPage = () => {
   const filtered = challenges.filter(c => {
     if (filter === 'all') return true;
     const now = new Date();
-    if (filter === 'active') return c.status === 'PUBLISHED' && now >= new Date(c.start_time) && now <= new Date(c.end_time);
+    if (filter === 'active') return c.status === 'PUBLISHED' && now >= new Date(c.start_time) && (!c.end_time || now <= new Date(c.end_time));
     if (filter === 'upcoming') return c.status === 'DRAFT' || now < new Date(c.start_time);
-    return now > new Date(c.end_time);
+    return c.end_time ? now > new Date(c.end_time) : false;
   });
 
   const filters: { key: Filter; label: string }[] = [
