@@ -1,84 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { challengeService } from "../../../services/challengeService";
-import type { Solution } from "../../../models/api.types";
-import { useToastStore } from "../../../store/toastStore";
+/**
+ * SolutionsTab — View (Dumb Component) cho tab giải pháp.
+ * Tuân thủ MVVM: KHÔNG gọi API trực tiếp, nhận toàn bộ state từ useSolutionsVM.
+ */
+import React from "react";
+import { useSolutionsVM } from "../../../viewmodels/useSolutionsVM";
 
 interface SolutionsTabProps {
   challengeId: string;
 }
 
 export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
-  const [solutions, setSolutions] = useState<Solution[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [upvotingId, setUpvotingId] = useState<string | null>(null);
-
-  const fetchSolutions = async () => {
-    try {
-      setLoading(true);
-      const res = await challengeService.listSolutions(challengeId);
-      setSolutions(res.items);
-    } catch (err) {
-      console.error("Failed to load solutions", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSolutions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [challengeId]);
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !content || !file) {
-      useToastStore.getState().showToast("Vui lòng điền đầy đủ thông tin và chọn file notebook.", "warning");
-      return;
-    }
-    try {
-      setUploading(true);
-      await challengeService.publishSolution(challengeId, title, content, file);
-      useToastStore.getState().showToast("Đăng giải pháp thành công!", "success");
-      setShowModal(false);
-      setTitle("");
-      setContent("");
-      setFile(null);
-      fetchSolutions();
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } }; message: string };
-      const detail = error.response?.data?.detail || error.message || "Lỗi không xác định";
-      useToastStore.getState().showToast("Có lỗi xảy ra: " + detail, "error");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleUpvote = async (solutionId: string) => {
-    if (upvotingId === solutionId) return;
-    try {
-      setUpvotingId(solutionId);
-      const updated = await challengeService.upvoteSolution(challengeId, solutionId);
-      setSolutions((prev) => prev.map((s) => (s.id === solutionId ? { ...s, upvotes: updated.upvotes } : s)));
-      useToastStore.getState().showToast("Đã upvote thành công!", "success", 2500);
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        useToastStore.getState().showToast("Bạn đã upvote bài này rồi!", "warning");
-      } else if (status === 401) {
-        useToastStore.getState().showToast("Vui lòng đăng nhập để upvote!", "info");
-      } else {
-        console.error("Upvote failed", err);
-        useToastStore.getState().showToast("Không thể upvote. Vui lòng thử lại!", "error");
-      }
-    } finally {
-      setUpvotingId(null);
-    }
-  };
+  const {
+    solutions,
+    loading,
+    showModal,
+    openModal,
+    closeModal,
+    title,
+    setTitle,
+    content,
+    setContent,
+    file,
+    setFile,
+    uploading,
+    handlePublish,
+    upvotingId,
+    handleUpvote,
+  } = useSolutionsVM(challengeId);
 
   return (
     <div>
@@ -89,7 +37,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Chia sẻ và học hỏi từ các notebook của cộng đồng</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openModal}
           className="px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-semibold text-sm transition-all hover:bg-slate-800 dark:hover:bg-slate-100 shadow-sm hover:shadow-md"
         >
           Đăng giải pháp
@@ -163,7 +111,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-2xl p-6 lg:p-8 w-full max-w-lg shadow-2xl animate-scale-in">
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-6">Chia sẻ giải pháp</h2>
-            <form onSubmit={handleUpload}>
+            <form onSubmit={handlePublish}>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tiêu đề</label>
                 <input
@@ -201,7 +149,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   Hủy
