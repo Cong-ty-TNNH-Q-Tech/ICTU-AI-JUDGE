@@ -13,7 +13,7 @@ def dummy_challenge():
         title="Test Challenge",
         description="Desc",
         type=ChallengeType.PUBLIC,
-        status=ChallengeStatus.DRAFT,
+        status=ChallengeStatus.PUBLISHED,
         start_time=datetime.now(timezone.utc),
         end_time=datetime.now(timezone.utc),
         rate_limit_minutes=60,
@@ -42,6 +42,14 @@ def test_list_challenges(challenge_use_case, dummy_challenge):
     assert res.items[0].title == "Test Challenge"
     challenge_use_case.challenge_repo.list_all.assert_called_once_with(page=1, size=10, status_filter="PUBLISHED", tag_id=None)
 
+def test_list_challenges_student_always_gets_published(challenge_use_case, dummy_challenge):
+    challenge_use_case.challenge_repo.list_all.return_value = ([dummy_challenge], 1)
+    
+    # Dù truyền vào DRAFT, status_filter vẫn bị override thành PUBLISHED
+    res = challenge_use_case.list_challenges(page=1, size=10, status_filter="DRAFT", is_admin=False)
+    assert res.total == 1
+    challenge_use_case.challenge_repo.list_all.assert_called_once_with(page=1, size=10, status_filter="PUBLISHED", tag_id=None)
+
 def test_get_challenge(challenge_use_case, dummy_challenge):
     cid = dummy_challenge.id
     challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
@@ -54,6 +62,20 @@ def test_get_challenge_not_found(challenge_use_case):
     challenge_use_case.challenge_repo.get_by_id.return_value = None
     with pytest.raises(ValueError, match="Bài thi không tồn tại."):
         challenge_use_case.get_challenge(uuid.uuid4())
+
+def test_get_challenge_draft_as_student(challenge_use_case, dummy_challenge):
+    dummy_challenge.status = ChallengeStatus.DRAFT
+    challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
+    
+    with pytest.raises(ValueError, match="Bài thi không tồn tại."):
+        challenge_use_case.get_challenge(dummy_challenge.id, is_admin=False)
+
+def test_get_challenge_draft_as_admin(challenge_use_case, dummy_challenge):
+    dummy_challenge.status = ChallengeStatus.DRAFT
+    challenge_use_case.challenge_repo.get_by_id.return_value = dummy_challenge
+    
+    res = challenge_use_case.get_challenge(dummy_challenge.id, is_admin=True)
+    assert res.title == "Test Challenge"
 
 def test_create_challenge(challenge_use_case):
     from app.application.dtos.challenge_dtos import ChallengeCreateRequestDTO
