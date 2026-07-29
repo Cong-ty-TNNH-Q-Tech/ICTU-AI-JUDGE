@@ -6,8 +6,8 @@
  * - Thêm updatingRoleId: inline loading spinner khi cập nhật Role
  * - Thêm togglingStatusId: inline loading spinner khi Khóa/Mở khóa
  * - Tách exportingLeaderboard state: 2 nút Export Pub & Priv hoạt động độc lập
- * - Thay alert() bằng toast thông qua useToastStore
- * - Confirmation modal được xử lý ở tầng View (không dùng window.confirm)
+ * - Toast thông báo qua useToastStore (thay thế alert/window.confirm)
+ * - ConfirmationModal dùng chung xử lý destructive actions ở tầng View
  */
 import { useCallback, useEffect, useState } from 'react';
 import { adminService } from '../services/adminService';
@@ -179,8 +179,7 @@ export function useAdminChallengesVM(options: { page?: number; size?: number; st
   );
 
   /**
-   * Xóa bài thi — KHÔNG dùng window.confirm() nữa.
-   * Confirmation được xử lý bởi ConfirmationModal ở tầng View.
+   * Xóa bài thi — Confirmation được xử lý bởi ConfirmationModal ở tầng View.
    */
   const deleteChallenge = useCallback(
     async (id: string) => {

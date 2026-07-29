@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { useAdminUsersVM } from '../../../viewmodels/useAdminVM';
 import type { UserRole } from '../../../models/api.types';
-import ConfirmationModal from '../../components/admin/ConfirmationModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const UserManagePage = () => {
   const [search, setSearch] = useState('');
