@@ -39,6 +39,8 @@ class LeaderboardUseCase:
             raise ValueError("Challenge not found")
             
         if lb_type == LeaderboardType.PRIVATE:
+            if challenge.end_time is None:
+                raise PermissionError("Challenge không giới hạn thời gian không hỗ trợ Private Leaderboard.")
             if current_time <= challenge.end_time:
                 raise PermissionError("Private leaderboard is only available after challenge ends")
             

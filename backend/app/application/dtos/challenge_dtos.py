@@ -13,7 +13,7 @@ class ChallengeCreateRequestDTO(BaseModel):
     description: str = Field(..., min_length=1)
     type: ChallengeType
     start_time: datetime
-    end_time: datetime
+    end_time: Optional[datetime] = None
     rate_limit_minutes: int = Field(default=30, ge=1)
     max_file_size_mb: int = Field(default=5, ge=1, le=50)
     metric_name: str = Field(..., max_length=50)
@@ -43,7 +43,7 @@ class ChallengeResponseDTO(BaseModel):
     type: ChallengeType
     status: ChallengeStatus
     start_time: datetime
-    end_time: datetime
+    end_time: Optional[datetime] = None
     rate_limit_minutes: int
     max_file_size_mb: int
     metric_name: str

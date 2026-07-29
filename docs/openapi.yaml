@@ -1155,6 +1155,7 @@ components:
         end_time:
           type: string
           format: date-time
+          nullable: true
         max_team_size:
           type: integer
           default: 1
@@ -1170,7 +1171,6 @@ components:
         - title
         - type
         - start_time
-        - end_time
         - metric_name
         - metric_direction
       properties:
@@ -1194,6 +1194,7 @@ components:
         end_time:
           type: string
           format: date-time
+          nullable: true
         team_lock_deadline:
           type: string
           format: date-time
@@ -1235,6 +1236,7 @@ components:
         end_time:
           type: string
           format: date-time
+          nullable: true
         team_lock_deadline:
           type: string
           format: date-time
