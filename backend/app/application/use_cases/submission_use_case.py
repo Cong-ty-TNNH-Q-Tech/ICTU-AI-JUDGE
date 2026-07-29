@@ -220,12 +220,13 @@ class SubmissionUseCase:
             raise NotFoundError(f"Challenge không tồn tại.")
 
         challenge_end = challenge.end_time
-        if challenge_end.tzinfo is None:
-            challenge_end = challenge_end.replace(tzinfo=timezone.utc)
-        if now > challenge_end:
-            raise SubmissionDeadlinePassedError(
-                "Chỉ được chọn bài Private trước khi challenge kết thúc."
-            )
+        if challenge_end is not None:
+            if challenge_end.tzinfo is None:
+                challenge_end = challenge_end.replace(tzinfo=timezone.utc)
+            if now > challenge_end:
+                raise SubmissionDeadlinePassedError(
+                    "Chỉ được chọn bài Private trước khi challenge kết thúc."
+                )
 
         # Bỏ chọn submission cũ của team trong challenge
         self.submission_repo.clear_selected_for_private(
@@ -281,6 +282,9 @@ class SubmissionUseCase:
             raise NotFoundError("Challenge không tồn tại.")
 
         challenge_end = challenge.end_time
+        if challenge_end is None:
+            raise PermissionDeniedError("Challenge không giới hạn thời gian không hỗ trợ nộp Source Code.")
+            
         if challenge_end.tzinfo is None:
             challenge_end = challenge_end.replace(tzinfo=timezone.utc)
         if now < challenge_end:
