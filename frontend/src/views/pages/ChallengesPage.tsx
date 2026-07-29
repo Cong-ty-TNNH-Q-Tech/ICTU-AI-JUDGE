@@ -26,6 +26,20 @@ const getTypeGradient = (type: string) => {
   return 'from-primary-400 to-primary-600';
 };
 
+const stripMarkdown = (md?: string | null) => {
+  if (!md) return 'Chưa có mô tả';
+  return md
+    .replace(/^#+\s+/gm, '') // Remove headers
+    .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2') // italic
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // links
+    .replace(/!\[(.*?)\]\(.*?\)/g, '$1') // images
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // code
+    .replace(/\n+/g, ' ') // replace newlines
+    .replace(/[#_*~`>]/g, '') // catch remaining
+    .trim();
+};
+
 type Filter = 'all' | 'active' | 'upcoming' | 'completed';
 
 const StatusBadge = ({ label, color }: { label: string; color: string }) => {
@@ -138,71 +152,100 @@ const ChallengesPage = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 stagger-children">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 stagger-children">
               {filtered.map(c => {
                 const status = getStatusConfig(c);
                 return (
                   <Link
                     key={c.id}
                     to={`/challenges/${c.id}`}
-                    className="group block bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/60 dark:hover:shadow-slate-900/40 hover:-translate-y-[2px] hover:border-slate-300 dark:hover:border-slate-700"
+                    className="group flex flex-col bg-white dark:bg-surface-dark rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 hover:-translate-y-1.5 border border-surface-200 dark:border-slate-800 hover:border-primary-300 dark:hover:border-primary-500/50"
                   >
-                    <div className="flex items-stretch">
-                      {/* Color indicator bar */}
-                      <div className={`w-1.5 flex-shrink-0 bg-gradient-to-b ${getTypeGradient(c.type)}`} />
+                    {/* Top Banner Area */}
+                    <div className={`relative h-36 w-full bg-gradient-to-br ${getTypeGradient(c.type)}/10 flex items-center justify-center overflow-hidden`}>
+                      {/* Decorative Circles */}
+                      <div className={`absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br ${getTypeGradient(c.type)} opacity-20 rounded-full blur-2xl group-hover:opacity-40 transition-opacity duration-500`} />
+                      <div className={`absolute -bottom-12 -left-12 w-32 h-32 bg-gradient-to-br ${getTypeGradient(c.type)} opacity-20 rounded-full blur-2xl group-hover:opacity-40 transition-opacity duration-500`} />
+                      
+                      {/* Icon */}
+                      <div className={`relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br ${getTypeGradient(c.type)} flex items-center justify-center shadow-lg shadow-primary-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500`}>
+                        {c.type === 'COMPETITION' ? (
+                          <svg className="w-8 h-8 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.003 6.003 0 01-5.54 0" />
+                          </svg>
+                        ) : (
+                          <svg className="w-8 h-8 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                          </svg>
+                        )}
+                      </div>
+                      
+                      {/* Badges overlaid on banner */}
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        {c.type === 'COMPETITION' && (
+                          <span className="inline-flex items-center rounded-full bg-amber-500/90 backdrop-blur-sm text-white px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase shadow-sm">
+                            Ranked
+                          </span>
+                        )}
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase shadow-sm backdrop-blur-sm ${
+                          status.color === 'emerald' ? 'bg-emerald-500/90 text-white' : 
+                          status.color === 'amber' ? 'bg-amber-500/90 text-white' : 
+                          'bg-slate-600/90 text-white'
+                        }`}>
+                          {status.label}
+                        </span>
+                      </div>
+                    </div>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0 px-6 py-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            {/* Title row */}
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-[15px] font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
-                                {c.title}
-                              </h3>
-                              <StatusBadge label={status.label} color={status.color} />
-                              {c.type === 'COMPETITION' && (
-                                <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 px-2.5 py-0.5 text-[11px] font-semibold dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30">
-                                  Featured
-                                </span>
-                              )}
+                    {/* Card Body */}
+                    <div className="flex-1 flex flex-col p-6 lg:p-7 relative bg-white dark:bg-surface-dark">
+                      {/* Title & Description */}
+                      <div className="mb-6">
+                        <h3 className="text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors mb-3 line-clamp-2 leading-tight">
+                          {c.title}
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                          {stripMarkdown(c.description)}
+                        </p>
+                      </div>
+                      
+                      {/* Spacer to push metadata to bottom */}
+                      <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800/60">
+                        <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 group-hover:text-primary-500 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z" />
+                              </svg>
                             </div>
-
-                            {/* Description */}
-                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mb-3 leading-relaxed">
-                              {c.description || 'Chưa có mô tả'}
-                            </p>
-
-                            {/* Metadata row */}
-                            <div className="flex items-center gap-5 text-xs text-slate-500 dark:text-slate-400">
-                              <span className="flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                                </svg>
-                                <span className="font-medium text-slate-600 dark:text-slate-300">{c.metric_name}</span>
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                                </svg>
-                                Tối đa {c.max_team_size} người
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {getTimeRemaining(c.end_time)}
-                              </span>
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide truncate">{c.metric_name}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 group-hover:text-primary-500 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                              </svg>
                             </div>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Nhóm ≤ {c.max_team_size}</span>
                           </div>
 
-                          {/* Arrow */}
-                          <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                            </svg>
+                          <div className="flex items-center gap-2.5 col-span-2">
+                            <div className="w-7 h-7 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 group-hover:text-primary-500 transition-colors">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{getTimeRemaining(c.end_time)}</span>
                           </div>
                         </div>
+                      </div>
+                      
+                      {/* Arrow indicator bottom right */}
+                      <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                        <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
                       </div>
                     </div>
                   </Link>
