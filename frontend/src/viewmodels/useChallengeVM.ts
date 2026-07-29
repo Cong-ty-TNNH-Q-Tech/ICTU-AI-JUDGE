@@ -106,10 +106,12 @@ export function useLeaderboardVM(challengeId: string) {
   const [totalCount, setTotalCount] = useState(0);
   const size = 20;
 
-  const fetchLeaderboard = useCallback(async () => {
+  const fetchLeaderboard = useCallback(async (silent: boolean = false) => {
     if (!challengeId) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const result = await challengeService.getLeaderboard(challengeId, { 
         type: leaderboardType,
@@ -119,20 +121,29 @@ export function useLeaderboardVM(challengeId: string) {
       setEntries(result?.items ?? []);
       setTotalCount(result?.total ?? 0);
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; message?: string };
-      if (err?.response?.status === 403 && leaderboardType === 'private') {
-        setError('Bảng xếp hạng Private chỉ hiển thị sau khi cuộc thi kết thúc.');
-        setEntries([]);
-      } else {
-        setError(err instanceof Error ? err.message : 'Lỗi tải bảng xếp hạng');
+      if (!silent) {
+        const err = error as { response?: { status?: number }; message?: string };
+        if (err?.response?.status === 403 && leaderboardType === 'private') {
+          setError('Bảng xếp hạng Private chỉ hiển thị sau khi cuộc thi kết thúc.');
+          setEntries([]);
+        } else {
+          setError(err instanceof Error ? err.message : 'Lỗi tải bảng xếp hạng');
+        }
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [challengeId, leaderboardType, page, size]);
 
   useEffect(() => {
     fetchLeaderboard();
+
+    // Polling 30s
+    const interval = setInterval(() => {
+      fetchLeaderboard(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [fetchLeaderboard]);
 
   // Reset page to 1 when changing leaderboard type
