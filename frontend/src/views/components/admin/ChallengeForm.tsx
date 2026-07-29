@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Challenge, ChallengeCreateRequest } from '../../../models/api.types';
 import { adminService } from '../../../services/adminService';
 import ReactMarkdown from 'react-markdown';
@@ -79,6 +79,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isUnlimitedTime, setIsUnlimitedTime] = useState(false);
   
   const [groundTruthFile, setGroundTruthFile] = useState<File | null>(null);
   const [metricScriptFile, setMetricScriptFile] = useState<File | null>(null);
@@ -99,6 +100,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
         max_file_size_mb: initialData.max_file_size_mb, rate_limit_minutes: initialData.rate_limit_minutes,
         max_team_size: initialData.max_team_size,
       });
+      setIsUnlimitedTime(initialData.end_time === null);
     }
   }, [initialData]);
 
@@ -140,7 +142,8 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
       if (form.metric_name === 'CUSTOM' && !isEdit && !metricScriptFile) {
         throw new Error('Custom Metric script is required');
       }
-      await onSubmit(form, groundTruthFile || undefined, metricScriptFile || undefined, publicTestSplitRatio); 
+      const submitForm = { ...form, end_time: isUnlimitedTime ? null : form.end_time };
+      await onSubmit(submitForm, groundTruthFile || undefined, metricScriptFile || undefined, publicTestSplitRatio); 
     } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
     finally { setLoading(false); }
   };
@@ -235,9 +238,17 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Start Time <span className="text-red-500">*</span></label>
                     <input required type="datetime-local" name="start_time" value={form.start_time?.substring(0, 16)} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
                   </div>
-                  <div className="p-4 bg-surface-50 dark:bg-gray-900/50 rounded-xl border border-surface-200 dark:border-gray-800">
-                    <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">End Time <span className="text-red-500">*</span></label>
-                    <input required type="datetime-local" name="end_time" value={form.end_time?.substring(0, 16)} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
+                  <div className="p-4 bg-surface-50 dark:bg-gray-900/50 rounded-xl border border-surface-200 dark:border-gray-800 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-0">End Time {!isUnlimitedTime && <span className="text-red-500">*</span>}</label>
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <input type="checkbox" checked={isUnlimitedTime} onChange={(e) => setIsUnlimitedTime(e.target.checked)} className="rounded border-surface-300 text-primary-600 shadow-sm focus:ring-primary-500 cursor-pointer" />
+                        <span className="text-xs text-content-secondary group-hover:text-primary-600 transition-colors">Không giới hạn</span>
+                      </label>
+                    </div>
+                    {!isUnlimitedTime && (
+                      <input required type="datetime-local" name="end_time" value={form.end_time?.substring(0, 16) || ''} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
+                    )}
                   </div>
                 </div>
                 
@@ -286,7 +297,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-2">
                         <label className="text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary">
-                          Tß╗ë lß╗ç tß║¡p Public Test
+                          Tỷ lệ tập Public Test
                         </label>
                         <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
                           {publicTestSplitRatio}%
@@ -301,7 +312,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                         className="w-full h-1.5 bg-surface-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                       <p className="text-[11px] text-content-tertiary mt-2">
-                        Nß║┐u file CSV ch╞░a c├│ cß╗Öt <b>Usage</b>, hß╗ç thß╗æng sß║╜ tß╗▒ ─æß╗Öng g├ín {publicTestSplitRatio}% sß╗æ d├▓ng l├ám tß║¡p Public ngß║½u nhi├¬n.
+                        Nếu file CSV chưa có cột <b>Usage</b>, hệ thống sẽ tự động gán {publicTestSplitRatio}% số dòng làm tập Public ngẫu nhiên.
                       </p>
                     </div>
                   )}

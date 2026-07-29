@@ -91,7 +91,7 @@ class ChallengeEntity:
     type: ChallengeType
     status: ChallengeStatus
     start_time: datetime
-    end_time: datetime
+    end_time: datetime | None
     rate_limit_minutes: int
     max_team_size: int
     max_file_size_mb: int
@@ -113,7 +113,8 @@ class ChallengeEntity:
         """
         return (
             self.status == ChallengeStatus.PUBLISHED
-            and self.start_time <= now <= self.end_time
+            and self.start_time <= now
+            and (self.end_time is None or now <= self.end_time)
             and self.deleted_at is None
         )
 

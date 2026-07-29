@@ -80,3 +80,12 @@ def test_get_leaderboard_not_found(leaderboard_use_case):
         leaderboard_use_case.get_leaderboard(
             uuid.uuid4(), LeaderboardType.PUBLIC, 1, 10, datetime.now()
         )
+
+def test_get_private_leaderboard_unlimited_time_raises_error(leaderboard_use_case):
+    import uuid
+    mock_challenge = MagicMock()
+    mock_challenge.end_time = None
+    leaderboard_use_case.challenge_repo.get_by_id.return_value = mock_challenge
+    
+    with pytest.raises(PermissionError, match='Challenge không giới hạn thời gian không hỗ trợ Private Leaderboard.'):
+        leaderboard_use_case.get_leaderboard(uuid.uuid4(), LeaderboardType.PRIVATE, 1, 10, datetime.now(timezone.utc))

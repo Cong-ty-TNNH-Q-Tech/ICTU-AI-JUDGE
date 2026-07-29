@@ -131,7 +131,7 @@ export interface Challenge {
   status: ChallengeStatus;
   is_public: boolean;
   start_time: string;  // ISO 8601
-  end_time: string;
+  end_time: string | null;
   team_lock_deadline?: string;
   rate_limit_minutes: number;
   max_file_size_mb: number;
@@ -204,7 +204,7 @@ export interface ChallengeCreateRequest {
   type: ChallengeType;
   status?: ChallengeStatus;
   start_time: string;
-  end_time: string;
+  end_time: string | null;
   team_lock_deadline?: string;
   rate_limit_minutes?: number;
   max_file_size_mb?: number;

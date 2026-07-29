@@ -311,7 +311,7 @@ const ChallengeManagePage = () => {
                         <span className={`badge ${c.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'}`}>{c.status}</span>
                       </td>
                       <td className="px-5 py-3.5 hidden lg:table-cell text-content-tertiary text-[12px]">
-                        {new Date(c.start_time).toLocaleDateString('vi-VN')} — {new Date(c.end_time).toLocaleDateString('vi-VN')}
+                        {new Date(c.start_time).toLocaleDateString('vi-VN')} — {c.end_time ? new Date(c.end_time).toLocaleDateString('vi-VN') : 'Không giới hạn'}
                       </td>
                       <td className="px-5 py-3.5">
                         {/* Issue #3 + #5: ActionDropdown với tách biệt state loading */}
