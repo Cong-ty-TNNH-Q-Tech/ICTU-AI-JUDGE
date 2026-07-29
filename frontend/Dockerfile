@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy package.json và package-lock.json (nếu có)
 # Bỏ qua lỗi nếu chưa có thư mục mã nguồn
 COPY package*.json ./
-RUN npm install || echo "Bỏ qua npm install vì chưa có package.json"
+RUN npm install
 
 # Copy mã nguồn và build
 COPY . .
@@ -16,7 +16,7 @@ ARG VITE_GOOGLE_CLIENT_ID
 ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 
 # Tạo thư mục dist tạm thời nếu chưa có mã nguồn (giúp Nginx stage không bị lỗi)
-RUN npm run build || mkdir -p dist
+RUN npm run build
 
 # Stage 2: Serve với Nginx
 FROM nginx:alpine
