@@ -97,6 +97,7 @@ export function useTeamVM(teamId: string | undefined) {
       const errorObj = err as { response?: { data?: { detail?: string } } };
       const detail = errorObj.response?.data?.detail || 'Lỗi khi xóa thành viên';
       useToastStore.getState().showToast(detail, 'error');
+      throw err; // Re-throw so callers can keep modal open on failure
     }
   }, [teamId, fetchTeam]);
 

@@ -11,7 +11,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAdminChallengesVM } from '../../../viewmodels/useAdminVM';
 import type { Challenge, ChallengeCreateRequest, ChallengeUpdateRequest } from '../../../models/api.types';
 import ChallengeForm from '../../components/admin/ChallengeForm';
-import ConfirmationModal from '../../components/admin/ConfirmationModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import WhitelistManageModal from '../../components/admin/WhitelistManageModal';
 
 // ==========================================

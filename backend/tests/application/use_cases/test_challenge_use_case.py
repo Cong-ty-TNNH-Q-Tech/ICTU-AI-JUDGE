@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 import pytest
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
 from app.domain.entities.entities import ChallengeEntity, ChallengeType, ChallengeStatus, MetricDirection
@@ -14,15 +14,15 @@ def dummy_challenge():
         description="Desc",
         type=ChallengeType.PUBLIC,
         status=ChallengeStatus.DRAFT,
-        start_time=datetime.now(),
-        end_time=datetime.now(),
+        start_time=datetime.now(timezone.utc),
+        end_time=datetime.now(timezone.utc),
         rate_limit_minutes=60,
         max_file_size_mb=10,
         metric_name="Accuracy",
         metric_direction=MetricDirection.HIGHER_IS_BETTER,
         created_by=uuid.uuid4(),
         max_team_size=1,
-        created_at=datetime.now(),
+        created_at=datetime.now(timezone.utc),
         tags=[]
     )
 
@@ -61,14 +61,14 @@ def test_create_challenge(challenge_use_case):
         title="New Challenge",
         description="Desc",
         type=ChallengeType.PUBLIC,
-        start_time=datetime.now(),
-        end_time=datetime.now(),
+        start_time=datetime.now(timezone.utc),
+        end_time=datetime.now(timezone.utc),
         rate_limit_minutes=10,
         max_file_size_mb=5,
         metric_name="F1",
         metric_direction=MetricDirection.HIGHER_IS_BETTER,
         max_team_size=3,
-        team_lock_deadline=datetime.now(),
+        team_lock_deadline=datetime.now(timezone.utc),
         tag_ids=[uuid.uuid4()]
     )
     from app.domain.entities.entities import TagEntity
@@ -76,7 +76,7 @@ def test_create_challenge(challenge_use_case):
         id=uuid.uuid4(),
         name="NLP",
         color_hex="#ffffff",
-        created_at=datetime.now()
+        created_at=datetime.now(timezone.utc)
     )
     challenge_use_case.tag_repo.get_by_ids.return_value = [tag]
     challenge_use_case.challenge_repo.save.side_effect = lambda x: x

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTeamVM } from '../../viewmodels/useTeamVM';
 import TeamMemberList from '../components/TeamMemberList';
 import InviteModal from '../components/InviteModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const TeamPage: React.FC = () => {
   const { teamId } = useParams<{ teamId: string }>();
@@ -19,6 +20,28 @@ const TeamPage: React.FC = () => {
   } = useTeamVM(teamId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [kickConfirm, setKickConfirm] = useState<{
+    isOpen: boolean;
+    userId: string;
+    userName: string;
+  }>({ isOpen: false, userId: '', userName: '' });
+  const [kickLoading, setKickLoading] = useState(false);
+
+  const openKickConfirm = (userId: string, userName: string) => {
+    setKickConfirm({ isOpen: true, userId, userName });
+  };
+
+  const handleConfirmKick = async () => {
+    setKickLoading(true);
+    try {
+      await kickMember(kickConfirm.userId);
+      setKickConfirm({ isOpen: false, userId: '', userName: '' });
+    } catch {
+      // Toast lỗi đã được useTeamVM.kickMember() xử lý nội bộ
+    } finally {
+      setKickLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -97,7 +120,7 @@ const TeamPage: React.FC = () => {
              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Thành viên đội ({team.members.length})</h3>
            </div>
            
-           <TeamMemberList team={team} onKick={kickMember} />
+            <TeamMemberList team={team} onKick={openKickConfirm} />
         </div>
       </div>
 
@@ -107,6 +130,17 @@ const TeamPage: React.FC = () => {
         loading={inviteLoading}
         inviteResult={inviteResult}
         onGenerate={createInvite}
+      />
+
+      <ConfirmationModal
+        isOpen={kickConfirm.isOpen}
+        title="Xóa thành viên?"
+        message={`Bạn có chắc chắn muốn xóa "${kickConfirm.userName}" khỏi đội? Hành động này không thể hoàn tác.`}
+        confirmLabel="Xóa thành viên"
+        confirmVariant="danger"
+        loading={kickLoading}
+        onConfirm={handleConfirmKick}
+        onCancel={() => setKickConfirm({ isOpen: false, userId: '', userName: '' })}
       />
     </div>
   );

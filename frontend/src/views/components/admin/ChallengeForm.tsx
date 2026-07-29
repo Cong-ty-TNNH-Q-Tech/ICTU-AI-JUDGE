@@ -66,6 +66,18 @@ const FileUploadZone = ({
   );
 };
 
+const toLocalDatetimeString = (iso?: string | null) => {
+  if (!iso) return '';
+  // Nếu đã là chuỗi local (không có Z hay dấu cộng múi giờ), trả về luôn
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) return iso;
+  
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso.substring(0, 16); // Fallback
+
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => {
   const isEdit = !!initialData;
   const isLocked = initialData?.status === 'PUBLISHED';
@@ -136,13 +148,20 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
     e.preventDefault();
     setLoading(true); setError('');
     try { 
+      if (!form.start_time) {
+        throw new Error('Start time is required');
+      }
       if (!isEdit && !groundTruthFile) {
         throw new Error('Ground Truth file is required for new competitions');
       }
       if (form.metric_name === 'CUSTOM' && !isEdit && !metricScriptFile) {
         throw new Error('Custom Metric script is required');
       }
-      const submitForm = { ...form, end_time: isUnlimitedTime ? null : form.end_time };
+      const submitForm = { 
+        ...form, 
+        start_time: new Date(form.start_time).toISOString(),
+        end_time: isUnlimitedTime || !form.end_time ? null : new Date(form.end_time).toISOString() 
+      };
       await onSubmit(submitForm, groundTruthFile || undefined, metricScriptFile || undefined, publicTestSplitRatio); 
     } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong'); }
     finally { setLoading(false); }
@@ -236,7 +255,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 <div className="grid grid-cols-2 gap-5">
                   <div className="p-4 bg-surface-50 dark:bg-gray-900/50 rounded-xl border border-surface-200 dark:border-gray-800">
                     <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Start Time <span className="text-red-500">*</span></label>
-                    <input required type="datetime-local" name="start_time" value={form.start_time?.substring(0, 16)} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
+                    <input required type="datetime-local" name="start_time" value={toLocalDatetimeString(form.start_time)} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
                   </div>
                   <div className="p-4 bg-surface-50 dark:bg-gray-900/50 rounded-xl border border-surface-200 dark:border-gray-800 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
@@ -247,7 +266,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                       </label>
                     </div>
                     {!isUnlimitedTime && (
-                      <input required type="datetime-local" name="end_time" value={form.end_time?.substring(0, 16) || ''} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
+                      <input required type="datetime-local" name="end_time" value={toLocalDatetimeString(form.end_time)} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark" />
                     )}
                   </div>
                 </div>
