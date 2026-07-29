@@ -3,7 +3,7 @@ import io
 import logging
 import uuid
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.application.dtos.challenge_dtos import (
     ChallengeCreateRequestDTO,
@@ -76,7 +76,7 @@ class ChallengeUseCase:
             custom_metric_url="",
             team_lock_deadline=data.team_lock_deadline,
             max_team_size=data.max_team_size,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             tags=[]
         )
         
