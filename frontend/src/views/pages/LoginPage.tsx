@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuthVM } from '../../viewmodels/useAuthVM';
 import { useNavigate } from 'react-router-dom';
+import { useToastStore } from '../../store/toastStore';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 
 const LoginPage = () => {
@@ -10,13 +11,26 @@ const LoginPage = () => {
   const handleGoogleSuccess = async (token: string) => {
     try {
       const userData = await loginWithGoogle(token);
+      // Khôi phục đường dẫn trước khi bị 401
+      // Validate: chỉ chấp nhận absolute path (starts with "/"), không chấp nhận
+      // protocol-relative URL (//) — chống Open Redirect nếu attacker ghi vào sessionStorage
+      const redirectPath = sessionStorage.getItem('ictu-redirect-after-login');
+      if (redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
+        sessionStorage.removeItem('ictu-redirect-after-login');
+        navigate(redirectPath);
+        return;
+      }
       if (userData.role === 'ADMIN') {
         navigate('/admin');
       } else {
         navigate('/challenges');
       }
     } catch (e) {
-      alert('Đăng nhập Google thất bại: ' + String(e));
+      useToastStore.getState().showToast(
+        'Đăng nhập Google thất bại: ' + String(e),
+        'error',
+        5000
+      );
     }
   };
 
