@@ -313,8 +313,8 @@ def test_list_team_submissions_success(use_case, mock_repos, mock_team):
     )
     mock_repos['submission_repo'].list_by_team.return_value = ([mock_sub], 1)
     res = use_case.list_team_submissions(uuid.uuid4(), uuid.uuid4(), 1, 10)
-    assert res.total_count == 1
-    assert len(res.data) == 1
+    assert res.total == 1
+    assert len(res.items) == 1
 
 def test_list_team_submissions_no_team(use_case, mock_repos):
     mock_repos['team_repo'].get_by_challenge_and_user.return_value = None
@@ -330,3 +330,33 @@ def test_validate_csv_format_not_enough_rows():
     from app.application.use_cases.submission_use_case import _validate_csv_format
     with pytest.raises(ValueError, match="File CSV cần có ít nhất 1 dòng"):
         _validate_csv_format(b'header', 'test.csv')
+
+def test_select_for_private_unlimited_time(use_case, mock_repos, mock_team, mock_challenge):
+    import uuid
+    sub_id = uuid.uuid4()
+    mock_sub = MagicMock()
+    mock_sub.team_id = mock_team.id
+    mock_sub.challenge_id = mock_challenge.id
+    mock_repos['submission_repo'].get_by_id.return_value = mock_sub
+    mock_repos['team_repo'].get_by_id.return_value = mock_team
+    mock_team.has_member = MagicMock(return_value=True)
+    mock_repos['challenge_repo'].get_by_id.return_value = mock_challenge
+    mock_challenge.end_time = None
+    
+    res = use_case.select_for_private(sub_id, uuid.uuid4())
+    assert res.is_selected_for_private is True
+
+def test_upload_source_code_unlimited_time_raises_error(use_case, mock_repos, mock_team, mock_challenge):
+    import uuid
+    sub_id = uuid.uuid4()
+    mock_sub = MagicMock()
+    mock_sub.team_id = mock_team.id
+    mock_sub.challenge_id = mock_challenge.id
+    mock_repos['submission_repo'].get_by_id.return_value = mock_sub
+    mock_repos['team_repo'].get_by_id.return_value = mock_team
+    mock_team.has_member = MagicMock(return_value=True)
+    mock_repos['challenge_repo'].get_by_id.return_value = mock_challenge
+    mock_challenge.end_time = None
+    
+    with pytest.raises(PermissionDeniedError, match='Challenge không giới hạn thời gian không hỗ trợ nộp Source Code.'):
+        use_case.upload_source_code(sub_id, uuid.uuid4(), [('file.zip', b'abc', 'application/zip')])

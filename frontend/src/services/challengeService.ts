@@ -6,13 +6,13 @@ import type {
   Challenge,
   ChallengeCreateRequest,
   ChallengeUpdateRequest,
-  LeaderboardEntry,
   PaginatedResponse,
   Participant,
   Submission,
   AddParticipantsRequest,
   LeaderboardType,
   Solution,
+  LeaderboardResponse,
 } from '../models/api.types';
 
 export const challengeService = {
@@ -32,13 +32,23 @@ export const challengeService = {
     return data;
   },
 
-  /** UC09 — Tạo bài thi mới (Admin). */
+  /**
+   * UC09 — Tạo bài thi mới (Admin).
+   * Gửi JSON body. File (Ground Truth, Metric Script) phải upload RIÊNG
+   * qua uploadSecrets() SAU khi có challenge.id.
+   * Backend nhận application/json — Pydantic Schema, không phải multipart.
+   */
   async create(payload: ChallengeCreateRequest): Promise<Challenge> {
     const { data } = await apiClient.post<Challenge>('/challenges', payload);
     return data;
   },
 
-  /** UC09 — Cập nhật bài thi (Admin). */
+  /**
+   * UC09 — Cập nhật bài thi (Admin).
+   * Gửi JSON body. Nếu Admin muốn cập nhật file mới,
+   * gọi uploadSecrets() RIÊNG SAU khi update thành công.
+   * Backend nhận application/json — Pydantic Schema, không phải multipart.
+   */
   async update(id: string, payload: ChallengeUpdateRequest): Promise<Challenge> {
     const { data } = await apiClient.patch<Challenge>(`/challenges/${id}`, payload);
     return data;
@@ -54,12 +64,14 @@ export const challengeService = {
     id: string,
     groundTruthFile: File,
     metricScriptFile?: File,
+    publicTestSplitRatio: number = 30,
   ): Promise<void> {
     const formData = new FormData();
     formData.append('ground_truth_csv', groundTruthFile);
     if (metricScriptFile) {
       formData.append('metric_script_py', metricScriptFile);
     }
+    formData.append('public_test_split_ratio', publicTestSplitRatio.toString());
     await apiClient.post(`/challenges/${id}/upload-secrets`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -83,9 +95,27 @@ export const challengeService = {
     return data;
   },
 
-  /** UC10 — Thêm participants vào Whitelist (Admin). */
+  /** UC10 — Thêm participants vào Whitelist bằng UUID (Admin). */
   async addParticipants(id: string, payload: AddParticipantsRequest): Promise<void> {
     await apiClient.post(`/challenges/${id}/participants`, payload);
+  },
+
+  /**
+   * UC10 — Thêm participants vào Whitelist bằng Email / MSSV / UUID (Issue #91).
+   * Backend tự resolve identifier → user_id.
+   * Returns { added, resolved, not_found, detail }
+   */
+  async addParticipantsByIdentifiers(
+    id: string,
+    identifiers: string[],
+  ): Promise<{ added: number; resolved: number; not_found: string[]; detail: string }> {
+    const { data } = await apiClient.post<{
+      added: number;
+      resolved: number;
+      not_found: string[];
+      detail: string;
+    }>(`/challenges/${id}/participants/by-identifiers`, { identifiers });
+    return data;
   },
 
   /** UC04 — Lịch sử nộp bài của Đội. */
@@ -116,8 +146,8 @@ export const challengeService = {
   async getLeaderboard(
     id: string,
     params?: { type?: LeaderboardType; page?: number; size?: number },
-  ): Promise<PaginatedResponse<LeaderboardEntry>> {
-    const { data } = await apiClient.get<PaginatedResponse<LeaderboardEntry>>(
+  ): Promise<LeaderboardResponse> {
+    const { data } = await apiClient.get<LeaderboardResponse>(
       `/challenges/${id}/leaderboard`,
       { params },
     );

@@ -71,7 +71,7 @@ class SourceCodeUploadResponseDTO(BaseModel):
 
 class SubmissionListResponseDTO(BaseModel):
     """Response cho danh sách submissions của team."""
-    total_count: int
+    total: int
     page: int
     size: int
-    data: list[SubmissionResponseDTO]
+    items: list[SubmissionResponseDTO]

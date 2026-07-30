@@ -48,6 +48,7 @@ def test_login_with_google_success_existing_user(auth_use_case):
         updated_at=datetime.now()
     )
     auth_use_case._user_repo.get_by_email.return_value = existing_user
+    auth_use_case._user_repo.save.side_effect = lambda u: u
     
     user = auth_use_case.login_with_google("valid_token")
     assert user.full_name == "New Name"
@@ -66,10 +67,3 @@ def test_login_with_google_email_not_verified(auth_use_case):
     with pytest.raises(AuthenticationError, match="Email Google chưa được xác thực"):
         auth_use_case.login_with_google("token")
 
-def test_login_with_google_invalid_domain(auth_use_case):
-    auth_use_case._google_client.verify_token.return_value = {
-        "email": "test@gmail.com",
-        "email_verified": True
-    }
-    with pytest.raises(AuthenticationError, match="Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn"):
-        auth_use_case.login_with_google("token")

@@ -15,7 +15,6 @@ from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
-    SourceCodeUploadResponseDTO,
 )
 from app.application.use_cases.submission_use_case import SubmissionUseCase
 from app.application.use_cases.challenge_use_case import ChallengeUseCase
@@ -26,6 +25,7 @@ from app.application.dtos.solution_dtos import SolutionListResponseDTO, Solution
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
     get_current_user_id,
+    get_optional_current_user_id,
     get_current_user,
     get_db,
     get_solution_use_case,
@@ -34,6 +34,7 @@ from app.entrypoints.dependencies import (
     get_admin_use_case,
     get_team_use_case,
     require_admin,
+    get_user_repository,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,17 +51,15 @@ async def list_challenges(
     tag_id: uuid.UUID | None = None,
     page: int = 1,
     size: int = 20,
-    db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_current_user_id), # Optional cho Public endpoint, nhưng ở đây cứ check nếu có auth thì maybe coi là admin
+    user_repo = Depends(get_user_repository),
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — trả None nếu chưa login
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Danh sách bài thi (phân trang). Public endpoint."""
-    from app.adapters.database.user_repository import SQLUserRepository
     
     # Check nếu user là Admin thì is_admin=True, nếu ko có thì False
     is_admin = False
     if user_id:
-        user_repo = SQLUserRepository(db)
         user = user_repo.get_by_id(user_id)
         if user and user.role.value == "ADMIN":
             is_admin = True
@@ -73,7 +72,7 @@ async def list_challenges(
 async def create_challenge(
     request: dict,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Tạo bài thi mới (Admin only)."""
@@ -81,7 +80,7 @@ async def create_challenge(
     
     dto = ChallengeCreateRequestDTO(**request)
     
-    result = use_case.create_challenge(admin_id=admin_id, data=dto)
+    result = use_case.create_challenge(admin_id=admin.id, data=dto)
     db.commit()
     return result.dict()
 
@@ -89,21 +88,14 @@ async def create_challenge(
 @router.get("/{challenge_id}", response_model=dict)
 async def get_challenge(
     challenge_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    user_id: uuid.UUID | None = Depends(get_current_user_id)
+    user_repo = Depends(get_user_repository),
+    user_id: uuid.UUID | None = Depends(get_optional_current_user_id),  # Public — optional auth
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Chi tiết bài thi."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
-    from app.adapters.database.user_repository import SQLUserRepository
-    
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     
     is_admin = False
     if user_id:
-        user_repo = SQLUserRepository(db)
         user = user_repo.get_by_id(user_id)
         if user and user.role.value == "ADMIN":
             is_admin = True
@@ -120,7 +112,7 @@ async def update_challenge(
     challenge_id: uuid.UUID,
     request: dict,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Cập nhật bài thi (Admin only). Bị khóa nếu đã có Submission."""
@@ -140,15 +132,10 @@ async def update_challenge(
 async def delete_challenge(
     challenge_id: uuid.UUID,
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Soft delete bài thi (Admin only)."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
-    
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
     use_case.delete_challenge(challenge_id)
     db.commit()
     return None
@@ -159,17 +146,12 @@ async def upload_secrets(
     challenge_id: uuid.UUID,
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
+    public_test_split_ratio: int = Form(30, ge=0, le=100, description="Tỉ lệ % tập Public"),
     db: Session = Depends(get_db),
-    admin_id: uuid.UUID = Depends(require_admin)
+    admin: UserEntity = Depends(require_admin),
+    use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
-    from app.application.use_cases.challenge_use_case import ChallengeUseCase
-    
-    use_case = ChallengeUseCase(
-        challenge_repo=SQLChallengeRepository(db),
-        storage_repo=S3StorageRepository(),
-    )
-    
     gt_bytes = await ground_truth_csv.read()
     metric_bytes = await metric_script_py.read() if metric_script_py else None
     
@@ -177,7 +159,8 @@ async def upload_secrets(
         result = use_case.upload_secrets(
             challenge_id=challenge_id,
             ground_truth_bytes=gt_bytes,
-            metric_script_bytes=metric_bytes
+            metric_script_bytes=metric_bytes,
+            public_test_split_ratio=public_test_split_ratio
         )
         db.commit()
         return result.dict()
@@ -208,7 +191,7 @@ async def list_participants(
     challenge_id: uuid.UUID,
     page: int = 1,
     size: int = 20,
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Xem Whitelist (Admin only)."""
@@ -219,7 +202,7 @@ async def list_participants(
 async def add_participants(
     challenge_id: uuid.UUID,
     request: dict, # expect {"user_ids": ["uuid"]}
-    admin_id: uuid.UUID = Depends(require_admin),
+    admin: UserEntity = Depends(require_admin),
     use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
     """UC10 — Thêm sinh viên vào Whitelist (Admin only)."""
@@ -227,6 +210,28 @@ async def add_participants(
     
     dto = WhitelistAddRequestDTO(**request)
     return use_case.add_whitelist(challenge_id=challenge_id, user_ids=dto.user_ids)
+
+
+@router.post("/{challenge_id}/participants/by-identifiers")
+async def add_participants_by_identifiers(
+    challenge_id: uuid.UUID,
+    request: dict,  # expect {"identifiers": ["email|MSSV|uuid", ...]}
+    admin: UserEntity = Depends(require_admin),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
+    """
+    UC10 — Thêm sinh viên vào Whitelist bằng Email / MSSV / UUID (Issue #91).
+    Backend tự phân loại và tra cứu user_id tương ứng.
+    Body: { "identifiers": ["dtc235210026", "student@ictu.edu.vn", "uuid..."] }
+    Response: { "added": int, "resolved": int, "not_found": [...], "detail": str }
+    """
+    identifiers: list[str] = request.get("identifiers", [])
+    if not identifiers:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(status_code=422, detail="Trường 'identifiers' không được để trống.")
+    return use_case.add_whitelist_by_identifiers(
+        challenge_id=challenge_id, identifiers=identifiers
+    )
 
 
 # ==========================================
@@ -299,36 +304,6 @@ async def submit(
     use_case.trigger_scoring(str(result.submission_id))
 
     return result
-
-# ==========================================
-# UC06 — Nộp Source Code
-# ==========================================
-
-@router.post(
-    "/{challenge_id}/submissions/{submission_id}/source-code",
-    response_model=SourceCodeUploadResponseDTO,
-)
-async def upload_source_code(
-    challenge_id: uuid.UUID,
-    submission_id: uuid.UUID,
-    files: list[UploadFile] = File(...),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-    use_case: SubmissionUseCase = Depends(get_submission_use_case),
-):
-    """
-    UC06 — Nộp Source Code (chống gian lận).
-    Upload nhiều files, sẽ được nén in-memory và đưa lên S3.
-    """
-    file_tuples = []
-    for f in files:
-        data = await f.read()
-        file_tuples.append((f.filename, data, f.content_type))
-        
-    return use_case.upload_source_code(
-        submission_id=submission_id,
-        user_id=user_id,
-        files=file_tuples
-    )
 
 
 # ==========================================

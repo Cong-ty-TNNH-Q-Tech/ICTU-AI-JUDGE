@@ -40,7 +40,7 @@ class CleanupStaleStorageUseCase:
                 if self.storage_repo:
                     self.storage_repo.delete(sub.file_url)
                 else:
-                    logger.info("MOCK DELETE S3 file: %s", sub.file_url)
+                    logger.info("Storage_repo not configured, skipping S3 delete for file: %s", sub.file_url)
                 deleted_ids.append(sub.id)
             except Exception as e:
                 logger.error("Failed to delete file %s from S3: %s", sub.file_url, e)

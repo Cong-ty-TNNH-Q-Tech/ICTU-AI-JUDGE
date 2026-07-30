@@ -62,12 +62,17 @@ class UserEntity:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    # Profile fields (Issue #30)
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    avatar_url: str | None = None   # Lưu S3 key — URL generate on-the-fly
 
     def is_admin(self) -> bool:
         return self.role == UserRole.ADMIN
 
     def is_active(self) -> bool:
         return self.deleted_at is None
+
 
 
 @dataclass
@@ -86,7 +91,7 @@ class ChallengeEntity:
     type: ChallengeType
     status: ChallengeStatus
     start_time: datetime
-    end_time: datetime
+    end_time: datetime | None
     rate_limit_minutes: int
     max_team_size: int
     max_file_size_mb: int
@@ -108,7 +113,8 @@ class ChallengeEntity:
         """
         return (
             self.status == ChallengeStatus.PUBLISHED
-            and self.start_time <= now <= self.end_time
+            and self.start_time <= now
+            and (self.end_time is None or now <= self.end_time)
             and self.deleted_at is None
         )
 
@@ -187,8 +193,9 @@ class LeaderboardEntryEntity:
     team_id: uuid.UUID
     best_public_score: float
     last_submission_time: datetime
-    rank: int
-    updated_at: datetime
+    rank: int = 0
+    entries: int = 0
+    updated_at: datetime | None = None
     best_private_score: float | None = None
     best_public_submission_id: uuid.UUID | None = None
     best_private_submission_id: uuid.UUID | None = None

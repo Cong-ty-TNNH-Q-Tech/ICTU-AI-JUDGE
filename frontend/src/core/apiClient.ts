@@ -4,9 +4,10 @@
  * Thành viên KHÔNG tạo axios instance riêng, luôn dùng apiClient này.
  */
 import axios from 'axios';
+import { authEventBus } from './authEventBus';
 import type { ApiError } from '../models/api.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 function extractErrorMessage(apiErr: ApiError | undefined, error: unknown): string {
   if (apiErr?.detail) {
@@ -34,8 +35,11 @@ apiClient.interceptors.response.use(
   (error) => {
     const apiErr = error.response?.data as ApiError | undefined;
 
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
-      window.location.href = '/login';
+    if (error.response?.status === 401) {
+      // Guard: không emit khi đang ở /login để tránh redirect loop
+      if (window.location.pathname !== '/login') {
+        authEventBus.emit();
+      }
       return Promise.reject(error);
     }
 

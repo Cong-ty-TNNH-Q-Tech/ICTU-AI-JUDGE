@@ -8,6 +8,7 @@ import hashlib
 import io
 import logging
 import uuid
+import zipfile
 from datetime import datetime, timezone
 
 from app.application.dtos.submission_dtos import (
@@ -219,12 +220,13 @@ class SubmissionUseCase:
             raise NotFoundError(f"Challenge không tồn tại.")
 
         challenge_end = challenge.end_time
-        if challenge_end.tzinfo is None:
-            challenge_end = challenge_end.replace(tzinfo=timezone.utc)
-        if now > challenge_end:
-            raise SubmissionDeadlinePassedError(
-                "Chỉ được chọn bài Private trước khi challenge kết thúc."
-            )
+        if challenge_end is not None:
+            if challenge_end.tzinfo is None:
+                challenge_end = challenge_end.replace(tzinfo=timezone.utc)
+            if now > challenge_end:
+                raise SubmissionDeadlinePassedError(
+                    "Chỉ được chọn bài Private trước khi challenge kết thúc."
+                )
 
         # Bỏ chọn submission cũ của team trong challenge
         self.submission_repo.clear_selected_for_private(
@@ -263,9 +265,6 @@ class SubmissionUseCase:
         UC06 — Upload source code (nhiều files).
         Chỉ cho phép sau khi challenge kết thúc.
         """
-        import zipfile
-        import io
-        
         now = datetime.now(tz=timezone.utc)
 
         submission = self.submission_repo.get_by_id(submission_id)
@@ -283,6 +282,9 @@ class SubmissionUseCase:
             raise NotFoundError("Challenge không tồn tại.")
 
         challenge_end = challenge.end_time
+        if challenge_end is None:
+            raise PermissionDeniedError("Challenge không giới hạn thời gian không hỗ trợ nộp Source Code.")
+            
         if challenge_end.tzinfo is None:
             challenge_end = challenge_end.replace(tzinfo=timezone.utc)
         if now < challenge_end:
@@ -380,10 +382,10 @@ class SubmissionUseCase:
             for e in entities
         ]
         return SubmissionListResponseDTO(
-            total_count=total,
+            total=total,
             page=page,
             size=size,
-            data=data,
+            items=data,
         )
 
 
@@ -409,17 +411,21 @@ def _validate_csv_format(file_bytes: bytes, filename: str) -> None:
         raise ValueError("Chỉ chấp nhận file định dạng .csv")
 
     try:
-        text = file_bytes.decode("utf-8", errors="replace")
-        reader = csv.reader(io.StringIO(text))
-        rows = list(reader)
+        text_stream = io.TextIOWrapper(io.BytesIO(file_bytes), encoding="utf-8", errors="replace")
+        reader = csv.reader(text_stream)
+        
+        row1 = next(reader, None)
+        row2 = next(reader, None)
+        
+        if not row1:
+            raise ValueError("File CSV rỗng, không có dòng nào.")
+        if not row2:
+            raise ValueError("File CSV cần có ít nhất 1 dòng header và 1 dòng dữ liệu.")
+            
     except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise
         raise ValueError(f"Không thể đọc file CSV: {exc}") from exc
-
-    if len(rows) == 0:
-        raise ValueError("File CSV rỗng, không có dòng nào.")
-
-    if len(rows) < 2:
-        raise ValueError("File CSV cần có ít nhất 1 dòng header và 1 dòng dữ liệu.")
 
 
 def _build_s3_key(

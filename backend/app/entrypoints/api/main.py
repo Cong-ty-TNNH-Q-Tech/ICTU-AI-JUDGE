@@ -35,6 +35,7 @@ from app.entrypoints.api.v1 import (
     users_router,
     admin_router,
     tags_router,
+    storage_router,
 )
 
 logging.basicConfig(
@@ -142,9 +143,10 @@ app.include_router(users_router.router, prefix=f"{settings.API_V1_PREFIX}/users"
 app.include_router(challenges_router.router, prefix=f"{settings.API_V1_PREFIX}/challenges", tags=["Challenges"])
 app.include_router(teams_router.router, prefix=f"{settings.API_V1_PREFIX}/teams", tags=["Teams"])
 app.include_router(submissions_router.router, prefix=f"{settings.API_V1_PREFIX}/submissions", tags=["Submissions"])
-app.include_router(leaderboard_router.router, prefix=f"{settings.API_V1_PREFIX}/leaderboard", tags=["Leaderboard"])
+app.include_router(leaderboard_router.router, prefix=f"{settings.API_V1_PREFIX}/challenges", tags=["Leaderboard"])
 app.include_router(admin_router.router, prefix=f"{settings.API_V1_PREFIX}/admin", tags=["Admin"])
 app.include_router(tags_router.router, prefix=f"{settings.API_V1_PREFIX}/tags", tags=["Tags"])
+app.include_router(storage_router.router, prefix=f"{settings.API_V1_PREFIX}/storage", tags=["Storage"])
 
 
 @app.get("/health", tags=["Health"])

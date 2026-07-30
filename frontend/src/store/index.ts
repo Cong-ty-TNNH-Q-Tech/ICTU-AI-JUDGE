@@ -15,6 +15,8 @@ interface AuthState {
   isAuthenticated: boolean;
   setUser: (user: UserResponse | null) => void;
   logout: () => void;
+  /** Cập nhật avatar_url trong store ngay sau khi upload — Header tự re-render */
+  updateAvatar: (avatarUrl: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,6 +26,10 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       setUser: (user) => set({ user, isAuthenticated: user !== null }),
       logout: () => set({ user: null, isAuthenticated: false }),
+      updateAvatar: (avatarUrl) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, avatar_url: avatarUrl } : null,
+        })),
     }),
     {
       name: 'ictu-auth',   // Key trong localStorage (chỉ lưu metadata, KHÔNG lưu token)
@@ -54,3 +60,5 @@ export const useThemeStore = create<ThemeState>()(
     { name: 'ictu-theme' }
   )
 );
+
+export * from './toastStore';

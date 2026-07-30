@@ -4,6 +4,7 @@ Scoring Task — Celery Worker chấm điểm qua Docker Sandbox.
 """
 import logging
 import time
+import math
 import uuid
 from datetime import datetime, timezone
 
@@ -105,29 +106,19 @@ def score_submission(self, submission_id: str) -> dict:
 
             # 5. Upsert Leaderboard với Pessimistic Locking
             from app.domain.entities.entities import LeaderboardEntryEntity
-            existing = leaderboard_repo.get_by_team_and_challenge(
-                submission.team_id, submission.challenge_id
+            entry = LeaderboardEntryEntity(
+                id=uuid.uuid4(),
+                challenge_id=submission.challenge_id,
+                team_id=submission.team_id,
+                best_public_score=score,
+                best_private_score=None,
+                best_public_submission_id=sub_uuid,
+                best_private_submission_id=None,
+                last_submission_time=submission.submitted_at,
+                rank=0,
+                updated_at=datetime.now(tz=timezone.utc),
             )
-            is_better = _is_better_score(
-                new_score=score,
-                current_best=existing.best_public_score if existing else None,
-                direction=challenge.metric_direction,
-            )
-            if is_better or existing is None:
-                entry = LeaderboardEntryEntity(
-                    id=existing.id if existing else uuid.uuid4(),
-                    challenge_id=submission.challenge_id,
-                    team_id=submission.team_id,
-                    best_public_score=score,
-                    best_private_score=existing.best_private_score if existing else None,
-                    best_public_submission_id=sub_uuid,
-                    best_private_submission_id=existing.best_private_submission_id if existing else None,
-                    last_submission_time=submission.submitted_at,
-                    rank=0,
-                    updated_at=datetime.now(tz=timezone.utc),
-                )
-                leaderboard_repo.upsert_with_lock(entry)
-
+            leaderboard_repo.upsert_with_lock(entry, direction=challenge.metric_direction)
 
             # Commit the transaction explicitly if using a standalone session
             db.commit()
@@ -154,65 +145,140 @@ def _run_sandbox(
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
     """
-    import tempfile
-    import os
+    import tarfile
+    import io
 
     client = docker.from_env()
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        sub_path = os.path.join(tmpdir, "submission.csv")
-        gt_path = os.path.join(tmpdir, "ground_truth.csv")
-        script_path = os.path.join(tmpdir, "metric.py")
+    # Create tar stream in memory
+    tar_stream = io.BytesIO()
+    with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+        # Add submission.csv
+        sub_info = tarfile.TarInfo(name='submission.csv')
+        sub_info.size = len(submission_csv)
+        tar.addfile(sub_info, io.BytesIO(submission_csv))
 
-        with open(sub_path, "wb") as f:
-            f.write(submission_csv)
-        with open(gt_path, "wb") as f:
-            f.write(ground_truth_csv)
+        # Add ground_truth.csv
+        gt_info = tarfile.TarInfo(name='ground_truth.csv')
+        gt_info.size = len(ground_truth_csv)
+        tar.addfile(gt_info, io.BytesIO(ground_truth_csv))
 
         if metric_script:
-            with open(script_path, "wb") as f:
-                f.write(metric_script)
-            cmd = "python /sandbox/metric.py /sandbox/ground_truth.csv /sandbox/submission.csv"
+            script_info = tarfile.TarInfo(name='metric.py')
+            script_info.size = len(metric_script)
+            tar.addfile(script_info, io.BytesIO(metric_script))
+            
+            # Wrapper script để gọi hàm calculate_score từ metric.py
+            wrapper_script = """
+import sys
+try:
+    sys.path.append('/tmp')
+    from metric import calculate_score
+    score = calculate_score('/tmp/ground_truth.csv', '/tmp/submission.csv')
+    print(score)
+except Exception as e:
+    print(f"Lỗi khi chạy Custom Metric: {str(e)}")
+    sys.exit(1)
+""".strip().encode('utf-8')
+
+            wrapper_info = tarfile.TarInfo(name='runner.py')
+            wrapper_info.size = len(wrapper_script)
+            tar.addfile(wrapper_info, io.BytesIO(wrapper_script))
+            
+            cmd = "python /tmp/runner.py"
         else:
-            # Built-in metrics
-            cmd = (
-                f"python -c \""
-                f"import pandas as pd; "
-                f"gt=pd.read_csv('/sandbox/ground_truth.csv'); "
-                f"sub=pd.read_csv('/sandbox/submission.csv'); "
-                f"from sklearn.metrics import accuracy_score; "
-                f"print(accuracy_score(gt['label'], sub['label']))\""
-            )
+            # Strategy Pattern cho Built-in metrics
+            built_in_script = f"""
+import pandas as pd
+import sys
+import math
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
 
-        container = client.containers.run(
-            image="python:3.12-slim",
-            command=f"bash -c '{cmd}'",
-            volumes={tmpdir: {"bind": "/sandbox", "mode": "ro"}},
-            mem_limit=settings.SANDBOX_MEMORY_LIMIT,
-            cpu_period=settings.SANDBOX_CPU_PERIOD,
-            cpu_quota=settings.SANDBOX_CPU_QUOTA,
-            network_disabled=True,          # [SECURITY] Chặn network
-            remove=True,                    # Tự hủy sau khi chạy xong
-            detach=False,
-            stdout=True,
-            stderr=False,
-        )
+try:
+    gt = pd.read_csv('/tmp/ground_truth.csv')
+    sub = pd.read_csv('/tmp/submission.csv')
 
-        output = container.decode("utf-8").strip()
-        return float(output)
+    if 'Usage' in gt.columns:
+        gt = gt.drop(columns=['Usage'])
+        
+    if len(gt.columns) == 0:
+        print('Không tìm thấy cột mục tiêu trong Ground Truth.')
+        sys.exit(1)
+
+    # Cột dự đoán (target) thường là cột cuối cùng sau khi bỏ 'Usage'
+    target_col = gt.columns[-1]
+    if target_col not in sub.columns:
+        print(f'Thiếu cột {{target_col}} trong bài nộp.')
+        sys.exit(1)
+
+    if len(gt) != len(sub):
+        print(f'Số lượng dòng không khớp. Kì vọng {{len(gt)}} dòng, nhưng nhận được {{len(sub)}} dòng.')
+        sys.exit(1)
+
+    y_true = gt[target_col]
+    y_pred = sub[target_col]
+
+    metric_name = '{metric_name}'
+    
+    if metric_name == 'ACCURACY':
+        score = accuracy_score(y_true, y_pred)
+    elif metric_name == 'F1_SCORE':
+        score = f1_score(y_true, y_pred, average='macro')
+    elif metric_name == 'RMSE':
+        score = math.sqrt(mean_squared_error(y_true, y_pred))
+    else:
+        print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
+        sys.exit(1)
+
+    print(score)
+except Exception as e:
+    print(f"Lỗi khi chấm điểm: {{str(e)}}")
+    sys.exit(1)
+""".encode('utf-8')
+            
+            script_info = tarfile.TarInfo(name='built_in_metric.py')
+            script_info.size = len(built_in_script)
+            tar.addfile(script_info, io.BytesIO(built_in_script))
+            cmd = "python /tmp/built_in_metric.py"
+
+    tar_stream.seek(0)
+
+    # 1. Create the container (do not start yet)
+    container = client.containers.create(
+        image="ictu-ai-judge-sandbox:latest",
+        command=f"bash -c '{cmd}'",
+        mem_limit=settings.SANDBOX_MEMORY_LIMIT,
+        cpu_period=settings.SANDBOX_CPU_PERIOD,
+        cpu_quota=settings.SANDBOX_CPU_QUOTA,
+        network_disabled=True,          # [SECURITY] Chặn network
+        detach=True,
+    )
+
+    try:
+        # 2. Inject files via put_archive (Docker automatically creates /tmp if it doesn't exist)
+        container.put_archive("/tmp", tar_stream)
+
+        # 3. Start container and wait for it to finish
+        container.start()
+        result = container.wait(timeout=30)
+        
+        output = container.logs(stdout=True, stderr=False).decode("utf-8").strip()
+        
+        if result['StatusCode'] != 0:
+            error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
+            raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
+
+        score = float(output)
+        if math.isnan(score) or math.isinf(score):
+            raise ValueError(f"Invalid score value returned by metric script: {output}")
+            
+        return score
+    finally:
+        # Ensure container is destroyed even on error
+        container.remove(force=True)
 
 
-def _is_better_score(
-    new_score: float,
-    current_best: float | None,
-    direction: str,
-) -> bool:
-    if current_best is None:
-        return True
-    from app.domain.entities.entities import MetricDirection
-    if direction == MetricDirection.HIGHER_IS_BETTER:
-        return new_score > current_best
-    return new_score < current_best
+
 
 
 def _mark_submission_failed(
@@ -228,10 +294,12 @@ def _mark_submission_failed(
                 SubmissionStatus.FAILED,
                 error_message=error_message,
             )
+            sub_repo.db.commit()
         else:
             with SessionLocal() as db:
                 from app.adapters.database.submission_repository import SQLSubmissionRepository
                 repo = SQLSubmissionRepository(db)
                 repo.update_status(submission_id, SubmissionStatus.FAILED, error_message=error_message)
+                db.commit()
     except Exception as e:
         logger.error("Failed to mark submission %s as FAILED: %s", submission_id, e)

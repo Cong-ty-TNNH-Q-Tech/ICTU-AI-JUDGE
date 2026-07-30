@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.adapters.database.models import LeaderboardModel, TeamModel
+from app.adapters.database.models import LeaderboardModel, TeamModel, SubmissionModel
 from app.application.interfaces.repositories import ILeaderboardRepository
 from app.domain.entities.entities import LeaderboardEntryEntity, MetricDirection
 
@@ -16,7 +16,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
     def __init__(self, db_session: Session):
         self.db = db_session
 
-    def _to_entity(self, model: LeaderboardModel, rank: int, team_name: Optional[str] = None) -> LeaderboardEntryEntity:
+    def _to_entity(self, model: LeaderboardModel, rank: int, team_name: Optional[str] = None, entries: int = 0) -> LeaderboardEntryEntity:
         return LeaderboardEntryEntity(
             id=model.id,
             challenge_id=model.challenge_id,
@@ -24,6 +24,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             best_public_score=model.best_public_score,
             last_submission_time=model.last_submission_time,
             rank=rank,
+            entries=entries,
             updated_at=model.updated_at,
             best_private_score=model.best_private_score,
             best_public_submission_id=model.best_public_submission_id,
@@ -48,7 +49,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             return None
         return self._to_entity(model, rank=model.rank)
 
-    def upsert_with_lock(self, entry: LeaderboardEntryEntity) -> LeaderboardEntryEntity:
+    def upsert_with_lock(self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER) -> LeaderboardEntryEntity:
         """
         Sử dụng SELECT ... FOR UPDATE (Pessimistic Locking) để khóa record.
         Ngăn chặn race condition theo Rule 3.1 của dự án.
@@ -64,14 +65,19 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         model = self.db.execute(stmt).scalars().first()
 
         if model:
-            model.best_public_score = entry.best_public_score
-            model.best_private_score = entry.best_private_score
-            model.best_public_submission_id = entry.best_public_submission_id
-            model.best_private_submission_id = entry.best_private_submission_id
-            model.last_submission_time = entry.last_submission_time
-            model.rank = entry.rank
-            model.is_source_code_submitted = entry.is_source_code_submitted
-            model.updated_at = func.now()
+            should_update = False
+            if direction == MetricDirection.HIGHER_IS_BETTER:
+                should_update = model.best_public_score < entry.best_public_score
+            else:
+                should_update = model.best_public_score > entry.best_public_score
+                
+            if should_update:
+                model.best_public_score = entry.best_public_score
+                model.best_private_score = entry.best_private_score if entry.best_private_score is not None else model.best_private_score
+                model.best_public_submission_id = entry.best_public_submission_id
+                model.best_private_submission_id = entry.best_private_submission_id if entry.best_private_submission_id is not None else model.best_private_submission_id
+                model.last_submission_time = entry.last_submission_time
+                model.updated_at = func.now()
         else:
             model = LeaderboardModel(
                 id=entry.id,
@@ -88,7 +94,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             self.db.add(model)
 
         self.db.flush()
-        
+
         return self._to_entity(model, rank=model.rank)
 
     def list_public(
@@ -110,8 +116,19 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             select(func.count()).where(LeaderboardModel.challenge_id == challenge_id)
         ).scalar_one()
 
+        entries_sq = (
+            select(func.count(SubmissionModel.id))
+            .where(
+                SubmissionModel.team_id == LeaderboardModel.team_id,
+                SubmissionModel.challenge_id == LeaderboardModel.challenge_id
+            )
+            .correlate(LeaderboardModel)
+            .scalar_subquery()
+            .label("entries_count")
+        )
+
         stmt = (
-            select(LeaderboardModel, TeamModel.name, rank_func)
+            select(LeaderboardModel, TeamModel.name, rank_func, entries_sq)
             .join(TeamModel, LeaderboardModel.team_id == TeamModel.id)
             .where(LeaderboardModel.challenge_id == challenge_id)
             .order_by(score_order, LeaderboardModel.last_submission_time.asc())
@@ -122,8 +139,8 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         results = self.db.execute(stmt).all()
         
         items = []
-        for model, team_name, computed_rank in results:
-            items.append((self._to_entity(model, rank=computed_rank, team_name=team_name), team_name))
+        for model, team_name, computed_rank, entries_count in results:
+            items.append((self._to_entity(model, rank=computed_rank, team_name=team_name, entries=entries_count), team_name))
 
         return items, total
 
@@ -147,8 +164,19 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             select(func.count()).where(LeaderboardModel.challenge_id == challenge_id)
         ).scalar_one()
 
+        entries_sq = (
+            select(func.count(SubmissionModel.id))
+            .where(
+                SubmissionModel.team_id == LeaderboardModel.team_id,
+                SubmissionModel.challenge_id == LeaderboardModel.challenge_id
+            )
+            .correlate(LeaderboardModel)
+            .scalar_subquery()
+            .label("entries_count")
+        )
+
         stmt = (
-            select(LeaderboardModel, TeamModel.name, rank_func)
+            select(LeaderboardModel, TeamModel.name, rank_func, entries_sq)
             .join(TeamModel, LeaderboardModel.team_id == TeamModel.id)
             .where(LeaderboardModel.challenge_id == challenge_id)
             .order_by(score_order, LeaderboardModel.last_submission_time.asc())
@@ -159,8 +187,8 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         results = self.db.execute(stmt).all()
         
         items = []
-        for model, team_name, computed_rank in results:
-            items.append((self._to_entity(model, rank=computed_rank, team_name=team_name), team_name))
+        for model, team_name, computed_rank, entries_count in results:
+            items.append((self._to_entity(model, rank=computed_rank, team_name=team_name, entries=entries_count), team_name))
 
         return items, total
 
@@ -176,3 +204,74 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             .values(is_source_code_submitted=submitted)
         )
         self.db.execute(stmt)
+
+    def export_all(
+        self,
+        challenge_id: uuid.UUID,
+        direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER,
+        leaderboard_type: str = "private",
+    ) -> list[dict]:
+        from app.adapters.database.models import TeamMemberModel, UserModel
+
+        if leaderboard_type == "public":
+            effective_score = LeaderboardModel.best_public_score
+        else:
+            effective_score = func.coalesce(LeaderboardModel.best_private_score, LeaderboardModel.best_public_score)
+
+        if direction == MetricDirection.HIGHER_IS_BETTER:
+            score_order = effective_score.desc()
+        else:
+            score_order = effective_score.asc()
+
+        rank_func = func.rank().over(
+            order_by=[score_order, LeaderboardModel.last_submission_time.asc()]
+        ).label("computed_rank")
+
+        # Step 1: CTE to compute rank per team
+        cte = (
+            select(
+                LeaderboardModel.team_id,
+                LeaderboardModel.best_public_score,
+                LeaderboardModel.best_private_score,
+                LeaderboardModel.last_submission_time,
+                rank_func,
+            )
+            .where(LeaderboardModel.challenge_id == challenge_id)
+            .cte("ranked_leaderboard")
+        )
+
+        # Step 2: Join CTE with Teams and Users
+        stmt = (
+            select(
+                cte.c.computed_rank,
+                TeamModel.name.label("team_name"),
+                UserModel.student_id,
+                UserModel.full_name,
+                cte.c.best_public_score,
+                cte.c.best_private_score,
+                cte.c.last_submission_time,
+            )
+            .join(TeamModel, cte.c.team_id == TeamModel.id)
+            .join(TeamMemberModel, TeamModel.id == TeamMemberModel.team_id)
+            .join(UserModel, TeamMemberModel.user_id == UserModel.id)
+            .where(
+                TeamModel.deleted_at.is_(None),
+                UserModel.deleted_at.is_(None),
+            )
+            .order_by(cte.c.computed_rank.asc(), UserModel.student_id.asc())
+        )
+
+        results = self.db.execute(stmt).all()
+
+        return [
+            {
+                "Rank": row.computed_rank,
+                "Team Name": row.team_name,
+                "MSSV": row.student_id,
+                "Full Name": row.full_name,
+                "Public Score": row.best_public_score,
+                "Private Score": row.best_private_score,
+                "Last Submission Time": row.last_submission_time.strftime("%Y-%m-%d %H:%M:%S") if row.last_submission_time else "",
+            }
+            for row in results
+        ]

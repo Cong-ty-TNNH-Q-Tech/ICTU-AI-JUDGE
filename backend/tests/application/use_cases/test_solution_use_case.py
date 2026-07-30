@@ -29,7 +29,7 @@ def test_list_solutions_success(solution_use_case):
         created_at=datetime.datetime.now()
     )
     solution_use_case._solution_repo.list_by_challenge.return_value = [sol]
-    solution_use_case._storage_repo.get_presigned_url.return_value = "http://presigned"
+    solution_use_case._storage_repo.get_download_url.return_value = "http://presigned"
     mock_user = MagicMock()
     mock_user.full_name = "Test User"
     solution_use_case._user_repo.get_by_id.return_value = mock_user
@@ -60,7 +60,7 @@ def test_publish_solution_success(solution_use_case):
         updated_at=datetime.datetime.now()
     )
     
-    solution_use_case._storage_repo.get_presigned_url.return_value = "http://presigned"
+    solution_use_case._storage_repo.get_download_url.return_value = "http://presigned"
     
     def mock_save(s):
         return s
@@ -102,7 +102,7 @@ def test_upvote_solution_success(solution_use_case):
         created_at=datetime.datetime.now()
     )
     solution_use_case._solution_repo.upvote.return_value = sol
-    solution_use_case._storage_repo.get_presigned_url.return_value = "http://presigned"
+    solution_use_case._storage_repo.get_download_url.return_value = "http://presigned"
     mock_user = MagicMock()
     mock_user.full_name = "Test User"
     solution_use_case._user_repo.get_by_id.return_value = mock_user

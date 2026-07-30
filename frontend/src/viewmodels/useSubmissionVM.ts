@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { challengeService } from '../services/challengeService';
 import { submissionService } from '../services/submissionService';
+import { useToastStore } from '../store/toastStore';
 import type { Submission } from '../models/api.types';
 
 export function useSubmissionVM(challengeId: string) {
@@ -183,7 +184,10 @@ export function useSubmissionVM(challengeId: string) {
         prev.map(s => s.id === submissionId ? { ...s, is_selected_for_private: !currentValue } : s)
       );
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Lỗi cập nhật trạng thái');
+      useToastStore.getState().showToast(
+        err instanceof Error ? err.message : 'Lỗi cập nhật trạng thái',
+        'error'
+      );
       // Fetch lại để revert trạng thái
       fetchSubmissions(false);
     } finally {

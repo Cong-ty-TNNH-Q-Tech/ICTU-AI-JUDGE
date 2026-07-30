@@ -6,11 +6,13 @@
 import { useCallback, useState } from 'react';
 import { authService } from '../services/authService';
 import { useAuthStore } from '../store';
+import { useToastStore } from '../store/toastStore';
 
 export function useAuthVM() {
   const { user, isAuthenticated, setUser, logout: clearStore } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const loginWithGoogle = useCallback(async (googleToken: string) => {
     setLoading(true);
@@ -22,6 +24,7 @@ export function useAuthVM() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Đăng nhập thất bại';
       setError(message);
+      useToastStore.getState().showToast(message, 'error');
       throw err;
     } finally {
       setLoading(false);
@@ -48,6 +51,7 @@ export function useAuthVM() {
       // Cookie hết hạn — không làm gì, user chưa đăng nhập
     }
   }, [isAuthenticated, setUser]);
+
 
   return {
     user,

@@ -49,6 +49,49 @@ class IUserRepository(ABC):
     @abstractmethod
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
 
+    @abstractmethod
+    def update_role(self, user_id: uuid.UUID, role: str) -> bool: ...
+
+    @abstractmethod
+    def update_profile(
+        self,
+        user_id: uuid.UUID,
+        github_url: str | None,
+        linkedin_url: str | None,
+        avatar_url: str | None = ...,  # type: ignore[assignment]
+    ) -> UserEntity | None:
+        """
+        Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
+        Dùng atomic SQL UPDATE — an toàn đồng thời.
+        Trả về entity sau khi cập nhật, None nếu user không tồn tại.
+        """
+        ...
+
+    @abstractmethod
+    def get_profile_stats(self, user_id: uuid.UUID) -> dict:
+        """
+        Lấy thống kê tổng hợp của user:
+        { total_submissions, total_solutions, best_rank }
+        Thực hiện trong 3 COUNT query riêng biệt (đơn giản, dễ index).
+        """
+        ...
+
+    @abstractmethod
+    def update_avatar(self, user_id: uuid.UUID, avatar_s3_key: str) -> "UserEntity | None":
+        """Atomic update chỉ trường avatar_url — dùng sau khi upload thành công."""
+        ...
+
+    @abstractmethod
+    def find_by_identifiers(self, identifiers: list[str]) -> list[UserEntity]:
+        """
+        Tra cứu users theo danh sách định danh linh hoạt.
+        Hỗ trợ: Email (có @), MSSV/student_id (không có @), hoặc UUID.
+        Bỏ qua các identifier không tìm thấy (không raise lỗi).
+        Returns list[UserEntity] — đã lọc trùng.
+        """
+        ...
+
+
 
 class IChallengeRepository(ABC):
     @abstractmethod
@@ -98,6 +141,9 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def add_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
+    
+    @abstractmethod
+    def remove_member(self, team_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
 
     @abstractmethod
     def delete(self, team_id: uuid.UUID) -> None: ...
@@ -105,6 +151,8 @@ class ITeamRepository(ABC):
     @abstractmethod
     def invalidate_invites(self, team_id: uuid.UUID) -> None: ...
 
+    @abstractmethod
+    def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> tuple[list[TeamEntity], int]: ...
 
 class ISubmissionRepository(ABC):
     @abstractmethod
@@ -154,6 +202,34 @@ class ISubmissionRepository(ABC):
         self, submission_ids: list[uuid.UUID]
     ) -> None: ...
 
+    @abstractmethod
+    def clear_selected_for_private(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID
+    ) -> None:
+        """UC05 — Bỏ chọn tất cả submission trước đó của team trong challenge."""
+        ...
+
+    @abstractmethod
+    def set_selected_for_private(
+        self, submission_id: uuid.UUID, value: bool
+    ) -> None:
+        """UC05 — Set is_selected_for_private cho một submission cụ thể."""
+        ...
+
+    @abstractmethod
+    def update_source_code_url(
+        self, submission_id: uuid.UUID, source_code_url: str
+    ) -> None:
+        """UC06 — Cập nhật đường dẫn source code sau khi upload."""
+        ...
+
+    @abstractmethod
+    def list_all_by_challenge(
+        self, challenge_id: uuid.UUID, page: int, size: int
+    ) -> tuple[list[SubmissionEntity], int]:
+        """UC11 (Admin) — Lấy tất cả bài nộp trong một Challenge."""
+        ...
+
 
 class ILeaderboardRepository(ABC):
     @abstractmethod
@@ -163,11 +239,11 @@ class ILeaderboardRepository(ABC):
 
     @abstractmethod
     def upsert_with_lock(
-        self, entry: LeaderboardEntryEntity
+        self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER
     ) -> LeaderboardEntryEntity:
         """
-        [CHỐNG RACE CONDITION] Bắt buộc dùng SELECT ... FOR UPDATE (Pessimistic Locking)
-        trong implementation SQLAlchemy trước khi ghi đè kỷ lục.
+        [CHỐNG RACE CONDITION] Bắt buộc dùng Atomic Query (INSERT ... ON CONFLICT DO UPDATE ... WHERE)
+        trong implementation SQLAlchemy để tránh ghi đè sai điểm số khi nhiều worker chấm song song.
         """
         ...
 
@@ -186,6 +262,21 @@ class ILeaderboardRepository(ABC):
         self, team_id: uuid.UUID, challenge_id: uuid.UUID, submitted: bool = True
     ) -> None: ...
 
+    @abstractmethod
+    def export_all(
+        self,
+        challenge_id: uuid.UUID,
+        direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER,
+        leaderboard_type: str = "private",
+    ) -> list[dict]:
+        """
+        (Admin) Xuất toàn bộ BXH kèm thông tin members.
+        Trả về list[dict] với keys: Rank, Team Name, MSSV, Full Name,
+        Public Score, Private Score, Last Submission Time.
+        Mỗi team_member chiếm 1 dòng.
+        leaderboard_type: "public" | "private" — xác định dùng score nào để xếp hạng.
+        """
+        ...
 
 
 class IStorageRepository(ABC):
@@ -201,13 +292,16 @@ class IStorageRepository(ABC):
     def delete(self, key: str) -> None: ...
 
     @abstractmethod
-    def get_presigned_url(self, key: str, expires_in: int = 3600, filename: str | None = None) -> str:
-        """
-        Tạo presigned URL cho phép Frontend download trực tiếp (không qua API).
-        URL trả về phải dùng public endpoint (có thể truy cập từ browser),
-        không phải internal Docker hostname.
-        """
+    def stream_download(self, key: str):
+        """Stream bytes từ Storage theo key."""
         ...
+
+    @abstractmethod
+    def get_download_url(self, key: str, filename: str | None = None) -> str:
+        """Tạo đường dẫn proxy để Frontend tải file thông qua Backend."""
+        ...
+
+
 
 
 class ISolutionRepository(ABC):
@@ -224,6 +318,11 @@ class ISolutionRepository(ABC):
         Trả về entity đã cập nhật, None nếu không tồn tại.
         Raises ValueError nếu user đã upvote rồi.
         """
+        ...
+
+    @abstractmethod
+    def list_by_user(self, user_id: uuid.UUID) -> list[dict]:
+        """Lấy danh sách solutions của user kèm challenge_title (JOIN)."""
         ...
 
 class ITagRepository(ABC):
