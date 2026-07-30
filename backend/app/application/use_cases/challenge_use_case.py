@@ -52,6 +52,7 @@ class ChallengeUseCase:
             max_team_size=entity.max_team_size,
             ground_truth_url=entity.ground_truth_url if is_admin else None,
             custom_metric_url=entity.custom_metric_url if is_admin else None,
+            parent_id=entity.parent_id,
             tags=[TagResponseDTO.model_validate(t) for t in entity.tags]
         )
         return dto
@@ -78,6 +79,7 @@ class ChallengeUseCase:
             team_lock_deadline=data.team_lock_deadline,
             max_team_size=data.max_team_size,
             created_at=datetime.now(timezone.utc),
+            parent_id=data.parent_id,
             tags=[]
         )
         
@@ -159,6 +161,9 @@ class ChallengeUseCase:
 
         if self.challenge_repo.has_successful_submission(challenge_id):
             raise ValueError("Không thể đổi file chấm điểm do đã có người nộp thành công.")
+
+        if not ground_truth_filename:
+            ground_truth_filename = "ground_truth.csv"
 
         is_zip = ground_truth_filename.lower().endswith(".zip")
 
