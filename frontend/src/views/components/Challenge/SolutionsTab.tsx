@@ -20,7 +20,6 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
     setTitle,
     content,
     setContent,
-    file,
     setFile,
     uploading,
     handlePublish,

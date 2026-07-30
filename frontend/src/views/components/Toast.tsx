@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 /**
  * Toast — Hệ thống thông báo popup đẹp, dùng chung với dark theme của web.
  * Thay thế hoàn toàn browser alert().
