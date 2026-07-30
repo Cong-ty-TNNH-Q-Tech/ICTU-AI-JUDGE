@@ -322,14 +322,14 @@ def test_list_team_submissions_no_team(use_case, mock_repos):
         use_case.list_team_submissions(uuid.uuid4(), uuid.uuid4(), 1, 10)
 
 def test_validate_csv_format_invalid_extension():
-    from app.application.use_cases.submission_use_case import _validate_csv_format
+    from app.application.utils.file_validation import validate_csv_format
     with pytest.raises(ValueError, match="Chỉ chấp nhận file định dạng .csv"):
-        _validate_csv_format(b'a,b\n1,2', 'test.txt')
+        validate_csv_format(b'a,b\n1,2', 'test.txt')
 
 def test_validate_csv_format_not_enough_rows():
-    from app.application.use_cases.submission_use_case import _validate_csv_format
+    from app.application.utils.file_validation import validate_csv_format
     with pytest.raises(ValueError, match="File CSV cần có ít nhất 1 dòng"):
-        _validate_csv_format(b'header', 'test.csv')
+        validate_csv_format(b'header', 'test.csv')
 
 def test_select_for_private_unlimited_time(use_case, mock_repos, mock_team, mock_challenge):
     import uuid

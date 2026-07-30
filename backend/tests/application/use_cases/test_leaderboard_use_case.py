@@ -11,7 +11,8 @@ from app.domain.entities.entities import MetricDirection, LeaderboardEntryEntity
 def leaderboard_use_case():
     lb_repo = MagicMock()
     ch_repo = MagicMock()
-    return LeaderboardUseCase(lb_repo, ch_repo)
+    team_repo = MagicMock()
+    return LeaderboardUseCase(lb_repo, ch_repo, team_repo)
 
 def test_get_leaderboard_public(leaderboard_use_case):
     challenge = MagicMock()
@@ -89,3 +90,37 @@ def test_get_private_leaderboard_unlimited_time_raises_error(leaderboard_use_cas
     
     with pytest.raises(PermissionError, match='Challenge không giới hạn thời gian không hỗ trợ Private Leaderboard.'):
         leaderboard_use_case.get_leaderboard(uuid.uuid4(), LeaderboardType.PRIVATE, 1, 10, datetime.now(timezone.utc))
+
+def test_get_contest_leaderboard_success(leaderboard_use_case):
+    contest = MagicMock()
+    contest.metric_direction = MetricDirection.HIGHER_IS_BETTER
+    leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
+    
+    child1 = MagicMock()
+    child1.id = uuid.uuid4()
+    child1.metric_direction = MetricDirection.HIGHER_IS_BETTER
+    child1.tags = []
+    
+    leaderboard_use_case.challenge_repo.get_children.return_value = [child1]
+    
+    team = MagicMock()
+    team.id = uuid.uuid4()
+    team.name = "Test Team"
+    leaderboard_use_case.team_repo.get_teams_by_challenges.return_value = [team]
+    
+    entry = LeaderboardEntryEntity(
+        id=uuid.uuid4(),
+        challenge_id=child1.id,
+        team_id=team.id,
+        best_public_score=0.9,
+        last_submission_time=datetime.now(),
+        rank=1
+    )
+    leaderboard_use_case.leaderboard_repo.get_by_challenges.return_value = [entry]
+    
+    res = leaderboard_use_case.get_contest_leaderboard(
+        uuid.uuid4(), LeaderboardType.PUBLIC, datetime.now()
+    )
+    assert res.leaderboard[0].total_score == 0.9
+    assert res.leaderboard[0].team_name == "Test Team"
+
