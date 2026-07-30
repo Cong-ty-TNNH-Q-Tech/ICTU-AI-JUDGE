@@ -1,11 +1,14 @@
 import React from 'react';
-import { useAuthVM } from '../../viewmodels/useAuthVM';
 import { useNavigate } from 'react-router-dom';
+import { useAuthVM } from '../../viewmodels/useAuthVM';
 import { useToastStore } from '../../store/toastStore';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import { useAuthStore } from '../../store';
+import type { UserResponse } from '../../models/api.types';
 
 const LoginPage = () => {
   const { loading, loginWithGoogle } = useAuthVM();
+  const setUser = useAuthStore((state) => state.setUser);
   const navigate = useNavigate();
 
   const handleGoogleSuccess = async (token: string) => {
@@ -34,25 +37,55 @@ const LoginPage = () => {
     }
   };
 
-  return (
-    <div className="animate-fade-in">
-      {/* Divider */}
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-white dark:bg-background-dark px-3 text-slate-400 dark:text-slate-500 font-medium">
-            Đăng nhập bằng
-          </span>
-        </div>
-      </div>
+  const handleDevLogin = (role: 'STUDENT' | 'ADMIN') => {
+    const mockUser: UserResponse = {
+      id: role === 'ADMIN' ? '00000000-0000-0000-0000-000000000001' : '00000000-0000-0000-0000-000000000002',
+      email: role === 'ADMIN' ? 'admin@ictu.edu.vn' : 'sinhvien@ictu.edu.vn',
+      full_name: role === 'ADMIN' ? 'Quản trị viên (Dev Admin)' : 'Nguyễn Văn A (Dev Student)',
+      role: role,
+      is_active: true,
+      student_id: role === 'ADMIN' ? 'ADMIN001' : 'DTC205123456',
+    };
+    setUser(mockUser);
+    navigate(role === 'ADMIN' ? '/admin' : '/challenges');
+  };
 
+  return (
+    <div className="px-8 pb-8 pt-2 animate-fade-in space-y-4">
       {/* Google Login Button */}
       <GoogleLoginButton
         onSuccess={handleGoogleSuccess}
         loading={loading}
       />
+
+      {/* DEV QUICK LOGIN BUTTONS */}
+      <div className="pt-2 border-t border-dashed border-surface-200 dark:border-gray-700">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-500 mb-2 text-center">
+          ⚡ DEV QUICK ACCESS (TEST UI)
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handleDevLogin('STUDENT')}
+            className="w-full py-2.5 px-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium text-[13px] shadow-sm hover:shadow transition-all text-center"
+          >
+            👨‍🎓 Login Sinh viên
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDevLogin('ADMIN')}
+            className="w-full py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium text-[13px] shadow-sm hover:shadow transition-all text-center"
+          >
+            👑 Login Admin
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-surface-100 dark:border-gray-800">
+        <p className="text-[12px] text-content-tertiary text-center leading-relaxed">
+          Only <span className="font-medium text-content-secondary dark:text-content-dark-secondary">@ictu.edu.vn</span> accounts are permitted.
+        </p>
+      </div>
 
       {/* Terms */}
       <p className="mt-6 text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">

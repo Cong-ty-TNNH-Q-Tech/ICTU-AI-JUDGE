@@ -42,20 +42,6 @@ const stripMarkdown = (md?: string | null) => {
 
 type Filter = 'all' | 'active' | 'upcoming' | 'completed';
 
-const StatusBadge = ({ label, color }: { label: string; color: string }) => {
-  const styles: Record<string, string> = {
-    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30',
-    amber: 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30',
-    slate: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/30',
-  };
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${styles[color] || styles.slate}`}>
-      {color === 'emerald' && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse-soft" />}
-      {label}
-    </span>
-  );
-};
-
 const ChallengesPage = () => {
   const [page, setPage] = useState(1);
   const { challenges: api, meta, loading } = useChallengeListVM({ page, size: 12 });

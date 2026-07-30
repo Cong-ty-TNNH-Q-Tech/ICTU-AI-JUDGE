@@ -51,55 +51,64 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
 
     def upsert_with_lock(self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER) -> LeaderboardEntryEntity:
         """
-        Sử dụng PostgreSQL INSERT ... ON CONFLICT DO UPDATE để chống Race Condition 
-        hiệu quả mà không gặp lỗi IntegrityError khi 2 requests cùng INSERT.
-        Điểm số sẽ được update Atomic trực tiếp bằng mệnh đề WHERE.
+        Sử dụng SELECT ... FOR UPDATE (Pessimistic Locking) để khóa record.
+        Ngăn chặn race condition theo Rule 3.1 của dự án.
         """
-        from sqlalchemy.dialects.postgresql import insert
-
-        stmt = insert(LeaderboardModel).values(
-            id=entry.id,
-            challenge_id=entry.challenge_id,
-            team_id=entry.team_id,
-            best_public_score=entry.best_public_score,
-            best_private_score=entry.best_private_score,
-            best_public_submission_id=entry.best_public_submission_id,
-            best_private_submission_id=entry.best_private_submission_id,
-            last_submission_time=entry.last_submission_time,
-            rank=entry.rank,
-            is_source_code_submitted=entry.is_source_code_submitted,
-        )
-
-        update_dict = {
-            "best_public_score": stmt.excluded.best_public_score,
-            "best_private_score": func.coalesce(stmt.excluded.best_private_score, LeaderboardModel.best_private_score),
-            "best_public_submission_id": stmt.excluded.best_public_submission_id,
-            "best_private_submission_id": func.coalesce(stmt.excluded.best_private_submission_id, LeaderboardModel.best_private_submission_id),
-            "last_submission_time": stmt.excluded.last_submission_time,
-            "updated_at": func.now()
-        }
-
-        if direction == MetricDirection.HIGHER_IS_BETTER:
-            condition = LeaderboardModel.best_public_score < stmt.excluded.best_public_score
-        else:
-            condition = LeaderboardModel.best_public_score > stmt.excluded.best_public_score
-
-        do_update_stmt = stmt.on_conflict_do_update(
-            constraint="uq_leaderboard_challenge_team",
-            set_=update_dict,
-            where=condition
-        ).returning(LeaderboardModel)
-
-        model = self.db.execute(do_update_stmt).scalar_one_or_none()
-        self.db.flush()
+        from sqlalchemy.exc import IntegrityError
         
-        if not model:
-            # If the WHERE condition fails, DO UPDATE is skipped, and returning() yields nothing.
-            # We fetch and return the existing record.
-            existing = self.get_by_team_and_challenge(entry.team_id, entry.challenge_id)
-            if not existing:
-                raise RuntimeError("Race condition: Leaderboard entry should exist but wasn't found.")
-            return existing
+        stmt = (
+            select(LeaderboardModel)
+            .where(
+                LeaderboardModel.team_id == entry.team_id,
+                LeaderboardModel.challenge_id == entry.challenge_id,
+            )
+            .with_for_update()
+        )
+        model = self.db.execute(stmt).scalars().first()
+
+        def update_model(m: LeaderboardModel):
+            should_update = False
+            if direction == MetricDirection.HIGHER_IS_BETTER:
+                should_update = m.best_public_score < entry.best_public_score
+            else:
+                should_update = m.best_public_score > entry.best_public_score
+                
+            if should_update:
+                m.best_public_score = entry.best_public_score
+                m.best_private_score = entry.best_private_score if entry.best_private_score is not None else m.best_private_score
+                m.best_public_submission_id = entry.best_public_submission_id
+                m.best_private_submission_id = entry.best_private_submission_id if entry.best_private_submission_id is not None else m.best_private_submission_id
+                m.last_submission_time = entry.last_submission_time
+                m.updated_at = func.now()
+
+        if model:
+            update_model(model)
+            self.db.flush()
+        else:
+            try:
+                with self.db.begin_nested():
+                    model = LeaderboardModel(
+                        id=entry.id,
+                        challenge_id=entry.challenge_id,
+                        team_id=entry.team_id,
+                        best_public_score=entry.best_public_score,
+                        best_private_score=entry.best_private_score,
+                        best_public_submission_id=entry.best_public_submission_id,
+                        best_private_submission_id=entry.best_private_submission_id,
+                        last_submission_time=entry.last_submission_time,
+                        rank=entry.rank,
+                        is_source_code_submitted=entry.is_source_code_submitted,
+                    )
+                    self.db.add(model)
+                    self.db.flush()
+            except IntegrityError:
+                # Concurrent insert happened. Lock the row and update it.
+                model = self.db.execute(stmt).scalars().first()
+                if model:
+                    update_model(model)
+                    self.db.flush()
+                else:
+                    raise RuntimeError("Race condition: Leaderboard entry should exist after IntegrityError but wasn't found.")
 
         return self._to_entity(model, rank=model.rank)
 
