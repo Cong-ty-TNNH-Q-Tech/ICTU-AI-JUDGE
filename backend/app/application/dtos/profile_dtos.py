@@ -24,6 +24,7 @@ class UserProfileDTO(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     """Body PATCH /users/me/profile."""
+    full_name: Optional[str] = None
     github_url: Optional[str] = None
     linkedin_url: Optional[str] = None
 

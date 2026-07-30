@@ -6,13 +6,32 @@ import logging
 import uuid
 from fastapi import APIRouter, Depends, Request
 
-from app.application.dtos.team_dtos import CreateInviteResponseDTO, JoinTeamRequestDTO, TeamResponseDTO
+from app.application.dtos.team_dtos import CreateInviteResponseDTO, JoinTeamRequestDTO, TeamResponseDTO, TeamUpdateRequestDTO
 from app.application.use_cases.team_use_case import TeamUseCase
 from app.entrypoints.dependencies import get_current_user_id, get_team_use_case
 from app.core.config import Settings, get_settings
+from app.domain.exceptions.exceptions import PermissionDeniedError, TeamAlreadyLockedError, NotFoundError
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+@router.patch("/{team_id}", response_model=TeamResponseDTO)
+async def update_team_name(
+    team_id: uuid.UUID,
+    body: TeamUpdateRequestDTO,
+    use_case: TeamUseCase = Depends(get_team_use_case),
+    user_id: uuid.UUID = Depends(get_current_user_id)
+):
+    """
+    UC02 — Cập nhật thông tin đội (chỉ dành cho trưởng nhóm).
+    """
+    try:
+        return use_case.update_team_name(team_id, user_id, body.name)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except (NotFoundError, TeamAlreadyLockedError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/{team_id}/invites", response_model=CreateInviteResponseDTO)
 async def create_invite(

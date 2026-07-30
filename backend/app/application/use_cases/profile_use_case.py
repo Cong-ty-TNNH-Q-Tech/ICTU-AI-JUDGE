@@ -100,6 +100,7 @@ class ProfileUseCase:
             user_id=current_user.id,
             github_url=payload.github_url,
             linkedin_url=payload.linkedin_url,
+            full_name=payload.full_name,
         )
         if not updated:
             raise LookupError("Không tìm thấy user để cập nhật.")

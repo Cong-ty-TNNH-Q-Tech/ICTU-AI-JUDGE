@@ -223,3 +223,31 @@ class TeamUseCase:
             "size": size,
             "total_pages": total_pages
         }
+
+    def update_team_name(self, team_id: uuid.UUID, requester_id: uuid.UUID, new_name: str) -> TeamResponseDTO:
+        team = self.team_repo.get_by_id(team_id)
+        if not team:
+            raise NotFoundError("Không tìm thấy đội")
+
+        if team.leader_id != requester_id:
+            raise PermissionDeniedError("Chỉ trưởng nhóm mới được phép đổi tên đội")
+
+        challenge = self.challenge_repo.get_by_id(team.challenge_id)
+        if challenge and challenge.is_team_locked(self._now()):
+            raise TeamAlreadyLockedError("Đã qua thời hạn chốt đội, không thể đổi tên")
+
+        updated_team = self.team_repo.update_name(team_id, new_name)
+        if not updated_team:
+            raise NotFoundError("Đội không tồn tại hoặc đã bị xóa")
+
+        self.uow.commit()
+        logger.info(f"Team {team_id} renamed to {new_name} by user {requester_id}")
+
+        return TeamResponseDTO(
+            id=updated_team.id,
+            name=updated_team.name,
+            challenge_id=updated_team.challenge_id,
+            leader_id=updated_team.leader_id,
+            created_at=updated_team.created_at,
+            member_ids=updated_team.member_ids
+        )

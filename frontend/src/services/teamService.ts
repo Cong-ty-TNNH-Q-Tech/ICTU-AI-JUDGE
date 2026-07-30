@@ -50,4 +50,10 @@ export const teamService = {
   async kickMember(teamId: string, userId: string): Promise<void> {
     await apiClient.delete(`/teams/${teamId}/members/${userId}`);
   },
+
+  /** PATCH /teams/{id} — Đổi tên đội */
+  async updateTeam(teamId: string, payload: { name: string }): Promise<TeamResponse> {
+    const { data } = await apiClient.patch<TeamResponse>(`/teams/${teamId}`, payload);
+    return data;
+  },
 };

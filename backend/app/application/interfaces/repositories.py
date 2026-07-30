@@ -58,7 +58,8 @@ class IUserRepository(ABC):
         user_id: uuid.UUID,
         github_url: str | None,
         linkedin_url: str | None,
-        avatar_url: str | None = ...,  # type: ignore[assignment]
+        avatar_url: str | None = None,
+        full_name: str | None = None,
     ) -> UserEntity | None:
         """
         Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
@@ -125,7 +126,12 @@ class ITeamRepository(ABC):
     ) -> TeamEntity | None: ...
 
     @abstractmethod
-    def save(self, team: TeamEntity) -> TeamEntity: ...
+    def save(self, team: TeamEntity) -> TeamEntity:
+        pass
+
+    @abstractmethod
+    def update_name(self, team_id: uuid.UUID, new_name: str) -> TeamEntity | None:
+        pass
 
     @abstractmethod
     def has_submissions(self, team_id: uuid.UUID) -> bool: ...

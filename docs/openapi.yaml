@@ -343,6 +343,42 @@ paths:
   # ==========================================
   # TEAM ENDPOINTS
   # ==========================================
+  /teams/{id}:
+    patch:
+      summary: Cập nhật tên Đội (Trưởng nhóm)
+      tags:
+        - Teams
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Tên đội mới"
+      responses:
+        '200':
+          description: Đổi tên thành công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '403':
+          description: Bạn không phải trưởng nhóm.
+        '400':
+          description: Đã qua thời hạn chốt đội.
+
   /teams/{id}/invites:
     post:
       summary: Trưởng nhóm tạo mã mời
@@ -1372,6 +1408,10 @@ components:
     UpdateProfileRequest:
       type: object
       properties:
+        full_name:
+          type: string
+          nullable: true
+          example: "Nguyen Van A"
         github_url:
           type: string
           nullable: true

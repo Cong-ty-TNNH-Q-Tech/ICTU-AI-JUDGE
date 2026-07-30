@@ -86,6 +86,23 @@ class SQLTeamRepository(ITeamRepository):
         self.db.refresh(model)
         return self._to_entity(model)
 
+    def update_name(self, team_id: uuid.UUID, new_name: str) -> TeamEntity | None:
+        from sqlalchemy import update
+        stmt = (
+            update(TeamModel)
+            .where(TeamModel.id == team_id, TeamModel.deleted_at.is_(None))
+            .values(name=new_name)
+            .returning(TeamModel)
+        )
+        result = self.db.execute(stmt).scalar_one_or_none()
+        if not result:
+            return None
+        self.db.flush()
+        
+        # We need to load members for the entity. Instead of returning from returning clause,
+        # we can just fetch it again to get the joinedload data properly.
+        return self.get_by_id(team_id)
+
     def has_submissions(self, team_id: uuid.UUID) -> bool:
         result = (
             self.db.execute(

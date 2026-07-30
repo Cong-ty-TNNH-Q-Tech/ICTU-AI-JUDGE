@@ -20,3 +20,7 @@ class TeamResponseDTO(BaseModel):
     leader_id: uuid.UUID
     created_at: datetime
     member_ids: list[uuid.UUID]
+
+
+class TeamUpdateRequestDTO(BaseModel):
+    name: str
