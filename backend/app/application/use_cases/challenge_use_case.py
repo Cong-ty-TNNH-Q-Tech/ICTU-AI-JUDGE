@@ -12,6 +12,7 @@ from app.application.dtos.challenge_dtos import (
     ChallengeUpdateRequestDTO,
 )
 from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository
+from app.application.utils.file_validation import validate_zip_format, validate_zip_contains_ground_truth_csv
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
 from app.application.dtos.tag_dtos import TagResponseDTO
 
@@ -148,7 +149,8 @@ class ChallengeUseCase:
         self,
         challenge_id: uuid.UUID,
         ground_truth_bytes: bytes,
-        metric_script_bytes: bytes | None,
+        ground_truth_filename: str = "ground_truth.csv",
+        metric_script_bytes: bytes | None = None,
         public_test_split_ratio: int = 30,
     ) -> ChallengeResponseDTO:
         challenge = self.challenge_repo.get_by_id(challenge_id)
@@ -158,44 +160,58 @@ class ChallengeUseCase:
         if self.challenge_repo.has_successful_submission(challenge_id):
             raise ValueError("Không thể đổi file chấm điểm do đã có người nộp thành công.")
 
-        # Validate ground_truth_bytes has 'Usage' column, if not, generate it
-        try:
-            content = ground_truth_bytes.decode("utf-8")
-            reader = csv.reader(io.StringIO(content))
-            rows = list(reader)
-            
-            if not rows:
-                raise ValueError("File CSV rỗng.")
-                
-            headers = rows[0]
-            if "Usage" not in headers:
-                headers.append("Usage")
-                data_rows = rows[1:]
-                
-                n_total = len(data_rows)
-                n_public = int(n_total * (public_test_split_ratio / 100))
-                n_private = n_total - n_public
-                
-                usages = ["Public"] * n_public + ["Private"] * n_private
-                random.shuffle(usages)
-                
-                for row, usage in zip(data_rows, usages):
-                    row.append(usage)
-                    
-                out_stream = io.StringIO()
-                writer = csv.writer(out_stream)
-                writer.writerow(headers)
-                writer.writerows(data_rows)
-                ground_truth_bytes = out_stream.getvalue().encode("utf-8")
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            raise ValueError(f"Không thể đọc file CSV: {e}")
+        is_zip = ground_truth_filename.lower().endswith(".zip")
 
-        # Upload Ground Truth
-        gt_key = f"challenges/{challenge_id}/ground_truth.csv"
-        self.storage_repo.upload(key=gt_key, data=ground_truth_bytes)
-        challenge.ground_truth_url = gt_key
+        if is_zip:
+            # [SECURITY] Validate zip bomb + path traversal
+            validate_zip_format(ground_truth_bytes, ground_truth_filename)
+            # [REQUIRED] Zip must contain ground_truth.csv for Public/Private split
+            validate_zip_contains_ground_truth_csv(ground_truth_bytes)
+            # Upload nguyên zip lên S3
+            gt_key = f"challenges/{challenge_id}/ground_truth.zip"
+            self.storage_repo.upload(
+                key=gt_key, data=ground_truth_bytes, content_type="application/zip"
+            )
+            challenge.ground_truth_url = gt_key
+        else:
+            # Validate ground_truth_bytes has 'Usage' column, if not, generate it
+            try:
+                content = ground_truth_bytes.decode("utf-8")
+                reader = csv.reader(io.StringIO(content))
+                rows = list(reader)
+
+                if not rows:
+                    raise ValueError("File CSV rỗng.")
+
+                headers = rows[0]
+                if "Usage" not in headers:
+                    headers.append("Usage")
+                    data_rows = rows[1:]
+
+                    n_total = len(data_rows)
+                    n_public = int(n_total * (public_test_split_ratio / 100))
+                    n_private = n_total - n_public
+
+                    usages = ["Public"] * n_public + ["Private"] * n_private
+                    random.shuffle(usages)
+
+                    for row, usage in zip(data_rows, usages):
+                        row.append(usage)
+
+                    out_stream = io.StringIO()
+                    writer = csv.writer(out_stream)
+                    writer.writerow(headers)
+                    writer.writerows(data_rows)
+                    ground_truth_bytes = out_stream.getvalue().encode("utf-8")
+            except ValueError as e:
+                raise e
+            except Exception as e:
+                raise ValueError(f"Không thể đọc file CSV: {e}")
+
+            # Upload Ground Truth CSV
+            gt_key = f"challenges/{challenge_id}/ground_truth.csv"
+            self.storage_repo.upload(key=gt_key, data=ground_truth_bytes)
+            challenge.ground_truth_url = gt_key
 
         # Upload Metric Script if provided
         if metric_script_bytes:
