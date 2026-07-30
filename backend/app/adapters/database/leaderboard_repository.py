@@ -54,6 +54,8 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         Sử dụng SELECT ... FOR UPDATE (Pessimistic Locking) để khóa record.
         Ngăn chặn race condition theo Rule 3.1 của dự án.
         """
+        from sqlalchemy.exc import IntegrityError
+        
         stmt = (
             select(LeaderboardModel)
             .where(
@@ -64,36 +66,49 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         )
         model = self.db.execute(stmt).scalars().first()
 
-        if model:
+        def update_model(m: LeaderboardModel):
             should_update = False
             if direction == MetricDirection.HIGHER_IS_BETTER:
-                should_update = model.best_public_score < entry.best_public_score
+                should_update = m.best_public_score < entry.best_public_score
             else:
-                should_update = model.best_public_score > entry.best_public_score
+                should_update = m.best_public_score > entry.best_public_score
                 
             if should_update:
-                model.best_public_score = entry.best_public_score
-                model.best_private_score = entry.best_private_score if entry.best_private_score is not None else model.best_private_score
-                model.best_public_submission_id = entry.best_public_submission_id
-                model.best_private_submission_id = entry.best_private_submission_id if entry.best_private_submission_id is not None else model.best_private_submission_id
-                model.last_submission_time = entry.last_submission_time
-                model.updated_at = func.now()
-        else:
-            model = LeaderboardModel(
-                id=entry.id,
-                challenge_id=entry.challenge_id,
-                team_id=entry.team_id,
-                best_public_score=entry.best_public_score,
-                best_private_score=entry.best_private_score,
-                best_public_submission_id=entry.best_public_submission_id,
-                best_private_submission_id=entry.best_private_submission_id,
-                last_submission_time=entry.last_submission_time,
-                rank=entry.rank,
-                is_source_code_submitted=entry.is_source_code_submitted,
-            )
-            self.db.add(model)
+                m.best_public_score = entry.best_public_score
+                m.best_private_score = entry.best_private_score if entry.best_private_score is not None else m.best_private_score
+                m.best_public_submission_id = entry.best_public_submission_id
+                m.best_private_submission_id = entry.best_private_submission_id if entry.best_private_submission_id is not None else m.best_private_submission_id
+                m.last_submission_time = entry.last_submission_time
+                m.updated_at = func.now()
 
-        self.db.flush()
+        if model:
+            update_model(model)
+            self.db.flush()
+        else:
+            try:
+                with self.db.begin_nested():
+                    model = LeaderboardModel(
+                        id=entry.id,
+                        challenge_id=entry.challenge_id,
+                        team_id=entry.team_id,
+                        best_public_score=entry.best_public_score,
+                        best_private_score=entry.best_private_score,
+                        best_public_submission_id=entry.best_public_submission_id,
+                        best_private_submission_id=entry.best_private_submission_id,
+                        last_submission_time=entry.last_submission_time,
+                        rank=entry.rank,
+                        is_source_code_submitted=entry.is_source_code_submitted,
+                    )
+                    self.db.add(model)
+                    self.db.flush()
+            except IntegrityError:
+                # Concurrent insert happened. Lock the row and update it.
+                model = self.db.execute(stmt).scalars().first()
+                if model:
+                    update_model(model)
+                    self.db.flush()
+                else:
+                    raise RuntimeError("Race condition: Leaderboard entry should exist after IntegrityError but wasn't found.")
 
         return self._to_entity(model, rank=model.rank)
 
