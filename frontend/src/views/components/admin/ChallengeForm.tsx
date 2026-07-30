@@ -298,6 +298,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <option value="ACCURACY">Accuracy (Higher is better)</option>
                     <option value="F1_SCORE">F1 Score (Higher is better)</option>
                     <option value="RMSE">RMSE - Root Mean Squared Error (Lower is better)</option>
+                    <option value="R2_SCORE">R2 Score (Higher is better)</option>
                     <option value="CUSTOM">Custom Script</option>
                   </select>
                 </div>
