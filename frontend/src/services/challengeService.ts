@@ -13,6 +13,7 @@ import type {
   LeaderboardType,
   Solution,
   LeaderboardResponse,
+  ContestLeaderboardResponse,
 } from '../models/api.types';
 
 export const challengeService = {
@@ -149,6 +150,18 @@ export const challengeService = {
   ): Promise<LeaderboardResponse> {
     const { data } = await apiClient.get<LeaderboardResponse>(
       `/challenges/${id}/leaderboard`,
+      { params },
+    );
+    return data;
+  },
+
+  /** Bảng xếp hạng Contest */
+  async getContestLeaderboard(
+    id: string,
+    params?: { type?: LeaderboardType },
+  ): Promise<ContestLeaderboardResponse> {
+    const { data } = await apiClient.get<ContestLeaderboardResponse>(
+      `/challenges/${id}/contest-leaderboard`,
       { params },
     );
     return data;

@@ -37,3 +37,21 @@ async def get_leaderboard(
         )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+@router.get("/{challenge_id}/contest-leaderboard")
+async def get_contest_leaderboard(
+    challenge_id: uuid.UUID,
+    type: LeaderboardType = LeaderboardType.PUBLIC,
+    use_case: LeaderboardUseCase = Depends(get_leaderboard_use_case),
+):
+    """Bảng xếp hạng tổng của một Contest (Parent Challenge)."""
+    from fastapi import HTTPException
+    try:
+        current_time = datetime.now(tz=timezone.utc)
+        return use_case.get_contest_leaderboard(
+            contest_id=challenge_id,
+            lb_type=type,
+            current_time=current_time,
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
