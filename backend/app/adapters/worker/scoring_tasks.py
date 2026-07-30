@@ -192,7 +192,7 @@ except Exception as e:
 import pandas as pd
 import sys
 import math
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, log_loss
 
 try:
     gt = pd.read_csv('/tmp/ground_truth.csv')
@@ -226,6 +226,8 @@ try:
         score = f1_score(y_true, y_pred, average='macro')
     elif metric_name == 'RMSE':
         score = math.sqrt(mean_squared_error(y_true, y_pred))
+    elif metric_name == 'LOG_LOSS':
+        score = log_loss(y_true, y_pred)
     else:
         print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
         sys.exit(1)
