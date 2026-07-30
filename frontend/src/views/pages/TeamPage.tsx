@@ -103,7 +103,9 @@ const TeamPage: React.FC = () => {
                       if (editNameInput.trim() && editNameInput !== team.name) {
                         try {
                           await updateTeamName(editNameInput.trim());
-                        } catch {}
+                        } catch {
+                          // Handled by useTeamVM
+                        }
                       }
                       setIsEditingName(false);
                     }}
