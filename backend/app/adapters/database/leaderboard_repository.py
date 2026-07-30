@@ -50,40 +50,43 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
 
     def upsert_with_lock(self, entry: LeaderboardEntryEntity) -> LeaderboardEntryEntity:
         """
-        Sử dụng PostgreSQL INSERT ... ON CONFLICT DO UPDATE để chống Race Condition 
-        hiệu quả mà không gặp lỗi IntegrityError khi 2 requests cùng INSERT.
+        Sử dụng SELECT ... FOR UPDATE (Pessimistic Locking) để khóa record.
+        Ngăn chặn race condition theo Rule 3.1 của dự án.
         """
-        from sqlalchemy.dialects.postgresql import insert
-
-        stmt = insert(LeaderboardModel).values(
-            id=entry.id,
-            challenge_id=entry.challenge_id,
-            team_id=entry.team_id,
-            best_public_score=entry.best_public_score,
-            best_private_score=entry.best_private_score,
-            best_public_submission_id=entry.best_public_submission_id,
-            best_private_submission_id=entry.best_private_submission_id,
-            last_submission_time=entry.last_submission_time,
-            rank=entry.rank,
-            is_source_code_submitted=entry.is_source_code_submitted,
+        stmt = (
+            select(LeaderboardModel)
+            .where(
+                LeaderboardModel.team_id == entry.team_id,
+                LeaderboardModel.challenge_id == entry.challenge_id,
+            )
+            .with_for_update()
         )
+        model = self.db.execute(stmt).scalars().first()
 
-        update_dict = {
-            "best_public_score": stmt.excluded.best_public_score,
-            "best_private_score": stmt.excluded.best_private_score,
-            "best_public_submission_id": stmt.excluded.best_public_submission_id,
-            "best_private_submission_id": stmt.excluded.best_private_submission_id,
-            "last_submission_time": stmt.excluded.last_submission_time,
-            "rank": stmt.excluded.rank,
-            "updated_at": func.now()
-        }
+        if model:
+            model.best_public_score = entry.best_public_score
+            model.best_private_score = entry.best_private_score
+            model.best_public_submission_id = entry.best_public_submission_id
+            model.best_private_submission_id = entry.best_private_submission_id
+            model.last_submission_time = entry.last_submission_time
+            model.rank = entry.rank
+            model.is_source_code_submitted = entry.is_source_code_submitted
+            model.updated_at = func.now()
+        else:
+            model = LeaderboardModel(
+                id=entry.id,
+                challenge_id=entry.challenge_id,
+                team_id=entry.team_id,
+                best_public_score=entry.best_public_score,
+                best_private_score=entry.best_private_score,
+                best_public_submission_id=entry.best_public_submission_id,
+                best_private_submission_id=entry.best_private_submission_id,
+                last_submission_time=entry.last_submission_time,
+                rank=entry.rank,
+                is_source_code_submitted=entry.is_source_code_submitted,
+            )
+            self.db.add(model)
 
-        do_update_stmt = stmt.on_conflict_do_update(
-            constraint="uq_leaderboard_challenge_team",
-            set_=update_dict
-        ).returning(LeaderboardModel)
-
-        model = self.db.execute(do_update_stmt).scalar_one()
         self.db.flush()
         
         return self._to_entity(model, rank=model.rank)
