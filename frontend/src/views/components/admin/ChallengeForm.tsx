@@ -303,15 +303,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 </div>
 
                 <div className="pt-2">
-                  <FileUploadZone 
-                    label="Ground Truth File" 
-                    accept=".csv" 
-                    required={!isEdit} 
-                    disabled={isLocked}
-                    file={groundTruthFile} 
-                    onChange={setGroundTruthFile}
-                    hint={isEdit && !isLocked ? "Upload a new CSV to replace the existing ground truth file." : "Contains the actual labels/values used for scoring submissions."}
-                  />
+                    <FileUploadZone 
+                      label="Ground Truth File" 
+                      accept=".csv,.zip"
+                      required={!isEdit} 
+                      disabled={isLocked}
+                      file={groundTruthFile} 
+                      onChange={setGroundTruthFile}
+                      hint={isEdit && !isLocked ? "Upload a new CSV/ZIP to replace the existing ground truth file." : "CSV hoặc ZIP chứa ground truth data. ZIP bắt buộc có file ground_truth.csv bên trong."}
+                    />
                   {groundTruthFile && (
                     <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-2">
@@ -356,7 +356,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <h3 className="text-sm font-semibold text-content-primary dark:text-content-dark-primary mb-4">Test Evaluation Script</h3>
                     <FileUploadZone 
                       label="Sample Submission File" 
-                      accept=".csv" 
+                      accept=".csv,.zip" 
                       file={sampleSubmissionFile} 
                       onChange={setSampleSubmissionFile}
                       hint="Upload a sample submission CSV to test against the ground truth."
