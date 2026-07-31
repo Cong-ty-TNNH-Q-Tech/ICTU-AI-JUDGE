@@ -159,3 +159,11 @@ def test_get_contest_leaderboard_private_not_ended(leaderboard_use_case):
             uuid.uuid4(), LeaderboardType.PRIVATE, now
         )
 
+def test_get_contest_leaderboard_private_unlimited_time(leaderboard_use_case):
+    contest = MagicMock()
+    contest.end_time = None
+    leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
+    with pytest.raises(PermissionError, match="không giới hạn thời gian"):
+        leaderboard_use_case.get_contest_leaderboard(
+            uuid.uuid4(), LeaderboardType.PRIVATE, datetime.now(timezone.utc)
+        )

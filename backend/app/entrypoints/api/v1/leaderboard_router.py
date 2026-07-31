@@ -6,7 +6,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.application.dtos.leaderboard_dtos import LeaderboardResponseDTO, LeaderboardType
@@ -25,7 +25,6 @@ async def get_leaderboard(
     use_case: LeaderboardUseCase = Depends(get_leaderboard_use_case),
 ):
     """UC07 — Bảng xếp hạng Public/Private (phân trang)."""
-    from fastapi import HTTPException
     try:
         current_time = datetime.now(tz=timezone.utc)
         return use_case.get_leaderboard(
@@ -35,6 +34,8 @@ async def get_leaderboard(
             size=size,
             current_time=current_time,
         )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -45,7 +46,6 @@ async def get_contest_leaderboard(
     use_case: LeaderboardUseCase = Depends(get_leaderboard_use_case),
 ):
     """Bảng xếp hạng tổng của một Contest (Parent Challenge)."""
-    from fastapi import HTTPException
     try:
         current_time = datetime.now(tz=timezone.utc)
         return use_case.get_contest_leaderboard(
@@ -53,5 +53,7 @@ async def get_contest_leaderboard(
             lb_type=type,
             current_time=current_time,
         )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
