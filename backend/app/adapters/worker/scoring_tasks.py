@@ -143,6 +143,8 @@ def _run_sandbox(
     metric_script: bytes | None,
     metric_name: str,
 ) -> float:
+    from app.core.config import get_settings
+    settings = get_settings()
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.

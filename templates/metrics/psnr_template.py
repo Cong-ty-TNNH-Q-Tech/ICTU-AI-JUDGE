@@ -4,13 +4,15 @@ import numpy as np
 from PIL import Image
 
 
-def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
+# CSV mode: ground_truth_path là đường dẫn file .csv
+# ZIP mode: ground_truth_path là đường dẫn thư mục đã giải nén
+def calculate_score(ground_truth_path: str, submission_path: str) -> float:
     """
     Tính PSNR trung bình trên tất cả ảnh trong dataset.
 
     Args:
-        ground_truth_dir: Thư mục chứa ground_truth.csv + ảnh gốc
-        submission_dir: Thư mục chứa ảnh dự đoán của thí sinh
+        ground_truth_path: Thư mục chứa ground_truth.csv + ảnh gốc
+        submission_path: Thư mục chứa ảnh dự đoán của thí sinh
 
     Returns:
         float: PSNR trung bình (dB), càng cao càng tốt.
@@ -21,7 +23,7 @@ def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
     """
     import pandas as pd
 
-    gt_csv = pd.read_csv(os.path.join(ground_truth_dir, 'ground_truth.csv'))
+    gt_csv = pd.read_csv(os.path.join(ground_truth_path, 'ground_truth.csv'))
 
     total_psnr = 0.0
     count = 0
@@ -30,11 +32,11 @@ def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
         filename = row['filename']
 
         gt_img = np.array(
-            Image.open(os.path.join(ground_truth_dir, filename)),
+            Image.open(os.path.join(ground_truth_path, filename)),
             dtype=np.float64
         )
 
-        sub_path = os.path.join(submission_dir, filename)
+        sub_path = os.path.join(submission_path, filename)
         if not os.path.exists(sub_path):
             raise ValueError(f"Missing submission file: {filename}")
 

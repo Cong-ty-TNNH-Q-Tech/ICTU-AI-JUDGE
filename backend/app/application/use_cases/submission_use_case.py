@@ -59,8 +59,10 @@ class SubmissionUseCase:
         team_repo: ITeamRepository,
         storage_repo: IStorageRepository,
         leaderboard_repo: ILeaderboardRepository = None,
-        message_broker: IMessageBroker = None, # Make it optional for backward compatibility in tests
+        message_broker: IMessageBroker = None,
         uow: IUnitOfWork = None,
+        zip_max_uncompressed_mb: int = 500,
+        zip_max_file_count: int = 10000,
     ):
         self.submission_repo = submission_repo
         self.challenge_repo = challenge_repo
@@ -69,6 +71,8 @@ class SubmissionUseCase:
         self.leaderboard_repo = leaderboard_repo
         self.message_broker = message_broker
         self.uow = uow
+        self.zip_max_uncompressed_mb = zip_max_uncompressed_mb
+        self.zip_max_file_count = zip_max_file_count
 
     # ==========================================
     # UC04 — Nộp bài dự thi
@@ -143,13 +147,11 @@ class SubmissionUseCase:
 
         # ---- Step 6: Validate format ----
         if filename.lower().endswith(".zip"):
-            from app.core.config import get_settings
-            settings = get_settings()
             validate_zip_format(
                 file_bytes, 
                 filename,
-                max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
-                max_file_count=settings.ZIP_MAX_FILE_COUNT
+                max_uncompressed_mb=self.zip_max_uncompressed_mb,
+                max_file_count=self.zip_max_file_count
             )
         else:
             validate_csv_format(file_bytes, filename)

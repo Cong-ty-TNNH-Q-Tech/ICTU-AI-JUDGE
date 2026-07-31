@@ -25,10 +25,14 @@ class ChallengeUseCase:
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
         tag_repo: ITagRepository,
+        zip_max_uncompressed_mb: int = 500,
+        zip_max_file_count: int = 10000,
     ):
         self.challenge_repo = challenge_repo
         self.storage_repo = storage_repo
         self.tag_repo = tag_repo
+        self.zip_max_uncompressed_mb = zip_max_uncompressed_mb
+        self.zip_max_file_count = zip_max_file_count
 
     def _to_dto(
         self, entity: ChallengeEntity, is_admin: bool = False
@@ -166,14 +170,12 @@ class ChallengeUseCase:
         is_zip = ground_truth_filename.lower().endswith(".zip")
 
         if is_zip:
-            from app.core.config import get_settings
-            settings = get_settings()
             # [SECURITY] Validate zip bomb + path traversal
             validate_zip_format(
                 ground_truth_bytes, 
                 ground_truth_filename,
-                max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
-                max_file_count=settings.ZIP_MAX_FILE_COUNT
+                max_uncompressed_mb=self.zip_max_uncompressed_mb,
+                max_file_count=self.zip_max_file_count
             )
             # [REQUIRED] Zip must contain ground_truth.csv for Public/Private split
             validate_zip_contains_ground_truth_csv(ground_truth_bytes)
