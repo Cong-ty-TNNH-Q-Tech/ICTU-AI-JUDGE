@@ -207,7 +207,7 @@ except Exception as e:
 import pandas as pd
 import sys
 import math
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
 
 try:
     gt = pd.read_csv('/tmp/ground_truth.csv')
@@ -241,6 +241,8 @@ try:
         score = f1_score(y_true, y_pred, average='macro')
     elif metric_name == 'RMSE':
         score = math.sqrt(mean_squared_error(y_true, y_pred))
+    elif metric_name == 'RECALL':
+        score = recall_score(y_true, y_pred, average='macro', zero_division=0)
     else:
         print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
         sys.exit(1)
