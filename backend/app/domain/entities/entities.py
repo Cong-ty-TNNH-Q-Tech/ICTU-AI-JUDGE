@@ -106,7 +106,6 @@ class ContestEntity:
 @dataclass
 class ChallengeEntity:
     id: uuid.UUID
-    contest_id: uuid.UUID | None
     title: str
     description: str
     type: ChallengeType
@@ -120,6 +119,7 @@ class ChallengeEntity:
     metric_direction: MetricDirection
     created_by: uuid.UUID
     created_at: datetime
+    contest_id: uuid.UUID | None = None
     dataset_url: str = ""
     ground_truth_url: str = ""
     custom_metric_url: str = ""
