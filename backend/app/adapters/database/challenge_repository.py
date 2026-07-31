@@ -187,7 +187,10 @@ class SQLChallengeRepository(IChallengeRepository):
         results = self.db.execute(
             select(ChallengeParticipantModel, UserModel)
             .join(UserModel, ChallengeParticipantModel.user_id == UserModel.id)
-            .where(ChallengeParticipantModel.challenge_id == challenge_id)
+            .where(
+                ChallengeParticipantModel.challenge_id == challenge_id,
+                UserModel.deleted_at.is_(None)
+            )
             .order_by(ChallengeParticipantModel.joined_at.desc())
             .offset((page - 1) * size)
             .limit(size)
