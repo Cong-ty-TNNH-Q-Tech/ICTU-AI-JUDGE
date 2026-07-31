@@ -18,7 +18,7 @@ export type MetricDirection = 'HIGHER_IS_BETTER' | 'LOWER_IS_BETTER';
 
 export type SubmissionStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
 
-export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
+export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
 
 export type LeaderboardType = 'public' | 'private';
 
