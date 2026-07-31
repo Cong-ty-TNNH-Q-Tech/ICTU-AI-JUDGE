@@ -9,6 +9,7 @@ from datetime import datetime
 
 from app.domain.entities.entities import (
     ChallengeEntity,
+    InviteStatus,
     LeaderboardEntryEntity,
     SubmissionEntity,
     SubmissionStatus,

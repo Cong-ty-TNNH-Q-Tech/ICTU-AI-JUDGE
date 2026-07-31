@@ -21,7 +21,7 @@ export const ContestService = {
     size: number = 20,
     status?: string
   ): Promise<PaginatedContestResponse> => {
-    const params: Record<string, any> = { page, size };
+    const params: Record<string, string | number> = { page, size };
     if (status) params.status = status;
     const response = await apiClient.get<PaginatedContestResponse>('/contests', { params });
     return response.data;

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ContestManagePage - Quan ly Cuoc thi (Issue #123).
  * Admin CRUD: Tao / Sua / Xoa mem cac Contest.
  */
@@ -39,7 +39,10 @@ const ContestFormModal: React.FC<ContestFormProps> = ({ initial, onSave, onCance
     if (!startTime) { setError('Vui long chon thoi gian bat dau.'); return; }
     try {
       await onSave({ title: title.trim(), description: description.trim(), status, start_time: new Date(startTime).toISOString(), end_time: endTime ? new Date(endTime).toISOString() : null });
-    } catch (err: any) { setError(err.response?.data?.detail || 'Da xay ra loi, vui long thu lai.'); }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Da xay ra loi, vui long thu lai.';
+      setError(msg);
+    }
   };
 
   return (
@@ -131,8 +134,10 @@ const ContestManagePage: React.FC = () => {
       else { await ContestService.createContest(data as ContestCreateRequest); showToast('Da tao cuoc thi moi.'); }
       setShowForm(false); setEditTarget(null);
       await fetchContests(page);
-    } catch (err: any) { throw err; }
-    finally { setIsSaving(false); }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Da xay ra loi.';
+      showToast(msg, 'error');
+    } finally { setIsSaving(false); }
   };
 
   const handleDelete = async () => {

@@ -22,8 +22,9 @@ export const useContestVM = () => {
       setTotal(response.total);
       setTotalPages(response.total_pages);
       setCurrentPage(page);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load contests');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load contests';
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -62,8 +63,9 @@ export const useContestDetailVM = (contestId: string | undefined) => {
         ]);
         setContest(contestData);
         setChallenges(challengesData.items);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Không tìm thấy thông tin kỳ thi');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Không tìm thấy thông tin kỳ thi';
+        setError(msg);
       } finally {
         setLoading(false);
       }
