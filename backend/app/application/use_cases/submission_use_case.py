@@ -27,7 +27,6 @@ from app.application.interfaces.repositories import (
 )
 from app.application.interfaces.message_broker import IMessageBroker
 from app.application.utils.file_validation import (
-    build_s3_key,
     get_effective_content_type,
     validate_csv_format,
     validate_zip_format,
@@ -144,7 +143,14 @@ class SubmissionUseCase:
 
         # ---- Step 6: Validate format ----
         if filename.lower().endswith(".zip"):
-            validate_zip_format(file_bytes, filename)
+            from app.core.config import get_settings
+            settings = get_settings()
+            validate_zip_format(
+                file_bytes, 
+                filename,
+                max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
+                max_file_count=settings.ZIP_MAX_FILE_COUNT
+            )
         else:
             validate_csv_format(file_bytes, filename)
 

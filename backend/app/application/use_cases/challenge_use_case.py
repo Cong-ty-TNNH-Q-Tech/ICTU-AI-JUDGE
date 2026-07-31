@@ -166,8 +166,15 @@ class ChallengeUseCase:
         is_zip = ground_truth_filename.lower().endswith(".zip")
 
         if is_zip:
+            from app.core.config import get_settings
+            settings = get_settings()
             # [SECURITY] Validate zip bomb + path traversal
-            validate_zip_format(ground_truth_bytes, ground_truth_filename)
+            validate_zip_format(
+                ground_truth_bytes, 
+                ground_truth_filename,
+                max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
+                max_file_count=settings.ZIP_MAX_FILE_COUNT
+            )
             # [REQUIRED] Zip must contain ground_truth.csv for Public/Private split
             validate_zip_contains_ground_truth_csv(ground_truth_bytes)
             # Upload nguyên zip lên S3
