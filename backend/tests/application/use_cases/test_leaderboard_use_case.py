@@ -154,7 +154,7 @@ def test_get_contest_leaderboard_private_not_ended(leaderboard_use_case):
     contest.end_time = now + timedelta(days=1)
     leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
     
-    with pytest.raises(PermissionError, match="only available after challenge ends"):
+    with pytest.raises(PermissionError, match="only available after contest ends"):
         leaderboard_use_case.get_contest_leaderboard(
             uuid.uuid4(), LeaderboardType.PRIVATE, now
         )
