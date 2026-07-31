@@ -27,6 +27,7 @@ class SQLChallengeRepository(IChallengeRepository):
     def _to_entity(model: ChallengeModel) -> ChallengeEntity:
         return ChallengeEntity(
             id=model.id,
+            contest_id=model.contest_id,
             title=model.title,
             description=model.description,
             type=ChallengeType(model.type),

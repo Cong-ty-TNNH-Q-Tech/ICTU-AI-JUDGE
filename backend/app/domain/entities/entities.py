@@ -23,6 +23,12 @@ class ChallengeType(str, Enum):
     COMPETITION = "COMPETITION"
 
 
+class ContestStatus(str, Enum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
 class ChallengeStatus(str, Enum):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
@@ -85,8 +91,22 @@ class TagEntity:
 
 
 @dataclass
+class ContestEntity:
+    id: uuid.UUID
+    title: str
+    description: str
+    status: ContestStatus
+    start_time: datetime
+    end_time: datetime | None
+    created_by: uuid.UUID
+    created_at: datetime
+    deleted_at: datetime | None = None
+
+
+@dataclass
 class ChallengeEntity:
     id: uuid.UUID
+    contest_id: uuid.UUID | None
     title: str
     description: str
     type: ChallengeType

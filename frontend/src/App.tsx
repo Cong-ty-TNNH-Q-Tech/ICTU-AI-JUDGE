@@ -12,6 +12,8 @@ import LandingPage from './views/pages/LandingPage';
 import LoginPage from './views/pages/LoginPage';
 import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
+import ContestListPage from './views/pages/ContestListPage';
+import ContestDetailPage from './views/pages/ContestDetailPage';
 import AdminPage from './views/pages/AdminPage';
 // Issue #30 — Profile
 import ProfilePage from './views/pages/ProfilePage';
@@ -96,6 +98,22 @@ function App() {
           <ProtectedRoute>
             <MainLayout>
               <ChallengeDetailPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/contests" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ContestListPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/contests/:id" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ContestDetailPage />
             </MainLayout>
           </ProtectedRoute>
         } />

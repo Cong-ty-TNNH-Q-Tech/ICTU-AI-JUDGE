@@ -89,6 +89,90 @@ paths:
                           $ref: '#/components/schemas/Team'
 
   # ==========================================
+  # CONTEST ENDPOINTS
+  # ==========================================
+  /contests:
+    get:
+      summary: Lấy danh sách Cuộc thi
+      tags:
+        - Contests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PUBLISHED, ARCHIVED]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Danh sách Cuộc thi (Phân trang)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Contest'
+    post:
+      summary: Tạo Cuộc thi mới (Admin)
+      tags:
+        - Contests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContestCreate'
+      responses:
+        '201':
+          description: Tạo thành công.
+
+  /contests/{id}:
+    get:
+      summary: Chi tiết Cuộc thi
+      tags:
+        - Contests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Thông tin chi tiết Cuộc thi.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contest'
+    patch:
+      summary: Cập nhật Cuộc thi (Admin)
+      tags:
+        - Contests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContestUpdate'
+      responses:
+        '200':
+          description: Cập nhật thành công.
+
+  # ==========================================
   # CHALLENGE ENDPOINTS
   # ==========================================
   /challenges:
@@ -1121,6 +1205,70 @@ components:
           type: string
           nullable: true
 
+    Contest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+
+    ContestCreate:
+      type: object
+      required: [title, description, status, start_time]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+
+    ContestUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+
     Team:
       type: object
       properties:
@@ -1142,6 +1290,10 @@ components:
         id:
           type: string
           format: uuid
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
         title:
           type: string
         status:

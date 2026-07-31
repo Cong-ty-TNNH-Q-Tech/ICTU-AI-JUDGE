@@ -21,6 +21,7 @@ from app.application.interfaces.repositories import (
     IUnitOfWork,
     ITagRepository,
     ILeaderboardRepository,
+    IContestRepository,
 )
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
@@ -29,6 +30,7 @@ from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.database.tag_repository import SQLTagRepository
 from app.adapters.database.leaderboard_repository import SQLLeaderboardRepository
+from app.adapters.database.contest_repository import SQLContestRepository
 from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
@@ -43,6 +45,7 @@ from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.use_cases.tag_use_case import TagUseCase
 from app.application.use_cases.auth_use_case import AuthUseCase
+from app.application.use_cases.contest_use_case import ContestUseCase
 from app.domain.entities.entities import UserEntity, UserRole
 
 settings = get_settings()
@@ -186,6 +189,10 @@ def get_leaderboard_repository(db: Session = Depends(get_db)) -> ILeaderboardRep
     return SQLLeaderboardRepository(db)
 
 
+def get_contest_repository(db: Session = Depends(get_db)) -> IContestRepository:
+    return SQLContestRepository(db)
+
+
 def get_message_broker() -> IMessageBroker:
     return CeleryMessageBroker()
 
@@ -286,3 +293,10 @@ def get_leaderboard_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
 ) -> LeaderboardUseCase:
     return LeaderboardUseCase(leaderboard_repo, challenge_repo)
+
+
+def get_contest_use_case(
+    contest_repo: IContestRepository = Depends(get_contest_repository),
+    uow: IUnitOfWork = Depends(get_uow),
+) -> ContestUseCase:
+    return ContestUseCase(contest_repo, uow)

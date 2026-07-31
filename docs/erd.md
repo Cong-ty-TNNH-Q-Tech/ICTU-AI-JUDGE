@@ -11,6 +11,7 @@ Dựa trên tài liệu Phân tích Nghiệp vụ (BA.md) và các tối ưu v�
 ```mermaid
 erDiagram
     USER ||--o{ TEAM_MEMBER : "Là thành viên"
+    USER ||--o{ CONTEST : "Tạo cuộc thi (Admin)"
     USER ||--o{ CHALLENGE : "Tạo bài thi (Admin)"
     USER ||--o{ CHALLENGE_PARTICIPANT : "Được cấp quyền thi"
     USER ||--o{ SUBMISSION : "Người trực tiếp thao tác nộp"
@@ -26,6 +27,8 @@ erDiagram
     CHALLENGE ||--o{ CHALLENGE_PARTICIPANT : "Danh sách Whitelist"
     CHALLENGE ||--o{ LEADERBOARD : "Bảng xếp hạng"
 
+    CONTEST ||--o{ CHALLENGE : "Bao gồm"
+
     USER {
         uuid id PK
         string email "Unique, @ictu.edu.vn"
@@ -38,8 +41,21 @@ erDiagram
         datetime deleted_at "Soft Delete"
     }
 
+    CONTEST {
+        uuid id PK
+        string title
+        text description
+        string status "ENUM: DRAFT, PUBLISHED, ARCHIVED"
+        datetime start_time
+        datetime end_time
+        uuid created_by FK "Admin ID"
+        datetime created_at
+        datetime deleted_at "Soft Delete"
+    }
+
     CHALLENGE {
         uuid id PK
+        uuid contest_id FK "Thuộc cuộc thi nào (Có thể null)"
         string title
         text description
         string type "ENUM: PUBLIC, COMPETITION"
