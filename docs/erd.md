@@ -88,7 +88,7 @@ erDiagram
         uuid inviter_id FK "Người gửi lời mời"
         string invitee_email "Email người nhận"
         string token "Mã xác nhận bảo mật"
-        string status "ENUM: PENDING, ACCEPTED, DECLINED"
+        string status "ENUM: PENDING, ACCEPTED, DECLINED, EXPIRED"
         datetime expires_at
         datetime created_at
     }

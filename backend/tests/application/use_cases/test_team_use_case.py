@@ -227,3 +227,19 @@ def test_auto_create_team_success(use_case, mock_repos, mock_challenge, mock_use
     mock_repos["team_repo"].save.assert_called_once()
     mock_repos["team_repo"].add_member.assert_called_once()
     mock_repos["uow"].commit.assert_called_once()
+
+
+def test_create_invite_when_old_invite_expired(use_case, mock_repos, mock_team, mock_challenge, mock_user):
+    """
+    Test kịch bản khi tạo lời mời thứ hai nhưng lời mời cũ đã chuyển sang EXPIRED (Issue #98).
+    """
+    mock_repos["team_repo"].get_by_id.return_value = mock_team
+    mock_repos["challenge_repo"].get_by_id.return_value = mock_challenge
+
+    result = use_case.create_invite(mock_team.id, mock_user.id, "http://test")
+
+    assert result.token is not None
+    assert "join?token=" in result.invite_url
+    mock_repos["team_repo"].invalidate_invites.assert_called_once_with(mock_team.id)
+    mock_repos["team_repo"].create_invite.assert_called_once()
+    mock_repos["uow"].commit.assert_called_once()
