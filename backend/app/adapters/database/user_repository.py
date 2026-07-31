@@ -214,7 +214,7 @@ class UserRepository(IUserRepository):
         }
         if avatar_url is not _SENTINEL:
             values["avatar_url"] = avatar_url
-        if full_name is not _SENTINEL and full_name is not None:
+        if full_name is not _SENTINEL:
             values["full_name"] = full_name
 
         stmt = (

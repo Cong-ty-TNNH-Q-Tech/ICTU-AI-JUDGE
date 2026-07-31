@@ -19,7 +19,9 @@ from app.domain.entities.entities import (
     InviteStatus,
     SolutionEntity,
     TagEntity,
+    UserRole,
 )
+from typing import Optional
 
 
 class IUnitOfWork(ABC):
@@ -33,24 +35,41 @@ class IUnitOfWork(ABC):
     def rollback(self) -> None: ...
 
 
+_SENTINEL = object()
+
+
 class IUserRepository(ABC):
     @abstractmethod
-    def get_by_id(self, user_id: uuid.UUID) -> UserEntity | None: ...
+    def get_by_id(self, user_id: uuid.UUID) -> Optional[UserEntity]:
+        ...
 
     @abstractmethod
-    def get_by_email(self, email: str) -> UserEntity | None: ...
+    def get_by_email(self, email: str) -> Optional[UserEntity]:
+        ...
 
     @abstractmethod
-    def save(self, user: UserEntity) -> UserEntity: ...
+    def save(self, user: UserEntity) -> UserEntity:
+        ...
 
     @abstractmethod
-    def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]: ...
+    def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
+        ...
 
     @abstractmethod
-    def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
+    def soft_delete(self, user_id: uuid.UUID) -> None:
+        ...
 
     @abstractmethod
-    def update_role(self, user_id: uuid.UUID, role: str) -> bool: ...
+    def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
+        ...
+
+    @abstractmethod
+    def update_role(self, user_id: uuid.UUID, role: UserRole) -> bool:
+        ...
+
+    @abstractmethod
+    def find_by_identifiers(self, identifiers: list[str]) -> list[UserEntity]:
+        ...
 
     @abstractmethod
     def update_profile(
@@ -58,8 +77,8 @@ class IUserRepository(ABC):
         user_id: uuid.UUID,
         github_url: str | None,
         linkedin_url: str | None,
-        avatar_url: str | None = None,
-        full_name: str | None = None,
+        avatar_url: str | None = _SENTINEL,  # type: ignore[assignment]
+        full_name: str | None = _SENTINEL,  # type: ignore[assignment]
     ) -> UserEntity | None:
         """
         Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
