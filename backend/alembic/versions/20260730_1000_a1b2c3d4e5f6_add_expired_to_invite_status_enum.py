@@ -19,8 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # ALTER TYPE ... ADD VALUE không chạy được trong transaction
-    op.execute("COMMIT")
-    op.execute("ALTER TYPE invite_status_enum ADD VALUE IF NOT EXISTS 'EXPIRED'")
+    with op.get_context().autocommit_block():
+        op.execute("ALTER TYPE invite_status_enum ADD VALUE IF NOT EXISTS 'EXPIRED'")
 
 
 def downgrade() -> None:
