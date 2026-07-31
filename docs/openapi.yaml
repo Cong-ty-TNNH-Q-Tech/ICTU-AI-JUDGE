@@ -156,7 +156,7 @@ paths:
                 ground_truth_csv:
                   type: string
                   format: binary
-                  description: File đáp án bắt buộc chứa cột 'Usage'
+                  description: File đáp án bắt buộc chứa cột 'Usage' (.csv hoặc .zip)
                 metric_script_py:
                   type: string
                   format: binary
@@ -469,7 +469,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: File CSV dự đoán
+                  description: File dự đoán (.csv hoặc .zip)
       responses:
         '201':
           description: File hợp lệ, bắt đầu chấm điểm ngầm (Trạng thái PENDING).

@@ -115,6 +115,16 @@ def validate_zip_contains_ground_truth_csv(file_bytes: bytes) -> None:
                     "để hệ thống phân định Public/Private và chấm điểm. "
                     f"Các file tìm thấy: {names[:10]}..."
                 )
+            
+            with zf.open("ground_truth.csv") as f:
+                text_stream = io.TextIOWrapper(f, encoding="utf-8", errors="replace")
+                reader = csv.reader(text_stream)
+                header = next(reader, None)
+                if not header or "Usage" not in header:
+                    raise ValueError(
+                        "File 'ground_truth.csv' bên trong ZIP bị thiếu cột 'Usage'. "
+                        "Hệ thống yêu cầu cột này để phân định Public/Private test."
+                    )
     except zipfile.BadZipFile as exc:
         raise ValueError(f"File ZIP bị hỏng hoặc không đúng định dạng: {exc}") from exc
     except ValueError:
