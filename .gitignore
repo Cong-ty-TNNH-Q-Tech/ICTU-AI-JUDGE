@@ -39,3 +39,4 @@ pr_*.txt
 test_*.py
 demo_challenge/
 !backend/tests/
+!backend/tests/**
