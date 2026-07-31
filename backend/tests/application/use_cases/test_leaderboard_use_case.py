@@ -139,3 +139,23 @@ def test_get_contest_leaderboard_success(leaderboard_use_case):
     assert res.leaderboard[0].total_score == 0.9
     assert res.leaderboard[0].team_name == "Test Team"
 
+
+def test_get_contest_leaderboard_not_found(leaderboard_use_case):
+    leaderboard_use_case.challenge_repo.get_by_id.return_value = None
+    with pytest.raises(ValueError, match="not found"):
+        leaderboard_use_case.get_contest_leaderboard(
+            uuid.uuid4(), LeaderboardType.PUBLIC, datetime.now(timezone.utc)
+        )
+
+
+def test_get_contest_leaderboard_private_not_ended(leaderboard_use_case):
+    contest = MagicMock()
+    now = datetime.now(tz=timezone.utc)
+    contest.end_time = now + timedelta(days=1)
+    leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
+    
+    with pytest.raises(PermissionError, match="only available after challenge ends"):
+        leaderboard_use_case.get_contest_leaderboard(
+            uuid.uuid4(), LeaderboardType.PRIVATE, now
+        )
+

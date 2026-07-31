@@ -595,8 +595,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                # (You can define ContestLeaderboardResponse schema in components if needed, or leave it as object)
+                $ref: '#/components/schemas/ContestLeaderboardResponse'
         '403':
           description: Private Leaderboard chưa được công bố hoặc không phải là Contest.
 
@@ -1171,6 +1170,10 @@ components:
         id:
           type: string
           format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
         title:
           type: string
         status:
@@ -1203,6 +1206,11 @@ components:
         - metric_name
         - metric_direction
       properties:
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID của bài thi cha (nếu là bài thi con)
         title:
           type: string
           example: "Phân loại ảnh CIFAR-10"
@@ -1255,6 +1263,10 @@ components:
       type: object
       description: Tất cả trường đều là tùy chọn (Partial Update). Bị khóa nếu có Submission.
       properties:
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
         title:
           type: string
         description:
@@ -1409,3 +1421,38 @@ components:
           type: string
           nullable: true
           example: "https://linkedin.com/in/username"
+
+    ContestLeaderboardResponse:
+      type: object
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        rankings:
+          type: array
+          items:
+            type: object
+            properties:
+              team_id:
+                type: string
+                format: uuid
+              team_name:
+                type: string
+              total_score:
+                type: number
+              rank:
+                type: integer
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    child_challenge_id:
+                      type: string
+                      format: uuid
+                    score:
+                      type: number
+
+    InviteStatus:
+      type: string
+      enum: [PENDING, ACCEPTED, DECLINED, EXPIRED]
