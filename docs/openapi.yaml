@@ -1,4 +1,4 @@
-﻿openapi: 3.0.3
+openapi: 3.0.3
 info:
   title: ICTU AI Judge API
   description: RESTful API spec for ICTU AI Judge Platform (FastAPI Backend)

@@ -11,7 +11,7 @@ from app.application.dtos.contest_dtos import (
     ContestUpdateDTO,
 )
 from app.application.use_cases.contest_use_case import ContestUseCase
-from app.domain.entities.entities import UserEntity
+from app.domain.entities.entities import ContestStatus, UserEntity
 from app.domain.exceptions.exceptions import NotFoundError
 from app.entrypoints.dependencies import (
     get_contest_use_case,
@@ -27,6 +27,11 @@ router = APIRouter(tags=["Contests"])
 # ------------------------------------------------------------------
 def _not_found(exc: NotFoundError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+def _hidden_as_404() -> HTTPException:
+    """Trả về 404 thay vì 403 để tránh enumerate DRAFT contest IDs."""
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contest not found.")
 
 
 @router.get("", response_model=ContestListResponseDTO)
@@ -54,20 +59,45 @@ def get_contests(
 def get_contest_detail(
     contest_id: uuid.UUID,
     use_case: ContestUseCase = Depends(get_contest_use_case),
+    current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
 ):
-    """Chi tiết một cuộc thi. Public."""
+    """
+    Chi tiết một cuộc thi. Public với điều kiện:
+    - Anonymous user chỉ có thể xem PUBLISHED contests.
+    - DRAFT/ARCHIVED contests yêu cầu đăng nhập (trả 404 thay vì 403 để tránh enumerate).
+    """
     try:
-        return use_case.get_detail(contest_id)
+        contest = use_case.get_detail(contest_id)
     except NotFoundError as exc:
         raise _not_found(exc)
+
+    # [SECURITY] Anonymous chỉ thấy PUBLISHED — dùng 404 thay vì 403 để không lộ sự tồn tại
+    if current_user_id is None and contest.status != ContestStatus.PUBLISHED:
+        raise _hidden_as_404()
+
+    return contest
 
 
 @router.get("/{contest_id}/challenges", response_model=ContestChallengesResponseDTO)
 def get_contest_challenges(
     contest_id: uuid.UUID,
     use_case: ContestUseCase = Depends(get_contest_use_case),
+    current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
 ):
-    """Danh sách Challenges (bài thi con) thuộc một cuộc thi. Public."""
+    """
+    Danh sách Challenges (bài thi con) thuộc một cuộc thi.
+    Áp dụng cùng security policy với get_contest_detail:
+    - Anonymous chỉ xem được challenges của PUBLISHED contest.
+    """
+    # Kiểm tra contest tồn tại và auth trước khi trả challenges
+    try:
+        contest = use_case.get_detail(contest_id)
+    except NotFoundError as exc:
+        raise _not_found(exc)
+
+    if current_user_id is None and contest.status != ContestStatus.PUBLISHED:
+        raise _hidden_as_404()
+
     try:
         return use_case.get_challenges(contest_id)
     except NotFoundError as exc:

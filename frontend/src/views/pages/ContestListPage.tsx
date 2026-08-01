@@ -22,7 +22,7 @@ const getTimeRemaining = (end: string | null) => {
 };
 
 const stripMarkdown = (md?: string | null) => {
-  if (!md) return 'Chưa có mô tả';
+  if (!md) return 'Chua co mo ta';
   return md
     .replace(/^#+\s+/gm, '')
     .replace(/(\*\*|__)(.*?)\1/g, '$2')
@@ -34,6 +34,23 @@ const stripMarkdown = (md?: string | null) => {
     .replace(/[#_*~`>]/g, '')
     .trim();
 };
+
+/** Windowed pagination: toi da 7 nut, hien '...' neu co khoang trong. */
+function buildPageWindow(currentPage: number, totalPages: number): (number | '...')[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const pages: (number | '...')[] = [];
+  const left = Math.max(2, currentPage - 2);
+  const right = Math.min(totalPages - 1, currentPage + 2);
+
+  pages.push(1);
+  if (left > 2) pages.push('...');
+  for (let i = left; i <= right; i++) pages.push(i);
+  if (right < totalPages - 1) pages.push('...');
+  pages.push(totalPages);
+  return pages;
+}
 
 const ContestListPage = () => {
   const [page, setPage] = useState(1);
@@ -128,7 +145,7 @@ const ContestListPage = () => {
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Windowed Pagination — max 7 nut, khong overflow */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-3 mt-10">
               <button
@@ -136,22 +153,22 @@ const ContestListPage = () => {
                 disabled={page === 1}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
               >
-                Trang trước
+                Trang truoc
               </button>
               <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                      page === p
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+                {buildPageWindow(page, totalPages).map((p, idx) =>
+                  p === '...'
+                    ? <span key={`ellipsis-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-sm select-none">...</span>
+                    : <button
+                        key={p}
+                        onClick={() => setPage(p as number)}
+                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                          page === p
+                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >{p}</button>
+                )}
               </div>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}

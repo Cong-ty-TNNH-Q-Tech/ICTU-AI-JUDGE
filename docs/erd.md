@@ -1,4 +1,4 @@
-﻿# Thiết kế Cơ sở dữ liệu (Entity Relationship Diagram - ERD)
+# Thiết kế Cơ sở dữ liệu (Entity Relationship Diagram - ERD)
 **Tên dự án:** Nền tảng Tổ chức và Luyện tập Olympic AI ICTU
 **Ngày cập nhật:** 01/08/2026 — Cập nhật: Thêm bảng CONTEST riêng (Issue #123), xóa parent_id cũ khỏi CHALLENGE.
 

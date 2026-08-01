@@ -102,20 +102,17 @@ function App() {
           </ProtectedRoute>
         } />
 
+        {/* Contests: public endpoints — anonymous co the xem PUBLISHED contests */}
         <Route path="/contests" element={
-          <ProtectedRoute>
-            <MainLayout>
-              <ContestListPage />
-            </MainLayout>
-          </ProtectedRoute>
+          <MainLayout>
+            <ContestListPage />
+          </MainLayout>
         } />
 
         <Route path="/contests/:id" element={
-          <ProtectedRoute>
-            <MainLayout>
-              <ContestDetailPage />
-            </MainLayout>
-          </ProtectedRoute>
+          <MainLayout>
+            <ContestDetailPage />
+          </MainLayout>
         } />
 
         <Route path="/admin" element={

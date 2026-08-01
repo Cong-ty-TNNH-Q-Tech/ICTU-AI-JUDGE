@@ -1,4 +1,4 @@
-﻿"""
+"""
 Contest Use Case — UC: Contest Entity (Issue #123).
 """
 import logging

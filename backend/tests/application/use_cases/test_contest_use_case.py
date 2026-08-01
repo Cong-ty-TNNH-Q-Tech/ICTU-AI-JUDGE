@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for ContestUseCase â€” Issue #123: Contest Entity System.
 Kiáº¿n trÃºc: Mock IContestRepository + IUnitOfWork, khÃ´ng cáº§n DB tháº­t.
 """
@@ -39,7 +39,7 @@ def dummy_contest(now, admin_id):
     return ContestEntity(
         id=uuid.uuid4(),
         title="ICTU AI Challenge 2026",
-        description="Cuá»™c thi AI lá»›n nháº¥t nÄƒm",
+        description="Cuoc thi AI lon nhat nam",
         status=ContestStatus.DRAFT,
         start_time=now,
         end_time=None,
@@ -52,8 +52,8 @@ def dummy_contest(now, admin_id):
 def dummy_challenge(now, admin_id):
     return ChallengeEntity(
         id=uuid.uuid4(),
-        title="BÃ i thi phÃ¢n loáº¡i áº£nh",
-        description="PhÃ¢n loáº¡i áº£nh báº±ng CNN",
+        title="Bai thi phan loai anh",
+        description="Phan loai anh bang CNN",
         type=ChallengeType.PUBLIC,
         status=ChallengeStatus.PUBLISHED,
         start_time=now,
@@ -154,7 +154,7 @@ def test_get_challenges_returns_list(contest_use_case, dummy_contest, dummy_chal
     assert result.total == 1
     assert result.contest_id == dummy_contest.id
     assert len(result.items) == 1
-    assert result.items[0].title == "BÃ i thi phÃ¢n loáº¡i áº£nh"
+    assert result.items[0].title == "Bai thi phan loai anh"
 
 
 def test_get_challenges_contest_not_found(contest_use_case):
@@ -181,7 +181,7 @@ def test_get_challenges_empty(contest_use_case, dummy_contest):
 def test_create_contest(contest_use_case, dummy_contest, admin_id, now):
     dto = ContestCreateDTO(
         title="ICTU AI Challenge 2026",
-        description="Cuá»™c thi AI lá»›n nháº¥t nÄƒm",
+        description="Cuoc thi AI lon nhat nam",
         status=ContestStatus.DRAFT,
         start_time=now,
         end_time=None,
