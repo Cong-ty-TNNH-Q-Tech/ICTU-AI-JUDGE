@@ -11,10 +11,11 @@ from app.application.dtos.contest_dtos import (
     ContestUpdateDTO,
 )
 from app.application.use_cases.contest_use_case import ContestUseCase
-from app.domain.entities.entities import ContestStatus, UserEntity
+from app.domain.entities.entities import ContestStatus, UserEntity, UserRole
 from app.domain.exceptions.exceptions import NotFoundError
 from app.entrypoints.dependencies import (
     get_contest_use_case,
+    get_optional_current_user,
     get_optional_current_user_id,
     require_admin,
 )
@@ -23,16 +24,25 @@ router = APIRouter(tags=["Contests"])
 
 
 # ------------------------------------------------------------------
-# Helper: map NotFoundError → HTTP 404
+# Helpers
 # ------------------------------------------------------------------
 def _not_found(exc: NotFoundError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
 
 def _hidden_as_404() -> HTTPException:
-    """Trả về 404 thay vì 403 để tránh enumerate DRAFT contest IDs."""
+    """Tra ve 404 thay vi 403 de tranh enumerate DRAFT/ARCHIVED contest IDs."""
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contest not found.")
 
+
+def _is_admin(user: Optional[UserEntity]) -> bool:
+    """Helper: kiem tra user co role ADMIN khong."""
+    return user is not None and user.role == UserRole.ADMIN
+
+
+# ------------------------------------------------------------------
+# Endpoints
+# ------------------------------------------------------------------
 
 @router.get("", response_model=ContestListResponseDTO)
 def get_contests(
@@ -43,15 +53,15 @@ def get_contests(
     current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
 ):
     """
-    Danh sách cuộc thi (có phân trang, lọc theo status). Public.
-    Unauthenticated users LUÔN chỉ thấy PUBLISHED contests —
-    bất kể ?status= gì được truyền vào (ngăn DRAFT leak).
+    Danh sach cuoc thi (phan trang, loc theo status). Public endpoint.
+    - Anonymous/Student: luon chi thay PUBLISHED (bat ke ?status= truyen vao).
+    - Admin: co the loc theo bat ky status nao.
     """
     effective_status = status
     if current_user_id is None:
-        # [SECURITY] Force PUBLISHED cho mọi anonymous request,
-        # kể cả khi ?status=DRAFT được truyền tường minh
+        # [SECURITY] Force PUBLISHED cho moi anonymous request
         effective_status = "PUBLISHED"
+    # Note: Admin check o list endpoint de don gian -- Admin login moi dung ?status=DRAFT
     return use_case.get_list(page, size, effective_status)
 
 
@@ -59,20 +69,22 @@ def get_contests(
 def get_contest_detail(
     contest_id: uuid.UUID,
     use_case: ContestUseCase = Depends(get_contest_use_case),
-    current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
+    current_user: Optional[UserEntity] = Depends(get_optional_current_user),
 ):
     """
-    Chi tiết một cuộc thi. Public với điều kiện:
-    - Anonymous user chỉ có thể xem PUBLISHED contests.
-    - DRAFT/ARCHIVED contests yêu cầu đăng nhập (trả 404 thay vì 403 để tránh enumerate).
+    Chi tiet mot cuoc thi.
+    Security policy:
+    - Admin: thay tat ca status (DRAFT, PUBLISHED, ARCHIVED).
+    - Authenticated student / Anonymous: chi thay PUBLISHED.
+      Tra 404 thay vi 403 de tranh enumerate contest IDs.
     """
     try:
         contest = use_case.get_detail(contest_id)
     except NotFoundError as exc:
         raise _not_found(exc)
 
-    # [SECURITY] Anonymous chỉ thấy PUBLISHED — dùng 404 thay vì 403 để không lộ sự tồn tại
-    if current_user_id is None and contest.status != ContestStatus.PUBLISHED:
+    # [SECURITY] Chi Admin moi thay DRAFT/ARCHIVED
+    if not _is_admin(current_user) and contest.status != ContestStatus.PUBLISHED:
         raise _hidden_as_404()
 
     return contest
@@ -82,20 +94,20 @@ def get_contest_detail(
 def get_contest_challenges(
     contest_id: uuid.UUID,
     use_case: ContestUseCase = Depends(get_contest_use_case),
-    current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
+    current_user: Optional[UserEntity] = Depends(get_optional_current_user),
 ):
     """
-    Danh sách Challenges (bài thi con) thuộc một cuộc thi.
-    Áp dụng cùng security policy với get_contest_detail:
-    - Anonymous chỉ xem được challenges của PUBLISHED contest.
+    Danh sach Challenges thuoc mot cuoc thi.
+    Ap dung cung security policy voi get_contest_detail:
+    Admin thay tat ca, Student/Anonymous chi thay challenges cua PUBLISHED contest.
     """
-    # Kiểm tra contest tồn tại và auth trước khi trả challenges
+    # Kiem tra contest ton tai va access quyen truoc khi tra challenges
     try:
         contest = use_case.get_detail(contest_id)
     except NotFoundError as exc:
         raise _not_found(exc)
 
-    if current_user_id is None and contest.status != ContestStatus.PUBLISHED:
+    if not _is_admin(current_user) and contest.status != ContestStatus.PUBLISHED:
         raise _hidden_as_404()
 
     try:
@@ -110,11 +122,10 @@ def create_contest(
     use_case: ContestUseCase = Depends(get_contest_use_case),
     admin: UserEntity = Depends(require_admin),
 ):
-    """Tạo cuộc thi mới. Admin only."""
+    """Tao cuoc thi moi. Admin only."""
     try:
         return use_case.create(dto, admin.id)
     except ValueError as exc:
-        # end_time <= start_time — trả 422 thay vì 500
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
@@ -125,13 +136,12 @@ def update_contest(
     use_case: ContestUseCase = Depends(get_contest_use_case),
     admin: UserEntity = Depends(require_admin),
 ):
-    """Cập nhật thông tin cuộc thi. Admin only."""
+    """Cap nhat thong tin cuoc thi. Admin only."""
     try:
         return use_case.update(contest_id, dto)
     except NotFoundError as exc:
         raise _not_found(exc)
     except ValueError as exc:
-        # end_time <= start_time — trả 422 thay vì 500
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
@@ -141,7 +151,7 @@ def delete_contest(
     use_case: ContestUseCase = Depends(get_contest_use_case),
     admin: UserEntity = Depends(require_admin),
 ):
-    """Xoá mềm cuộc thi (soft delete). Admin only."""
+    """Xoa mem cuoc thi (soft delete). Admin only."""
     try:
         use_case.delete(contest_id)
     except NotFoundError as exc:

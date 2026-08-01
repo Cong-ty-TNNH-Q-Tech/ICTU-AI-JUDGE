@@ -9,7 +9,7 @@ from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 
 class ContestCreateDTO(BaseModel):
     title: str = Field(..., max_length=500)
-    description: str = Field(default="")
+    description: str = Field(default="", max_length=10000)
     status: ContestStatus = ContestStatus.DRAFT
     start_time: AwareDatetime
     end_time: Optional[AwareDatetime] = None
@@ -17,7 +17,7 @@ class ContestCreateDTO(BaseModel):
 
 class ContestUpdateDTO(BaseModel):
     title: Optional[str] = Field(None, max_length=500)
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=10000)
     status: Optional[ContestStatus] = None
     start_time: Optional[AwareDatetime] = None
     end_time: Optional[AwareDatetime] = None

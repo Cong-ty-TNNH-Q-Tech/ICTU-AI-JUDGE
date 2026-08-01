@@ -4,12 +4,20 @@ import { useContestVM } from '../../viewmodels/useContestVM';
 import type { Contest } from '../../models/api.types';
 import HeroIllustration from '../../assets/hero-competition.png';
 
+// [IMPORTANT] Full class strings required -- PurgeCSS cannot scan dynamic `bg-${color}-50` patterns.
+// All color variants must appear as complete strings to survive production build.
+const STATUS_CLASSES: Record<string, string> = {
+  amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/20',
+  emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/20',
+  slate: 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-500/20',
+};
+
 const getStatusConfig = (c: Contest) => {
   const now = new Date();
-  if (c.status === 'DRAFT') return { label: 'Upcoming', color: 'amber' };
-  if (now < new Date(c.start_time)) return { label: 'Upcoming', color: 'amber' };
-  if (c.end_time && now > new Date(c.end_time)) return { label: 'Completed', color: 'slate' };
-  return { label: 'Active', color: 'emerald' };
+  if (c.status === 'DRAFT') return { label: 'Upcoming', colorKey: 'amber' };
+  if (now < new Date(c.start_time)) return { label: 'Upcoming', colorKey: 'amber' };
+  if (c.end_time && now > new Date(c.end_time)) return { label: 'Completed', colorKey: 'slate' };
+  return { label: 'Active', colorKey: 'emerald' };
 };
 
 const getTimeRemaining = (end: string | null) => {
@@ -112,7 +120,7 @@ const ContestListPage = () => {
                   <div key={contest.id} className="group flex flex-col bg-white dark:bg-surface-dark rounded-2xl border border-surface-200 dark:border-slate-800/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden relative">
                     <div className="flex flex-col flex-grow p-5 lg:p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide uppercase bg-${statusConfig.color}-50 dark:bg-${statusConfig.color}-500/10 text-${statusConfig.color}-700 dark:text-${statusConfig.color}-400 border border-${statusConfig.color}-200/50 dark:border-${statusConfig.color}-500/20`}>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide uppercase ${STATUS_CLASSES[statusConfig.colorKey] ?? STATUS_CLASSES.slate}`}>
                           {statusConfig.label}
                         </span>
                         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded-md">

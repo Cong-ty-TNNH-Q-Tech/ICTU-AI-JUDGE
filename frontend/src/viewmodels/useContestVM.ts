@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ContestService } from '../services/contestService';
 import type { Challenge, Contest, ContestCreateRequest, ContestUpdateRequest } from '../models/api.types';
 
@@ -94,6 +94,10 @@ export const useContestManageVM = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // pageRef: luon giu gia tri page moi nhat, tranh closure stale value
+  // khi updateContest/deleteContest chay async, page state co the da thay doi
+  const pageRef = useRef(1);
+
   const fetchContests = useCallback(async (p: number = 1) => {
     setIsLoading(true);
     setError(null);
@@ -103,6 +107,7 @@ export const useContestManageVM = () => {
       setTotal(res.total);
       setTotalPages(res.total_pages);
       setPage(p);
+      pageRef.current = p; // Dong bo ref voi state
     } catch (err: unknown) {
       console.error('[useContestManageVM] fetchContests failed:', err);
       setError('Không thể tải danh sách cuộc thi.');
@@ -135,32 +140,34 @@ export const useContestManageVM = () => {
     setIsSaving(true);
     try {
       await ContestService.updateContest(id, data);
-      // Giữ nguyên trang hiện tại khi update
-      await fetchContests(page);
+      // Dung pageRef.current thay vi page state de tranh stale closure
+      await fetchContests(pageRef.current);
     } catch (err: unknown) {
       console.error('[useContestManageVM] updateContest failed:', err);
-      const msg = err instanceof Error ? err.message : 'Không thể cập nhật cuộc thi.';
+      const msg = err instanceof Error ? err.message : 'Khong the cap nhat cuoc thi.';
       throw new Error(msg);
     } finally {
       setIsSaving(false);
     }
-  }, [fetchContests, page]);
+  }, [fetchContests]); // Khong can page trong deps -- doc tu pageRef
 
   const deleteContest = useCallback(async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
       await ContestService.deleteContest(id);
-      // Sau delete: ưu tiên giữ trang hiện tại, fallback về trang trước nếu trang trống
-      const targetPage = contests.length === 1 && page > 1 ? page - 1 : page;
+      // Dung pageRef.current -- tranh stale closure
+      // Fallback ve trang truoc neu trang cuoi chi con 1 item va bi xoa
+      const currentPage = pageRef.current;
+      const targetPage = contests.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
       await fetchContests(targetPage);
     } catch (err: unknown) {
       console.error('[useContestManageVM] deleteContest failed:', err);
-      const msg = err instanceof Error ? err.message : 'Không thể xoá cuộc thi.';
+      const msg = err instanceof Error ? err.message : 'Khong the xoa cuoc thi.';
       throw new Error(msg);
     } finally {
       setIsDeleting(false);
     }
-  }, [fetchContests, page, contests.length]);
+  }, [fetchContests, contests.length]); // Khong can page -- doc tu pageRef
 
   const goToPage = useCallback((p: number) => {
     fetchContests(p);

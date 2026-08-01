@@ -284,6 +284,26 @@ def get_auth_use_case(
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
     )
 
+def get_optional_current_user(
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+    user_repo: IUserRepository = Depends(get_user_repository),
+) -> UserEntity | None:
+    "Dependency: tra ve UserEntity neu co token hop le, else None."
+    from app.core.security import decode_access_token
+    from app.domain.exceptions.exceptions import AuthenticationError
+    if not access_token:
+        return None
+    try:
+        payload = decode_access_token(access_token)
+        user_id_str: str | None = payload.get("sub")
+        if not user_id_str:
+            return None
+        user_id = uuid.UUID(user_id_str)
+        return user_repo.get_by_id(user_id)
+    except (AuthenticationError, ValueError, Exception):
+        return None
+
+
 get_current_admin = require_admin
 
 from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase

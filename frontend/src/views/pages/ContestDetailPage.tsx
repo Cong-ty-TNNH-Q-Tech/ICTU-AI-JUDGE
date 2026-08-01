@@ -7,12 +7,19 @@ import type { Challenge } from '../../models/api.types';
 // ------------------------------------------------------------------
 // Helper — lấy trạng thái + màu cho badge challenge
 // ------------------------------------------------------------------
+// [IMPORTANT] Full class strings -- PurgeCSS cannot scan dynamic bg-${color}-50 patterns.
+const CHALLENGE_STATUS_CLASSES: Record<string, string> = {
+  amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  slate: 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400',
+};
+
 const getChallengeStatus = (c: Challenge) => {
   const now = new Date();
-  if (c.status === 'DRAFT') return { label: 'Sắp diễn ra', color: 'amber' };
-  if (now < new Date(c.start_time)) return { label: 'Sắp diễn ra', color: 'amber' };
-  if (c.end_time && now > new Date(c.end_time)) return { label: 'Đã kết thúc', color: 'slate' };
-  return { label: 'Đang diễn ra', color: 'emerald' };
+  if (c.status === 'DRAFT') return { label: 'Sap dien ra', colorKey: 'amber' };
+  if (now < new Date(c.start_time)) return { label: 'Sap dien ra', colorKey: 'amber' };
+  if (c.end_time && now > new Date(c.end_time)) return { label: 'Da ket thuc', colorKey: 'slate' };
+  return { label: 'Dang dien ra', colorKey: 'emerald' };
 };
 
 const getTimeLabel = (end: string | null) => {
@@ -128,7 +135,7 @@ const ContestDetailPage = () => {
                   <div className="p-5 flex flex-col gap-3 flex-1">
                     {/* Badges */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-${cs.color}-50 dark:bg-${cs.color}-500/10 text-${cs.color}-700 dark:text-${cs.color}-400`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${CHALLENGE_STATUS_CLASSES[cs.colorKey] ?? CHALLENGE_STATUS_CLASSES.slate}`}>
                         {cs.label}
                       </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">

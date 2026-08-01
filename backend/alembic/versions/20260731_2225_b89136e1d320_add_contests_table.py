@@ -37,11 +37,17 @@ def upgrade() -> None:
     op.create_foreign_key(
         'fk_challenges_contest_id', 'challenges', 'contests', ['contest_id'], ['id']
     )
-    # Index để tránh Full Table Scan khi query GET /contests/{id}/challenges
+    # Index de tranh Full Table Scan khi query GET /contests/{id}/challenges
     op.create_index('ix_challenges_contest_id', 'challenges', ['contest_id'])
+    # Partial index: toi uu get_list va get_by_id filter WHERE deleted_at IS NULL
+    # PostgreSQL partial index -- chi index active rows, nho hon, nhanh hon full index
+    op.execute(
+        "CREATE INDEX ix_contests_active ON contests (created_at DESC) WHERE deleted_at IS NULL"
+    )
 
 
 def downgrade() -> None:
+    op.execute("DROP INDEX IF EXISTS ix_contests_active")
     op.drop_index('ix_challenges_contest_id', table_name='challenges')
     op.drop_constraint('fk_challenges_contest_id', 'challenges', type_='foreignkey')
     op.drop_column('challenges', 'contest_id')

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.adapters.database.models import ContestModel, ChallengeModel
 from app.application.interfaces.repositories import IContestRepository

@@ -248,16 +248,16 @@ def test_update_contest_not_found(contest_use_case):
 
 
 def test_update_partial_fields_unchanged(contest_use_case, dummy_contest):
-    """Chá»‰ update description â€” title khÃ´ng thay Ä‘á»•i."""
+    """Only update description -- title must remain unchanged."""
     contest_use_case._contest_repo.get_by_id.return_value = dummy_contest
     contest_use_case._contest_repo.save.return_value = dummy_contest
 
-    dto = ContestUpdateDTO(description="MÃ´ táº£ má»›i")
+    dto = ContestUpdateDTO(description="Mo ta moi")
     contest_use_case.update(dummy_contest.id, dto)
 
     saved: ContestEntity = contest_use_case._contest_repo.save.call_args[0][0]
-    assert saved.title == "ICTU AI Challenge 2026"  # KhÃ´ng Ä‘á»•i
-    assert saved.description == "MÃ´ táº£ má»›i"
+    assert saved.title == "ICTU AI Challenge 2026"  # Unchanged
+    assert saved.description == "Mo ta moi"
 
 
 # ---------------------------------------------------------------------------
