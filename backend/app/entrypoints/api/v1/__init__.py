@@ -9,6 +9,7 @@ from app.entrypoints.api.v1 import (
     leaderboard_router,
     submissions_router,
     teams_router,
+    users_router,
     tags_router,
     contests_router,
 )

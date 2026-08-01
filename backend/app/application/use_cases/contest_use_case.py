@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 from app.application.dtos.contest_dtos import (
+    ContestChallengesResponseDTO,
     ContestCreateDTO,
     ContestListResponseDTO,
     ContestResponseDTO,
@@ -85,16 +86,23 @@ class ContestUseCase:
             raise NotFoundError(f"Contest {contest_id} không tồn tại.")
         return self._to_dto(entity)
 
-    def get_challenges(self, contest_id: uuid.UUID) -> dict:
+    def get_challenges(self, contest_id: uuid.UUID) -> ContestChallengesResponseDTO:
         """Lấy danh sách challenges con của một contest."""
         entity = self._contest_repo.get_by_id(contest_id)
         if not entity:
             raise NotFoundError(f"Contest {contest_id} không tồn tại.")
         challenges = self._contest_repo.get_challenges(contest_id)
         items = [self._challenge_to_dto(c) for c in challenges]
-        return {"contest_id": contest_id, "items": items, "total": len(items)}
+        return ContestChallengesResponseDTO(
+            contest_id=contest_id,
+            items=items,
+            total=len(items),
+        )
 
     def create(self, dto: ContestCreateDTO, admin_id: uuid.UUID) -> ContestResponseDTO:
+        # Business rule: end_time phải sau start_time
+        if dto.end_time is not None and dto.end_time <= dto.start_time:
+            raise ValueError("end_time phải sau start_time.")
         now = datetime.now(timezone.utc)
         entity = ContestEntity(
             id=uuid.uuid4(),
@@ -126,6 +134,10 @@ class ContestUseCase:
             entity.start_time = dto.start_time
         if dto.end_time is not None:
             entity.end_time = dto.end_time
+
+        # Business rule: sau khi patch, end_time phải sau start_time
+        if entity.end_time is not None and entity.end_time <= entity.start_time:
+            raise ValueError("end_time phải sau start_time.")
 
         saved_entity = self._contest_repo.save(entity)
         self._uow.commit()

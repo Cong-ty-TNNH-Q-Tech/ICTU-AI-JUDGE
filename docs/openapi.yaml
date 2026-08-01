@@ -151,6 +151,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Contest'
+        '404':
+          description: Không tìm thấy cuộc thi.
     patch:
       summary: Cập nhật Cuộc thi (Admin)
       tags:
@@ -171,6 +173,50 @@ paths:
       responses:
         '200':
           description: Cập nhật thành công.
+        '404':
+          description: Không tìm thấy cuộc thi.
+    delete:
+      summary: Xoá mềm Cuộc thi (Admin)
+      tags:
+        - Contests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Đã xoá (soft delete).
+        '404':
+          description: Không tìm thấy cuộc thi.
+
+  /contests/{id}/challenges:
+    get:
+      summary: Danh sách Challenges thuộc Cuộc thi
+      tags:
+        - Contests
+      description: |
+        Lấy danh sách các Challenges (bài thi con) thuộc một Contest. Public endpoint.
+        Trả về ContestChallengesResponse bao gồm contest_id, danh sách items và total.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID của Contest
+      responses:
+        '200':
+          description: Danh sách challenges của cuộc thi.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestChallengesResponse'
+        '404':
+          description: Không tìm thấy cuộc thi.
 
   # ==========================================
   # CHALLENGE ENDPOINTS
@@ -1268,6 +1314,21 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    ContestChallengesResponse:
+      type: object
+      description: Response cho GET /contests/{id}/challenges
+      properties:
+        contest_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Challenge'
+        total:
+          type: integer
+          example: 3
 
     Team:
       type: object

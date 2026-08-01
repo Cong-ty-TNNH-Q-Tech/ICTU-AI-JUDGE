@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 from app.application.dtos.contest_dtos import (
+    ContestChallengesResponseDTO,
     ContestCreateDTO,
     ContestListResponseDTO,
     ContestResponseDTO,
@@ -15,6 +16,7 @@ from app.domain.entities.entities import UserEntity
 from app.domain.exceptions.exceptions import NotFoundError
 from app.entrypoints.dependencies import (
     get_contest_use_case,
+    get_optional_current_user_id,
     require_admin,
 )
 
@@ -34,9 +36,17 @@ def get_contests(
     size: int = Query(20, ge=1, le=100),
     status: Optional[str] = Query(None),
     use_case: ContestUseCase = Depends(get_contest_use_case),
+    current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
 ):
-    """Danh sách cuộc thi (có phân trang, lọc theo status). Public."""
-    return use_case.get_list(page, size, status)
+    """
+    Danh sách cuộc thi (có phân trang, lọc theo status). Public.
+    Unauthenticated users chỉ thấy PUBLISHED contests (không lộ DRAFT/ARCHIVED).
+    """
+    # Nếu user chưa đăng nhập và không truyền status filter → chỉ trả PUBLISHED
+    effective_status = status
+    if current_user_id is None and status is None:
+        effective_status = "PUBLISHED"
+    return use_case.get_list(page, size, effective_status)
 
 
 @router.get("/{contest_id}", response_model=ContestResponseDTO)
@@ -51,7 +61,7 @@ def get_contest_detail(
         raise _not_found(exc)
 
 
-@router.get("/{contest_id}/challenges", response_model=dict)
+@router.get("/{contest_id}/challenges", response_model=ContestChallengesResponseDTO)
 def get_contest_challenges(
     contest_id: uuid.UUID,
     use_case: ContestUseCase = Depends(get_contest_use_case),

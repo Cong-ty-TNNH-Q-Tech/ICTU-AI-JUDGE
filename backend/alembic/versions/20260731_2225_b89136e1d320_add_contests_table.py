@@ -37,9 +37,12 @@ def upgrade() -> None:
     op.create_foreign_key(
         'fk_challenges_contest_id', 'challenges', 'contests', ['contest_id'], ['id']
     )
+    # Index để tránh Full Table Scan khi query GET /contests/{id}/challenges
+    op.create_index('ix_challenges_contest_id', 'challenges', ['contest_id'])
 
 
 def downgrade() -> None:
+    op.drop_index('ix_challenges_contest_id', table_name='challenges')
     op.drop_constraint('fk_challenges_contest_id', 'challenges', type_='foreignkey')
     op.drop_column('challenges', 'contest_id')
     op.drop_table('contests')

@@ -1,9 +1,14 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 import uuid
 
 from pydantic import BaseModel, Field, AwareDatetime
 
 from app.domain.entities.entities import ContestStatus
+
+if TYPE_CHECKING:
+    from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 
 
 class ContestCreateDTO(BaseModel):
@@ -44,6 +49,8 @@ class ContestListResponseDTO(BaseModel):
 class ContestChallengesResponseDTO(BaseModel):
     """Response cho GET /contests/{id}/challenges — danh sách challenges con."""
     contest_id: uuid.UUID
-    items: list  # list[ChallengeResponseDTO] — tránh circular import, router tự annotate
+    items: list[ChallengeResponseDTO]
     total: int
+
+    model_config = {"arbitrary_types_allowed": True}
 
