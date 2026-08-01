@@ -87,21 +87,26 @@ class SQLTeamRepository(ITeamRepository):
         return self._to_entity(model)
 
     def update_name(self, team_id: uuid.UUID, new_name: str) -> TeamEntity | None:
-        from sqlalchemy import update
-        stmt = (
-            update(TeamModel)
-            .where(TeamModel.id == team_id, TeamModel.deleted_at.is_(None))
-            .values(name=new_name)
-            .returning(TeamModel)
+        model = (
+            self.db.execute(
+                select(TeamModel)
+                .where(TeamModel.id == team_id, TeamModel.deleted_at.is_(None))
+                .with_for_update()
+            )
+            .scalar_one_or_none()
         )
-        result = self.db.execute(stmt).scalar_one_or_none()
-        if not result:
+        if not model:
             return None
+            
+        model.name = new_name
         self.db.flush()
+        self.db.refresh(model)
         
-        # We need to load members for the entity. Instead of returning from returning clause,
-        # we can just fetch it again to get the joinedload data properly.
-        return self.get_by_id(team_id)
+        # Load members for entity representation if missing
+        # To populate members correctly after refresh, we either load it via joinedload in initial query,
+        # or we just let _to_entity use whatever lazy-loaded state it has. 
+        # But wait, if _to_entity accesses `model.members`, it will trigger a lazy load which is fine in a session.
+        return self._to_entity(model)
 
     def has_submissions(self, team_id: uuid.UUID) -> bool:
         result = (

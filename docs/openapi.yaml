@@ -377,7 +377,9 @@ paths:
         '403':
           description: Bạn không phải trưởng nhóm.
         '400':
-          description: Đã qua thời hạn chốt đội.
+          description: Đã qua thời hạn chốt đội hoặc lỗi logic.
+        '404':
+          description: Không tìm thấy đội.
 
   /teams/{id}/invites:
     post:

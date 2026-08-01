@@ -51,24 +51,13 @@ class IUserRepository(ABC):
     def save(self, user: UserEntity) -> UserEntity:
         ...
 
+
     @abstractmethod
     def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
         ...
 
     @abstractmethod
-    def soft_delete(self, user_id: uuid.UUID) -> None:
-        ...
-
-    @abstractmethod
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
-        ...
-
-    @abstractmethod
-    def update_role(self, user_id: uuid.UUID, role: UserRole) -> bool:
-        ...
-
-    @abstractmethod
-    def find_by_identifiers(self, identifiers: list[str]) -> list[UserEntity]:
         ...
 
     @abstractmethod
@@ -101,15 +90,7 @@ class IUserRepository(ABC):
         """Atomic update chỉ trường avatar_url — dùng sau khi upload thành công."""
         ...
 
-    @abstractmethod
-    def find_by_identifiers(self, identifiers: list[str]) -> list[UserEntity]:
-        """
-        Tra cứu users theo danh sách định danh linh hoạt.
-        Hỗ trợ: Email (có @), MSSV/student_id (không có @), hoặc UUID.
-        Bỏ qua các identifier không tìm thấy (không raise lỗi).
-        Returns list[UserEntity] — đã lọc trùng.
-        """
-        ...
+
 
 
 
