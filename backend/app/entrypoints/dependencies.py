@@ -21,8 +21,10 @@ from app.application.interfaces.repositories import (
     IUnitOfWork,
     ITagRepository,
     ILeaderboardRepository,
+    IPasswordResetRepository,
 )
 from app.adapters.database.user_repository import UserRepository
+from app.adapters.database.password_reset_repository import PasswordResetRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
 from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
@@ -33,8 +35,9 @@ from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
 from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
-from app.application.interfaces.clients import IGoogleAuthClient
+from app.application.interfaces.clients import IGoogleAuthClient, IMailClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
+from app.adapters.clients.mail_client import SMTPMailClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
 from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.application.use_cases.submission_use_case import SubmissionUseCase
@@ -89,6 +92,11 @@ def get_current_user_id(
 def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     """Dependency: inject UserRepository."""
     return UserRepository(db)
+
+
+def get_password_reset_repository(db: Session = Depends(get_db)) -> IPasswordResetRepository:
+    """Dependency: inject PasswordResetRepository."""
+    return PasswordResetRepository(db)
 
 
 def get_optional_current_user_id(
@@ -262,9 +270,15 @@ def get_tag_use_case(
 ) -> TagUseCase:
     return TagUseCase(uow, tag_repo)
 
+def get_mail_client() -> IMailClient:
+    return SMTPMailClient()
+
 def get_auth_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
+    password_reset_repo: IPasswordResetRepository = Depends(get_password_reset_repository),
     google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+    mail_client: IMailClient = Depends(get_mail_client),
+    uow: IUnitOfWork = Depends(get_uow),
 ) -> AuthUseCase:
     """
     Factory inject AuthUseCase với root_admin_email từ Settings.
@@ -273,8 +287,12 @@ def get_auth_use_case(
     """
     return AuthUseCase(
         user_repo=user_repo,
+        password_reset_repo=password_reset_repo,
         google_client=google_client,
+        mail_client=mail_client,
+        uow=uow,
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
+        frontend_url=settings.FRONTEND_URL,
     )
 
 get_current_admin = require_admin

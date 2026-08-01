@@ -75,6 +75,14 @@ class UserEntity:
         return self.deleted_at is None
 
 
+@dataclass
+class PasswordResetEntity:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    token: str
+    expires_at: datetime
+    used: bool
+
 
 @dataclass
 class TagEntity:

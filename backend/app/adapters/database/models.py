@@ -58,7 +58,20 @@ class UserModel(Base):
     # Relationships
     team_memberships: Mapped[list["TeamMemberModel"]] = relationship("TeamMemberModel", back_populates="user")
     submissions_made: Mapped[list["SubmissionModel"]] = relationship("SubmissionModel", back_populates="submitted_by_user")
+    password_resets: Mapped[list["PasswordResetModel"]] = relationship("PasswordResetModel", back_populates="user")
 
+
+class PasswordResetModel(Base):
+    __tablename__ = "password_resets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Relationships
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="password_resets")
 
 
 

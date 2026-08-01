@@ -53,12 +53,30 @@ export function useAuthVM() {
   }, [isAuthenticated, setUser]);
 
 
+  const login = useCallback(async (payload: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const userData = await authService.login(payload);
+      setUser(userData);
+      return userData;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Đăng nhập thất bại';
+      setError(message);
+      useToastStore.getState().showToast(message, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser]);
+
   return {
     user,
     isAuthenticated,
     loading,
     error,
     loginWithGoogle,
+    login,
     logout,
     initUser,
   };

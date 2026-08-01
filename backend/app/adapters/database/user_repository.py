@@ -107,6 +107,18 @@ class UserRepository(IUserRepository):
         self._session.execute(stmt)
         self._session.commit()
 
+    def update_password(self, user_id: uuid.UUID, new_password_hash: str) -> None:
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(
+                password_hash=new_password_hash,
+                updated_at=func.now()
+            )
+        )
+        self._session.execute(stmt)
+        self._session.flush()
+
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
         """Kích hoạt / vô hiệu hóa tài khoản (Admin feature)."""
         stmt = select(UserModel).where(UserModel.id == user_id)

@@ -83,3 +83,8 @@ class AuthenticationError(DomainException):
 class InvalidTokenError(DomainException):
     """Mã xác nhận hoặc token không hợp lệ hoặc đã hết hạn."""
     pass
+
+
+class InvalidPasswordError(DomainException):
+    """Mật khẩu cũ không chính xác."""
+    pass

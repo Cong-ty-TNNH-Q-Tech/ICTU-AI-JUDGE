@@ -19,6 +19,7 @@ from app.domain.entities.entities import (
     InviteStatus,
     SolutionEntity,
     TagEntity,
+    PasswordResetEntity,
 )
 
 
@@ -45,6 +46,11 @@ class IUserRepository(ABC):
 
     @abstractmethod
     def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]: ...
+
+    @abstractmethod
+    def update_password(self, user_id: uuid.UUID, new_password_hash: str) -> None:
+        """UC: Đổi mật khẩu hoặc đặt lại mật khẩu."""
+        ...
 
     @abstractmethod
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
@@ -357,3 +363,13 @@ class ITagRepository(ABC):
     @abstractmethod
     def list_all(self) -> list[TagEntity]: ...
 
+
+class IPasswordResetRepository(ABC):
+    @abstractmethod
+    def save(self, reset_entity: PasswordResetEntity) -> PasswordResetEntity: ...
+
+    @abstractmethod
+    def get_by_token(self, token: str) -> PasswordResetEntity | None: ...
+
+    @abstractmethod
+    def mark_as_used(self, token_id: uuid.UUID) -> None: ...
