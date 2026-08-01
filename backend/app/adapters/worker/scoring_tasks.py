@@ -148,6 +148,8 @@ def _run_sandbox(
     Container bị giới hạn RAM/CPU và chặn network.
     Tự động phát hiện zip (magic bytes) → giải nén thành thư mục riêng.
     """
+    from app.core.config import get_settings
+    settings = get_settings()
     client = docker.from_env()
 
     # ---- Phát hiện ZIP mode qua magic bytes ----
@@ -206,10 +208,15 @@ except Exception as e:
                 built_in_script = f"""
 import pandas as pd
 import sys
+import os
 import math
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
 
 try:
+    if not os.path.exists('/tmp/submission.csv'):
+        print('Thiếu file submission.csv trong ZIP. Vui lòng đặt file kết quả tại submission.csv.')
+        sys.exit(1)
+        
     gt = pd.read_csv('/tmp/ground_truth.csv')
     sub = pd.read_csv('/tmp/submission.csv')
 
@@ -315,47 +322,22 @@ def _prepare_sandbox_files_zip(
 ) -> tuple[io.BytesIO, str]:
     """
     Chuẩn bị tar stream cho Docker Sandbox trong ZIP mode.
-    Giải nén zip → thư mục riêng biệt trong container.
+    Truyền thẳng file .zip vào Sandbox để giải nén bên trong (Tránh ZIP Bomb gây OOM cho Celery Worker).
     Trả về (tar_stream, cmd).
     """
-    import zipfile
-
     tar_stream = io.BytesIO()
     with tarfile.open(fileobj=tar_stream, mode='w') as tar:
         # --- Ground Truth ---
-        if is_gt_zip:
-            with zipfile.ZipFile(io.BytesIO(ground_truth_data)) as zf:
-                for info in zf.infolist():
-                    if info.is_dir():
-                        continue
-                    # [SECURITY] Path Traversal (double-check)
-                    if '..' in info.filename or info.filename.startswith('/'):
-                        raise ValueError(f"Unsafe filename in GT zip: {info.filename}")
-                    file_data = zf.read(info)
-                    tarinfo = tarfile.TarInfo(name=f'ground_truth/{info.filename}')
-                    tarinfo.size = len(file_data)
-                    tar.addfile(tarinfo, io.BytesIO(file_data))
-        else:
-            gt_info = tarfile.TarInfo(name='ground_truth/ground_truth.csv')
-            gt_info.size = len(ground_truth_data)
-            tar.addfile(gt_info, io.BytesIO(ground_truth_data))
+        gt_filename = 'ground_truth.zip' if is_gt_zip else 'ground_truth.csv'
+        gt_info = tarfile.TarInfo(name=gt_filename)
+        gt_info.size = len(ground_truth_data)
+        tar.addfile(gt_info, io.BytesIO(ground_truth_data))
 
         # --- Submission ---
-        if is_sub_zip:
-            with zipfile.ZipFile(io.BytesIO(submission_data)) as zf:
-                for info in zf.infolist():
-                    if info.is_dir():
-                        continue
-                    if '..' in info.filename or info.filename.startswith('/'):
-                        raise ValueError(f"Unsafe filename in submission zip: {info.filename}")
-                    file_data = zf.read(info)
-                    tarinfo = tarfile.TarInfo(name=f'submission/{info.filename}')
-                    tarinfo.size = len(file_data)
-                    tar.addfile(tarinfo, io.BytesIO(file_data))
-        else:
-            sub_info = tarfile.TarInfo(name='submission/submission.csv')
-            sub_info.size = len(submission_data)
-            tar.addfile(sub_info, io.BytesIO(submission_data))
+        sub_filename = 'submission.zip' if is_sub_zip else 'submission.csv'
+        sub_info = tarfile.TarInfo(name=sub_filename)
+        sub_info.size = len(submission_data)
+        tar.addfile(sub_info, io.BytesIO(submission_data))
 
         # --- Metric script ---
         if metric_script:
@@ -367,6 +349,8 @@ def _prepare_sandbox_files_zip(
         wrapper = _generate_zip_wrapper(
             has_custom_metric=metric_script is not None,
             metric_name=metric_name,
+            is_gt_zip=is_gt_zip,
+            is_sub_zip=is_sub_zip,
         )
         wrapper_bytes = wrapper.encode('utf-8')
         wrapper_info = tarfile.TarInfo(name='runner.py')
@@ -377,18 +361,45 @@ def _prepare_sandbox_files_zip(
     return tar_stream, "python /tmp/runner.py"
 
 
-def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str) -> str:
+def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str, is_gt_zip: bool, is_sub_zip: bool) -> str:
     """Tạo wrapper script cho ZIP mode (thư mục giải nén)."""
+    
+    # Python script logic để giải nén bên trong sandbox
+    unzip_logic = f"""
+import os
+import zipfile
+
+def extract_safe(zip_path, extract_to):
+    if os.path.exists(zip_path):
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            for info in zf.infolist():
+                if info.is_dir() or '..' in info.filename or info.filename.startswith('/'):
+                    continue
+                zf.extract(info, extract_to)
+
+if {is_gt_zip}:
+    extract_safe('/tmp/ground_truth.zip', '/tmp/ground_truth')
+else:
+    os.makedirs('/tmp/ground_truth', exist_ok=True)
+    os.rename('/tmp/ground_truth.csv', '/tmp/ground_truth/ground_truth.csv')
+
+if {is_sub_zip}:
+    extract_safe('/tmp/submission.zip', '/tmp/submission')
+else:
+    os.makedirs('/tmp/submission', exist_ok=True)
+    os.rename('/tmp/submission.csv', '/tmp/submission/submission.csv')
+"""
+
     if has_custom_metric:
-        return """
+        return unzip_logic + """
 import sys
 sys.path.append('/tmp')
 from metric import calculate_score
 score = calculate_score('/tmp/ground_truth', '/tmp/submission')
 print(score)
-""".strip()
+"""
     else:
-        return f"""
+        return unzip_logic + f"""
 import pandas as pd
 import sys
 import math
@@ -425,7 +436,7 @@ else:
     sys.exit(1)
 
 print(score)
-""".strip()
+"""
 
 
 

@@ -25,10 +25,14 @@ class ChallengeUseCase:
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
         tag_repo: ITagRepository,
+        zip_max_uncompressed_mb: int = 500,
+        zip_max_file_count: int = 10000,
     ):
         self.challenge_repo = challenge_repo
         self.storage_repo = storage_repo
         self.tag_repo = tag_repo
+        self.zip_max_uncompressed_mb = zip_max_uncompressed_mb
+        self.zip_max_file_count = zip_max_file_count
 
     def _to_dto(
         self, entity: ChallengeEntity, is_admin: bool = False
@@ -160,11 +164,19 @@ class ChallengeUseCase:
         if self.challenge_repo.has_successful_submission(challenge_id):
             raise ValueError("Không thể đổi file chấm điểm do đã có người nộp thành công.")
 
+        if not ground_truth_filename:
+            ground_truth_filename = "ground_truth.csv"
+
         is_zip = ground_truth_filename.lower().endswith(".zip")
 
         if is_zip:
             # [SECURITY] Validate zip bomb + path traversal
-            validate_zip_format(ground_truth_bytes, ground_truth_filename)
+            validate_zip_format(
+                ground_truth_bytes, 
+                ground_truth_filename,
+                max_uncompressed_mb=self.zip_max_uncompressed_mb,
+                max_file_count=self.zip_max_file_count
+            )
             # [REQUIRED] Zip must contain ground_truth.csv for Public/Private split
             validate_zip_contains_ground_truth_csv(ground_truth_bytes)
             # Upload nguyên zip lên S3

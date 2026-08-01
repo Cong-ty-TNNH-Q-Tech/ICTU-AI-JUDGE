@@ -27,7 +27,6 @@ from app.application.interfaces.repositories import (
 )
 from app.application.interfaces.message_broker import IMessageBroker
 from app.application.utils.file_validation import (
-    build_s3_key,
     get_effective_content_type,
     validate_csv_format,
     validate_zip_format,
@@ -60,8 +59,10 @@ class SubmissionUseCase:
         team_repo: ITeamRepository,
         storage_repo: IStorageRepository,
         leaderboard_repo: ILeaderboardRepository = None,
-        message_broker: IMessageBroker = None, # Make it optional for backward compatibility in tests
+        message_broker: IMessageBroker = None,
         uow: IUnitOfWork = None,
+        zip_max_uncompressed_mb: int = 500,
+        zip_max_file_count: int = 10000,
     ):
         self.submission_repo = submission_repo
         self.challenge_repo = challenge_repo
@@ -70,6 +71,8 @@ class SubmissionUseCase:
         self.leaderboard_repo = leaderboard_repo
         self.message_broker = message_broker
         self.uow = uow
+        self.zip_max_uncompressed_mb = zip_max_uncompressed_mb
+        self.zip_max_file_count = zip_max_file_count
 
     # ==========================================
     # UC04 — Nộp bài dự thi
@@ -144,7 +147,12 @@ class SubmissionUseCase:
 
         # ---- Step 6: Validate format ----
         if filename.lower().endswith(".zip"):
-            validate_zip_format(file_bytes, filename)
+            validate_zip_format(
+                file_bytes, 
+                filename,
+                max_uncompressed_mb=self.zip_max_uncompressed_mb,
+                max_file_count=self.zip_max_file_count
+            )
         else:
             validate_csv_format(file_bytes, filename)
 

@@ -217,10 +217,13 @@ def get_submission_use_case(
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
     message_broker: IMessageBroker = Depends(get_message_broker),
     uow: IUnitOfWork = Depends(get_uow),
+    settings: Settings = Depends(get_settings_dep),
 ) -> SubmissionUseCase:
     return SubmissionUseCase(
         submission_repo, challenge_repo, team_repo,
-        storage_repo, leaderboard_repo, message_broker, uow
+        storage_repo, leaderboard_repo, message_broker, uow,
+        zip_max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
+        zip_max_file_count=settings.ZIP_MAX_FILE_COUNT,
     )
 
 
@@ -228,8 +231,13 @@ def get_challenge_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     tag_repo: ITagRepository = Depends(get_tag_repository),
+    settings: Settings = Depends(get_settings_dep),
 ) -> ChallengeUseCase:
-    return ChallengeUseCase(challenge_repo, storage_repo, tag_repo)
+    return ChallengeUseCase(
+        challenge_repo, storage_repo, tag_repo,
+        zip_max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
+        zip_max_file_count=settings.ZIP_MAX_FILE_COUNT,
+    )
 
 
 def get_admin_use_case(
