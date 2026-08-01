@@ -40,6 +40,7 @@ erDiagram
 
     CHALLENGE {
         uuid id PK
+        uuid parent_id FK "ID của cuộc thi cha (Nếu là bài thi con)"
         string title
         text description
         string type "ENUM: PUBLIC, COMPETITION"

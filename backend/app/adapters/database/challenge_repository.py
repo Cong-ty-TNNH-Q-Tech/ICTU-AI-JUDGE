@@ -45,6 +45,7 @@ class SQLChallengeRepository(IChallengeRepository):
             team_lock_deadline=model.team_lock_deadline,
             max_team_size=model.max_team_size,
             deleted_at=model.deleted_at,
+            parent_id=model.parent_id,
             tags=[TagEntity(
                 id=t.id,
                 name=t.name,
@@ -89,6 +90,7 @@ class SQLChallengeRepository(IChallengeRepository):
             custom_metric_url=challenge.custom_metric_url,
             team_lock_deadline=challenge.team_lock_deadline,
             max_team_size=challenge.max_team_size,
+            parent_id=challenge.parent_id,
         )
         self.db.add(model)
         self.db.flush()
@@ -122,6 +124,7 @@ class SQLChallengeRepository(IChallengeRepository):
         model.custom_metric_url = challenge.custom_metric_url
         model.team_lock_deadline = challenge.team_lock_deadline
         model.max_team_size = challenge.max_team_size
+        model.parent_id = challenge.parent_id
         self.db.flush()
         return self._to_entity(model)
 
@@ -238,4 +241,19 @@ class SQLChallengeRepository(IChallengeRepository):
             
         self.db.flush()
         return len(new_users)
+
+    def get_children(self, parent_id: uuid.UUID) -> list[ChallengeEntity]:
+        models = (
+            self.db.execute(
+                select(ChallengeModel)
+                .options(selectinload(ChallengeModel.tags))
+                .where(
+                    ChallengeModel.parent_id == parent_id,
+                    ChallengeModel.deleted_at == None  # noqa: E711
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
 

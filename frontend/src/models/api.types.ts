@@ -175,6 +175,20 @@ export interface LeaderboardResponse {
   items: LeaderboardEntry[];
 }
 
+export interface ContestLeaderboardEntry {
+  rank: number;
+  team_id: string;
+  team_name: string;
+  total_score: number;
+  scores: Record<string, number>;
+}
+
+export interface ContestLeaderboardResponse {
+  contest_id: string;
+  child_challenges: Challenge[];
+  leaderboard: ContestLeaderboardEntry[];
+}
+
 export interface Participant {
   user_id: string;
   email: string;

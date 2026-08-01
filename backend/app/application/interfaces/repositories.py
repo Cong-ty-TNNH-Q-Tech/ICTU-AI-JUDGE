@@ -115,6 +115,9 @@ class IChallengeRepository(ABC):
     @abstractmethod
     def has_successful_submission(self, challenge_id: uuid.UUID) -> bool: ...
 
+    @abstractmethod
+    def get_children(self, parent_id: uuid.UUID) -> list[ChallengeEntity]: ...
+
 
 class ITeamRepository(ABC):
     @abstractmethod
@@ -159,6 +162,9 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> tuple[list[TeamEntity], int]: ...
+
+    @abstractmethod
+    def get_teams_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[TeamEntity]: ...
 
 class ISubmissionRepository(ABC):
     @abstractmethod
@@ -282,6 +288,10 @@ class ILeaderboardRepository(ABC):
         Mỗi team_member chiếm 1 dòng.
         leaderboard_type: "public" | "private" — xác định dùng score nào để xếp hạng.
         """
+        ...
+
+    @abstractmethod
+    def get_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[LeaderboardEntryEntity]:
         ...
 
 
