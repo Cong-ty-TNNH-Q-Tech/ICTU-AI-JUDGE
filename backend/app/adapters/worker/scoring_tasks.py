@@ -143,13 +143,13 @@ def _run_sandbox(
     metric_script: bytes | None,
     metric_name: str,
 ) -> float:
-    from app.core.config import get_settings
-    settings = get_settings()
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
     Tự động phát hiện zip (magic bytes) → giải nén thành thư mục riêng.
     """
+    from app.core.config import get_settings
+    settings = get_settings()
     client = docker.from_env()
 
     # ---- Phát hiện ZIP mode qua magic bytes ----
@@ -208,10 +208,15 @@ except Exception as e:
                 built_in_script = f"""
 import pandas as pd
 import sys
+import os
 import math
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
 
 try:
+    if not os.path.exists('/tmp/submission.csv'):
+        print('Thiếu file submission.csv trong ZIP. Vui lòng đặt file kết quả tại submission.csv.')
+        sys.exit(1)
+        
     gt = pd.read_csv('/tmp/ground_truth.csv')
     sub = pd.read_csv('/tmp/submission.csv')
 

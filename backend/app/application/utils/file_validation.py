@@ -4,6 +4,7 @@ Shared file validation utilities for Use Cases.
 """
 import csv
 import io
+import posixpath
 import uuid
 import zipfile
 
@@ -74,7 +75,8 @@ def validate_zip_format(
             for info in infolist:
                 name = info.filename
                 # [SECURITY] Path Traversal
-                if '..' in name or name.startswith('/'):
+                normalized = posixpath.normpath(name)
+                if normalized.startswith('..') or posixpath.isabs(normalized) or '..' in normalized.split('/'):
                     raise ValueError(
                         f"Tên file không hợp lệ trong ZIP: '{name}'. "
                         "Không được chứa '..' hoặc đường dẫn tuyệt đối."
