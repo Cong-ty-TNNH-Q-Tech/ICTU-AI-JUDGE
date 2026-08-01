@@ -1,14 +1,10 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 import uuid
 
 from pydantic import BaseModel, Field, AwareDatetime
 
 from app.domain.entities.entities import ContestStatus
-
-if TYPE_CHECKING:
-    from app.application.dtos.challenge_dtos import ChallengeResponseDTO
+from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 
 
 class ContestCreateDTO(BaseModel):
@@ -51,6 +47,3 @@ class ContestChallengesResponseDTO(BaseModel):
     contest_id: uuid.UUID
     items: list[ChallengeResponseDTO]
     total: int
-
-    model_config = {"arbitrary_types_allowed": True}
-

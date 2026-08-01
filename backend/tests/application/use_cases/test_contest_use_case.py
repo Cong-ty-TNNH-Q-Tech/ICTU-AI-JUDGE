@@ -151,10 +151,10 @@ def test_get_challenges_returns_list(contest_use_case, dummy_contest, dummy_chal
 
     result = contest_use_case.get_challenges(dummy_contest.id)
 
-    assert result["total"] == 1
-    assert result["contest_id"] == dummy_contest.id
-    assert len(result["items"]) == 1
-    assert result["items"][0].title == "Bài thi phân loại ảnh"
+    assert result.total == 1
+    assert result.contest_id == dummy_contest.id
+    assert len(result.items) == 1
+    assert result.items[0].title == "Bài thi phân loại ảnh"
 
 
 def test_get_challenges_contest_not_found(contest_use_case):
@@ -170,8 +170,8 @@ def test_get_challenges_empty(contest_use_case, dummy_contest):
 
     result = contest_use_case.get_challenges(dummy_contest.id)
 
-    assert result["total"] == 0
-    assert result["items"] == []
+    assert result.total == 0
+    assert result.items == []
 
 
 # ---------------------------------------------------------------------------
