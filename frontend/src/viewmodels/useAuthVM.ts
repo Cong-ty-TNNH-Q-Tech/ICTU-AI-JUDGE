@@ -4,7 +4,7 @@
  * Kết nối authService + useAuthStore.
  */
 import { useCallback, useState } from 'react';
-import { authService } from '../services/authService';
+import { authService, type LoginRequest } from '../services/authService';
 import { useAuthStore } from '../store';
 import { useToastStore } from '../store/toastStore';
 
@@ -53,7 +53,7 @@ export function useAuthVM() {
   }, [isAuthenticated, setUser]);
 
 
-  const login = useCallback(async (payload: any) => {
+  const login = useCallback(async (payload: LoginRequest) => {
     setLoading(true);
     setError(null);
     try {

@@ -29,7 +29,7 @@ const ResetPasswordPage = () => {
     try {
       await resetPassword({ token, new_password: password });
       navigate('/login');
-    } catch (err) {
+    } catch {
       // Error handled in VM (toast)
     }
   };

@@ -33,7 +33,7 @@ const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
     try {
       await changePassword({ old_password: oldPassword, new_password: newPassword });
       handleClose();
-    } catch (err) {
+    } catch {
       // error handled by VM (toast)
     }
   };

@@ -6,12 +6,16 @@ from datetime import datetime
 from app.application.use_cases.auth_use_case import AuthUseCase
 from app.domain.entities.entities import UserEntity, UserRole
 from app.domain.exceptions.exceptions import AuthenticationError
+from app.core.security import hash_password
 
 @pytest.fixture
 def auth_use_case():
     user_repo = MagicMock()
     google_client = MagicMock()
-    return AuthUseCase(user_repo, google_client)
+    password_reset_repo = MagicMock()
+    mail_client = MagicMock()
+    uow = MagicMock()
+    return AuthUseCase(user_repo, google_client, password_reset_repo, mail_client, uow)
 
 def test_login_with_google_success_new_user(auth_use_case):
     auth_use_case._google_client.verify_token.return_value = {
@@ -66,4 +70,89 @@ def test_login_with_google_email_not_verified(auth_use_case):
     }
     with pytest.raises(AuthenticationError, match="Email Google chưa được xác thực"):
         auth_use_case.login_with_google("token")
+
+def test_login_with_password_success(auth_use_case):
+    user = UserEntity(
+        id=uuid.uuid4(),
+        email="test@test.com",
+        student_id="test",
+        full_name="Test",
+        role=UserRole.STUDENT,
+        password_hash=hash_password("password123"),
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    auth_use_case._user_repo.get_by_email.return_value = user
+    
+    logged_in_user = auth_use_case.login_with_password("test@test.com", "password123")
+    assert logged_in_user.id == user.id
+
+def test_login_with_password_invalid(auth_use_case):
+    auth_use_case._user_repo.get_by_email.return_value = None
+    with pytest.raises(AuthenticationError):
+        auth_use_case.login_with_password("test@test.com", "password123")
+
+def test_request_password_reset(auth_use_case):
+    user = UserEntity(
+        id=uuid.uuid4(),
+        email="test@test.com",
+        student_id="test",
+        full_name="Test",
+        role=UserRole.STUDENT,
+        password_hash="",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    auth_use_case._user_repo.get_by_email.return_value = user
+    
+    auth_use_case.request_password_reset("test@test.com")
+    
+    auth_use_case._password_reset_repo.save.assert_called_once()
+    auth_use_case._uow.commit.assert_called_once()
+def test_change_password(auth_use_case):
+    user = UserEntity(
+        id=uuid.uuid4(),
+        email="test@test.com",
+        student_id="test",
+        full_name="Test",
+        role=UserRole.STUDENT,
+        password_hash=hash_password("oldpassword"),
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    auth_use_case._user_repo.get_by_id.return_value = user
+
+    auth_use_case.change_password(user.id, "oldpassword", "newpassword")
+
+    auth_use_case._user_repo.update_password.assert_called_once()
+    auth_use_case._uow.commit.assert_called_once()
+
+def test_reset_password(auth_use_case):
+    from app.domain.entities.entities import PasswordResetEntity
+    user = UserEntity(
+        id=uuid.uuid4(),
+        email="test@test.com",
+        student_id="test",
+        full_name="Test",
+        role=UserRole.STUDENT,
+        password_hash="",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    from datetime import timedelta, timezone
+    reset = PasswordResetEntity(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        token="validtoken",
+        expires_at=datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+        used=False
+    )
+    auth_use_case._password_reset_repo.get_by_token.return_value = reset
+    auth_use_case._user_repo.get_by_id.return_value = user
+
+    auth_use_case.reset_password("validtoken", "newpassword")
+
+    auth_use_case._user_repo.update_password.assert_called_once()
+    auth_use_case._password_reset_repo.mark_as_used.assert_called_once_with(reset.id)
+    auth_use_case._uow.commit.assert_called_once()
 

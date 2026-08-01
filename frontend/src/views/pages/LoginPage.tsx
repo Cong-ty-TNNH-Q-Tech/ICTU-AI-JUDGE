@@ -69,7 +69,7 @@ const LoginPage = () => {
           } else {
             navigate('/challenges');
           }
-        } catch (err) {
+        } catch {
           // Error is handled by VM
         }
       }} className="space-y-4">
