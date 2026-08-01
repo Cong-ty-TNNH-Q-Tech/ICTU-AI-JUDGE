@@ -16,7 +16,6 @@ from app.domain.exceptions.exceptions import NotFoundError
 from app.entrypoints.dependencies import (
     get_contest_use_case,
     get_optional_current_user,
-    get_optional_current_user_id,
     require_admin,
 )
 
@@ -48,20 +47,24 @@ def _is_admin(user: Optional[UserEntity]) -> bool:
 def get_contests(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    status: Optional[str] = Query(None),
+    # [FIX #2] Optional[ContestStatus] thay vi str -> FastAPI validate, tra 422 neu nonsense
+    status: Optional[ContestStatus] = Query(None),
     use_case: ContestUseCase = Depends(get_contest_use_case),
-    current_user_id: Optional[uuid.UUID] = Depends(get_optional_current_user_id),
+    # [FIX #1] get_optional_current_user (UserEntity) thay vi chi UUID de kiem tra role
+    current_user: Optional[UserEntity] = Depends(get_optional_current_user),
 ):
     """
     Danh sach cuoc thi (phan trang, loc theo status). Public endpoint.
-    - Anonymous/Student: luon chi thay PUBLISHED (bat ke ?status= truyen vao).
-    - Admin: co the loc theo bat ky status nao.
+    - Admin: co the dung ?status=DRAFT|PUBLISHED|ARCHIVED.
+    - Student da dang nhap + Anonymous: LUON chi thay PUBLISHED, bat ke ?status= truyen vao.
     """
-    effective_status = status
-    if current_user_id is None:
-        # [SECURITY] Force PUBLISHED cho moi anonymous request
-        effective_status = "PUBLISHED"
-    # Note: Admin check o list endpoint de don gian -- Admin login moi dung ?status=DRAFT
+    # [SECURITY] Chi Admin moi duoc filter theo status tuy y
+    # Student co JWT hop le van bi force PUBLISHED -- khong the enumerate DRAFT/ARCHIVED
+    if _is_admin(current_user) and status is not None:
+        effective_status = status.value
+    else:
+        effective_status = ContestStatus.PUBLISHED.value
+
     return use_case.get_list(page, size, effective_status)
 
 
@@ -101,7 +104,6 @@ def get_contest_challenges(
     Ap dung cung security policy voi get_contest_detail:
     Admin thay tat ca, Student/Anonymous chi thay challenges cua PUBLISHED contest.
     """
-    # Kiem tra contest ton tai va access quyen truoc khi tra challenges
     try:
         contest = use_case.get_detail(contest_id)
     except NotFoundError as exc:

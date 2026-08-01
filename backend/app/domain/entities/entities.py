@@ -5,7 +5,7 @@ Pure Python dataclasses. KHÔNG import FastAPI hay SQLAlchemy.
 """
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -92,15 +92,27 @@ class TagEntity:
 
 @dataclass
 class ContestEntity:
+    """Contest domain entity. Tat ca datetime fields PHAI la timezone-aware (UTC)."""
     id: uuid.UUID
     title: str
     description: str
     status: ContestStatus
-    start_time: datetime
-    end_time: datetime | None
+    start_time: datetime  # Must be timezone-aware
+    end_time: datetime | None  # Must be timezone-aware if set
     created_by: uuid.UUID
-    created_at: datetime
+    created_at: datetime  # Must be timezone-aware
     deleted_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        """Ensure datetime fields la timezone-aware de tranh TypeError khi compare."""
+        def _ensure_tz(dt: datetime | None) -> datetime | None:
+            if dt is not None and dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+        self.start_time = _ensure_tz(self.start_time)  # type: ignore[assignment]
+        self.end_time = _ensure_tz(self.end_time)
+        self.created_at = _ensure_tz(self.created_at)  # type: ignore[assignment]
+        self.deleted_at = _ensure_tz(self.deleted_at)
 
 
 @dataclass
