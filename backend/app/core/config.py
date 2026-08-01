@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     SANDBOX_MEMORY_LIMIT: str = "512m"
     SANDBOX_CPU_PERIOD: int = 100000
     SANDBOX_CPU_QUOTA: int = 50000  # 50% CPU
+    # Sandbox timeout cho các challenge cần giải nén zip (giây)
+    SANDBOX_ZIP_TIMEOUT: int = 120  # 2 phút — đủ cho giải nén + metric ảnh
+    # Giới hạn giải nén zip (chống zip bomb)
+    ZIP_MAX_UNCOMPRESSED_MB: int = 500
+    ZIP_MAX_FILE_COUNT: int = 10000
 
 
 @lru_cache

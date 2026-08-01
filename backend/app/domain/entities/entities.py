@@ -105,6 +105,7 @@ class ChallengeEntity:
     custom_metric_url: str = ""
     team_lock_deadline: datetime | None = None
     deleted_at: datetime | None = None
+    parent_id: uuid.UUID | None = None
     tags: list[TagEntity] = field(default_factory=list)
 
     def is_accepting_submissions(self, now: datetime) -> bool:

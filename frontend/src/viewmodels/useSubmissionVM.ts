@@ -131,7 +131,8 @@ export function useSubmissionVM(challengeId: string) {
     if (!challengeId) return;
     
     // Client-side validation fallback
-    if (!file.name.toLowerCase().endsWith('.csv') || file.size > maxFileSizeMb * 1024 * 1024) {
+    const ext = file.name.toLowerCase();
+    if ((!ext.endsWith('.csv') && !ext.endsWith('.zip')) || file.size > maxFileSizeMb * 1024 * 1024) {
       return; // Handled by UI component
     }
 

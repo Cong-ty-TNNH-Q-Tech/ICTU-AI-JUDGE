@@ -153,12 +153,14 @@ async def upload_secrets(
 ):
     """Upload Ground Truth + Custom Metric (Admin only, lưu kín trên S3)."""
     gt_bytes = await ground_truth_csv.read()
+    gt_filename = ground_truth_csv.filename or "ground_truth.csv"
     metric_bytes = await metric_script_py.read() if metric_script_py else None
-    
+
     try:
         result = use_case.upload_secrets(
             challenge_id=challenge_id,
             ground_truth_bytes=gt_bytes,
+            ground_truth_filename=gt_filename,
             metric_script_bytes=metric_bytes,
             public_test_split_ratio=public_test_split_ratio
         )
