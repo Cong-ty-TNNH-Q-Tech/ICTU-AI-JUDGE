@@ -3,7 +3,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 from app.application.dtos.contest_dtos import (
     ContestChallengesResponseDTO,
     ContestCreateDTO,
@@ -40,11 +39,13 @@ def get_contests(
 ):
     """
     Danh sách cuộc thi (có phân trang, lọc theo status). Public.
-    Unauthenticated users chỉ thấy PUBLISHED contests (không lộ DRAFT/ARCHIVED).
+    Unauthenticated users LUÔN chỉ thấy PUBLISHED contests —
+    bất kể ?status= gì được truyền vào (ngăn DRAFT leak).
     """
-    # Nếu user chưa đăng nhập và không truyền status filter → chỉ trả PUBLISHED
     effective_status = status
-    if current_user_id is None and status is None:
+    if current_user_id is None:
+        # [SECURITY] Force PUBLISHED cho mọi anonymous request,
+        # kể cả khi ?status=DRAFT được truyền tường minh
         effective_status = "PUBLISHED"
     return use_case.get_list(page, size, effective_status)
 
@@ -80,7 +81,11 @@ def create_contest(
     admin: UserEntity = Depends(require_admin),
 ):
     """Tạo cuộc thi mới. Admin only."""
-    return use_case.create(dto, admin.id)
+    try:
+        return use_case.create(dto, admin.id)
+    except ValueError as exc:
+        # end_time <= start_time — trả 422 thay vì 500
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
 @router.patch("/{contest_id}", response_model=ContestResponseDTO)
@@ -95,6 +100,9 @@ def update_contest(
         return use_case.update(contest_id, dto)
     except NotFoundError as exc:
         raise _not_found(exc)
+    except ValueError as exc:
+        # end_time <= start_time — trả 422 thay vì 500
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
 @router.delete("/{contest_id}", status_code=204)

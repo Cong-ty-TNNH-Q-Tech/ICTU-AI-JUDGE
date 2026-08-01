@@ -1,6 +1,6 @@
-"""
-Tests for ContestUseCase — Issue #123: Contest Entity System.
-Kiến trúc: Mock IContestRepository + IUnitOfWork, không cần DB thật.
+﻿"""
+Tests for ContestUseCase â€” Issue #123: Contest Entity System.
+Kiáº¿n trÃºc: Mock IContestRepository + IUnitOfWork, khÃ´ng cáº§n DB tháº­t.
 """
 from unittest.mock import MagicMock, patch
 import pytest
@@ -39,7 +39,7 @@ def dummy_contest(now, admin_id):
     return ContestEntity(
         id=uuid.uuid4(),
         title="ICTU AI Challenge 2026",
-        description="Cuộc thi AI lớn nhất năm",
+        description="Cuá»™c thi AI lá»›n nháº¥t nÄƒm",
         status=ContestStatus.DRAFT,
         start_time=now,
         end_time=None,
@@ -52,8 +52,8 @@ def dummy_contest(now, admin_id):
 def dummy_challenge(now, admin_id):
     return ChallengeEntity(
         id=uuid.uuid4(),
-        title="Bài thi phân loại ảnh",
-        description="Phân loại ảnh bằng CNN",
+        title="BÃ i thi phÃ¢n loáº¡i áº£nh",
+        description="PhÃ¢n loáº¡i áº£nh báº±ng CNN",
         type=ChallengeType.PUBLIC,
         status=ChallengeStatus.PUBLISHED,
         start_time=now,
@@ -103,7 +103,7 @@ def test_get_list_empty(contest_use_case):
 
 
 def test_get_list_pagination_calculation(contest_use_case, dummy_contest):
-    # 25 items, size=10 → 3 pages
+    # 25 items, size=10 â†’ 3 pages
     contests = [dummy_contest] * 25
     contest_use_case._contest_repo.get_list.return_value = (contests, 25)
 
@@ -131,13 +131,13 @@ def test_get_detail_found(contest_use_case, dummy_contest):
 
     assert result.id == dummy_contest.id
     assert result.title == "ICTU AI Challenge 2026"
-    assert result.status == ContestStatus.DRAFT.value
+    assert result.status == ContestStatus.DRAFT
 
 
 def test_get_detail_not_found(contest_use_case):
     contest_use_case._contest_repo.get_by_id.return_value = None
 
-    with pytest.raises(NotFoundError, match="không tồn tại"):
+    with pytest.raises(NotFoundError, match="Contest"):
         contest_use_case.get_detail(uuid.uuid4())
 
 
@@ -154,7 +154,7 @@ def test_get_challenges_returns_list(contest_use_case, dummy_contest, dummy_chal
     assert result.total == 1
     assert result.contest_id == dummy_contest.id
     assert len(result.items) == 1
-    assert result.items[0].title == "Bài thi phân loại ảnh"
+    assert result.items[0].title == "BÃ i thi phÃ¢n loáº¡i áº£nh"
 
 
 def test_get_challenges_contest_not_found(contest_use_case):
@@ -181,7 +181,7 @@ def test_get_challenges_empty(contest_use_case, dummy_contest):
 def test_create_contest(contest_use_case, dummy_contest, admin_id, now):
     dto = ContestCreateDTO(
         title="ICTU AI Challenge 2026",
-        description="Cuộc thi AI lớn nhất năm",
+        description="Cuá»™c thi AI lá»›n nháº¥t nÄƒm",
         status=ContestStatus.DRAFT,
         start_time=now,
         end_time=None,
@@ -193,7 +193,7 @@ def test_create_contest(contest_use_case, dummy_contest, admin_id, now):
     contest_use_case._contest_repo.save.assert_called_once()
     contest_use_case._uow.commit.assert_called_once()
     assert result.title == "ICTU AI Challenge 2026"
-    assert result.status == ContestStatus.DRAFT.value
+    assert result.status == ContestStatus.DRAFT
 
 
 def test_create_contest_saves_correct_entity(contest_use_case, dummy_contest, admin_id, now):
@@ -237,27 +237,27 @@ def test_update_contest_status(contest_use_case, dummy_contest):
     dto = ContestUpdateDTO(status=ContestStatus.PUBLISHED)
     result = contest_use_case.update(dummy_contest.id, dto)
 
-    assert result.status == ContestStatus.PUBLISHED.value
+    assert result.status == ContestStatus.PUBLISHED
 
 
 def test_update_contest_not_found(contest_use_case):
     contest_use_case._contest_repo.get_by_id.return_value = None
 
-    with pytest.raises(NotFoundError, match="không tồn tại"):
+    with pytest.raises(NotFoundError, match="Contest"):
         contest_use_case.update(uuid.uuid4(), ContestUpdateDTO(title="X"))
 
 
 def test_update_partial_fields_unchanged(contest_use_case, dummy_contest):
-    """Chỉ update description — title không thay đổi."""
+    """Chá»‰ update description â€” title khÃ´ng thay Ä‘á»•i."""
     contest_use_case._contest_repo.get_by_id.return_value = dummy_contest
     contest_use_case._contest_repo.save.return_value = dummy_contest
 
-    dto = ContestUpdateDTO(description="Mô tả mới")
+    dto = ContestUpdateDTO(description="MÃ´ táº£ má»›i")
     contest_use_case.update(dummy_contest.id, dto)
 
     saved: ContestEntity = contest_use_case._contest_repo.save.call_args[0][0]
-    assert saved.title == "ICTU AI Challenge 2026"  # Không đổi
-    assert saved.description == "Mô tả mới"
+    assert saved.title == "ICTU AI Challenge 2026"  # KhÃ´ng Ä‘á»•i
+    assert saved.description == "MÃ´ táº£ má»›i"
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ def test_delete_contest(contest_use_case, dummy_contest):
 def test_delete_contest_not_found(contest_use_case):
     contest_use_case._contest_repo.get_by_id.return_value = None
 
-    with pytest.raises(NotFoundError, match="không tồn tại"):
+    with pytest.raises(NotFoundError, match="Contest"):
         contest_use_case.delete(uuid.uuid4())
 
 
@@ -287,3 +287,55 @@ def test_delete_does_not_commit_when_not_found(contest_use_case):
         contest_use_case.delete(uuid.uuid4())
 
     contest_use_case._uow.commit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Business validation: end_time > start_time
+# ---------------------------------------------------------------------------
+
+def test_create_raises_when_end_time_before_start_time(contest_use_case, admin_id, now):
+    """create() must raise ValueError if end_time <= start_time."""
+    from datetime import timedelta
+    dto = ContestCreateDTO(
+        title="Bad Contest",
+        description="",
+        status=ContestStatus.DRAFT,
+        start_time=now,
+        end_time=now - timedelta(hours=1),
+    )
+    with pytest.raises(ValueError, match="end_time"):
+        contest_use_case.create(dto, admin_id)
+
+
+def test_update_raises_when_end_time_before_start_time(contest_use_case, dummy_contest, now):
+    """update() must raise ValueError if end_time <= start_time after patch."""
+    from datetime import timedelta
+    contest_use_case._contest_repo.get_by_id.return_value = dummy_contest
+    dto = ContestUpdateDTO(end_time=now - timedelta(hours=1))
+    with pytest.raises(ValueError, match="end_time"):
+        contest_use_case.update(dummy_contest.id, dto)
+
+
+def test_update_set_end_time_to_none(contest_use_case, dummy_contest, now):
+    """update() with explicit end_time=None must clear deadline on the saved entity.
+    
+    ContestUpdateDTO(end_time=None) includes 'end_time' in model_fields_set,
+    so model_dump(exclude_unset=True) returns {'end_time': None}.
+    The use case must apply this and call save() with entity.end_time == None.
+    """
+    from datetime import timedelta
+    contest_with_end = ContestEntity(
+        **{**dummy_contest.__dict__, "end_time": now + timedelta(days=10)}
+    )
+    # Provide a valid return value for save() so _to_dto() can construct the DTO
+    saved_entity = ContestEntity(**{**contest_with_end.__dict__, "end_time": None})
+    contest_use_case._contest_repo.get_by_id.return_value = contest_with_end
+    contest_use_case._contest_repo.save.return_value = saved_entity
+
+    # PATCH with end_time=None — model_fields_set will contain "end_time"
+    dto = ContestUpdateDTO(end_time=None)
+    contest_use_case.update(dummy_contest.id, dto)
+
+    # The entity passed INTO save() must have end_time cleared to None
+    entity_passed_to_save: ContestEntity = contest_use_case._contest_repo.save.call_args[0][0]
+    assert entity_passed_to_save.end_time is None

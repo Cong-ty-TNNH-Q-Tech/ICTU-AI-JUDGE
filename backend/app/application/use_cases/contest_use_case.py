@@ -1,4 +1,4 @@
-"""
+﻿"""
 Contest Use Case — UC: Contest Entity (Issue #123).
 """
 import logging
@@ -34,7 +34,7 @@ class ContestUseCase:
             id=entity.id,
             title=entity.title,
             description=entity.description,
-            status=entity.status.value,
+            status=entity.status,
             start_time=entity.start_time,
             end_time=entity.end_time,
             created_at=entity.created_at,
@@ -124,18 +124,22 @@ class ContestUseCase:
         if not entity:
             raise NotFoundError(f"Contest {contest_id} không tồn tại.")
 
-        if dto.title is not None:
-            entity.title = dto.title
-        if dto.description is not None:
-            entity.description = dto.description
-        if dto.status is not None:
-            entity.status = ContestStatus(dto.status)
-        if dto.start_time is not None:
-            entity.start_time = dto.start_time
-        if dto.end_time is not None:
-            entity.end_time = dto.end_time
+        # Dùng exclude_unset=True để phân biệt "không gửi field" vs "gửi tường minh = None"
+        # Ví dụ: PATCH {end_time: null} → xóa deadline; PATCH {} → không đổi gì
+        update_data = dto.model_dump(exclude_unset=True)
 
-        # Business rule: sau khi patch, end_time phải sau start_time
+        if "title" in update_data:
+            entity.title = update_data["title"]
+        if "description" in update_data:
+            entity.description = update_data["description"]
+        if "status" in update_data and update_data["status"] is not None:
+            entity.status = ContestStatus(update_data["status"])
+        if "start_time" in update_data:
+            entity.start_time = update_data["start_time"]
+        if "end_time" in update_data:
+            entity.end_time = update_data["end_time"]  # Cho phép set về None (xóa deadline)
+
+        # Business rule: sau khi patch, end_time phải sau start_time (nếu có)
         if entity.end_time is not None and entity.end_time <= entity.start_time:
             raise ValueError("end_time phải sau start_time.")
 

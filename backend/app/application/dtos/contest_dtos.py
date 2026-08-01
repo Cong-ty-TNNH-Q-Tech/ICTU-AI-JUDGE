@@ -27,11 +27,13 @@ class ContestResponseDTO(BaseModel):
     id: uuid.UUID
     title: str
     description: str
-    status: str
+    status: ContestStatus  # Enum type → OpenAPI spec đúng, type-safe
     start_time: AwareDatetime
     end_time: Optional[AwareDatetime] = None
     created_at: AwareDatetime
     created_by: uuid.UUID
+
+    model_config = {"from_attributes": True}
 
 
 class ContestListResponseDTO(BaseModel):
@@ -45,5 +47,5 @@ class ContestListResponseDTO(BaseModel):
 class ContestChallengesResponseDTO(BaseModel):
     """Response cho GET /contests/{id}/challenges — danh sách challenges con."""
     contest_id: uuid.UUID
-    items: list[ChallengeResponseDTO]
+    items: list[ChallengeResponseDTO]  # ChallengeResponseDTO là Pydantic model → không cần arbitrary_types_allowed
     total: int
