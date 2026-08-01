@@ -114,6 +114,7 @@ class ChallengeModel(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("challenges.id"), nullable=True, index=True)
 
     # Relationships
     contest: Mapped["ContestModel | None"] = relationship("ContestModel", back_populates="challenges")
@@ -123,6 +124,12 @@ class ChallengeModel(Base):
     participants: Mapped[list["ChallengeParticipantModel"]] = relationship("ChallengeParticipantModel", back_populates="challenge")
     tags: Mapped[list["TagModel"]] = relationship(
         "TagModel", secondary="challenge_tags", back_populates="challenges"
+    )
+    children: Mapped[list["ChallengeModel"]] = relationship(
+        "ChallengeModel", back_populates="parent"
+    )
+    parent: Mapped["ChallengeModel | None"] = relationship(
+        "ChallengeModel", back_populates="children", remote_side="[ChallengeModel.id]"
     )
 
 class TagModel(Base):

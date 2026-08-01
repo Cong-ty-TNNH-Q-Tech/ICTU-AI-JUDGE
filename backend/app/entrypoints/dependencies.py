@@ -291,8 +291,9 @@ from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
 def get_leaderboard_use_case(
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    team_repo: ITeamRepository = Depends(get_team_repository),
 ) -> LeaderboardUseCase:
-    return LeaderboardUseCase(leaderboard_repo, challenge_repo)
+    return LeaderboardUseCase(leaderboard_repo, challenge_repo, team_repo)
 
 
 def get_contest_use_case(
@@ -300,3 +301,4 @@ def get_contest_use_case(
     uow: IUnitOfWork = Depends(get_uow),
 ) -> ContestUseCase:
     return ContestUseCase(contest_repo, uow)
+

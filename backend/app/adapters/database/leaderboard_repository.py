@@ -290,3 +290,13 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             }
             for row in results
         ]
+
+    def get_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[LeaderboardEntryEntity]:
+        models = (
+            self.db.execute(
+                select(LeaderboardModel).where(LeaderboardModel.challenge_id.in_(challenge_ids))
+            )
+            .scalars()
+            .all()
+        )
+        return [self._to_entity(m, rank=0) for m in models]
