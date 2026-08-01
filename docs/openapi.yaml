@@ -1332,103 +1332,14 @@ components:
           type: string
           nullable: true
 
-    Contest:
+    Challenge:
       type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        description:
-          type: string
-        status:
-          type: string
-          enum: [DRAFT, PUBLISHED, ARCHIVED]
-        start_time:
-          type: string
-          format: date-time
-        end_time:
-          type: string
-          format: date-time
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type: string
-          format: uuid
-
-    ContestCreate:
-      type: object
-      required: [title, description, status, start_time]
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        status:
-          type: string
-          enum: [DRAFT, PUBLISHED, ARCHIVED]
-        start_time:
-          type: string
-          format: date-time
-        end_time:
-          type: string
-          format: date-time
-          nullable: true
-
-    ContestUpdate:
-      type: object
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        status:
-          type: string
-          enum: [DRAFT, PUBLISHED, ARCHIVED]
-        start_time:
-          type: string
-          format: date-time
-        end_time:
-          type: string
-          format: date-time
-          nullable: true
-
-    ContestChallengesResponse:
-      type: object
-      description: Response cho GET /contests/{id}/challenges
       properties:
         contest_id:
           type: string
           format: uuid
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Challenge'
-        total:
-          type: integer
-          example: 3
-
-    Team:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        challenge_id:
-          type: string
-          format: uuid
-        leader_id:
-          type: string
-          format: uuid
-
-    Challenge:
-      type: object
-      properties:
+          nullable: true
+          description: "UUID cua Contest neu challenge thuoc ve mot cuoc thi (Issue #123)"
         id:
           type: string
           format: uuid

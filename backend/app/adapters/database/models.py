@@ -1,4 +1,4 @@
-"""
+﻿"""
 SQLAlchemy ORM Models — Adapter/Database layer.
 Map trực tiếp đến các bảng PostgreSQL theo thiết kế ERD.
 """
@@ -18,7 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PgEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -69,7 +69,7 @@ class ContestModel(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(
-        Enum(ContestStatus, name="contest_status_enum"),
+        PgEnum(ContestStatus, name="contest_status_enum", create_type=False),
         nullable=False,
         default=ContestStatus.DRAFT,
     )

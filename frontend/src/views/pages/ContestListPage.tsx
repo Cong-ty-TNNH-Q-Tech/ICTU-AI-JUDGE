@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useContestVM } from '../../viewmodels/useContestVM';
+import { buildPageWindow } from '../../utils/pagination';
 import type { Contest } from '../../models/api.types';
 import HeroIllustration from '../../assets/hero-competition.png';
 
@@ -43,22 +44,6 @@ const stripMarkdown = (md?: string | null) => {
     .trim();
 };
 
-/** Windowed pagination: toi da 7 nut, hien '...' neu co khoang trong. */
-function buildPageWindow(currentPage: number, totalPages: number): (number | '...')[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  const pages: (number | '...')[] = [];
-  const left = Math.max(2, currentPage - 2);
-  const right = Math.min(totalPages - 1, currentPage + 2);
-
-  pages.push(1);
-  if (left > 2) pages.push('...');
-  for (let i = left; i <= right; i++) pages.push(i);
-  if (right < totalPages - 1) pages.push('...');
-  pages.push(totalPages);
-  return pages;
-}
 
 const ContestListPage = () => {
   const [page, setPage] = useState(1);

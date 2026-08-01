@@ -7,28 +7,11 @@
  */
 import React, { useState } from 'react';
 import { useContestManageVM } from '../../../viewmodels/useContestVM';
+import { buildPageWindow } from '../../../utils/pagination';
 import type { Contest, ContestCreateRequest, ContestUpdateRequest, ContestStatus } from '../../../models/api.types';
 
 const STATUS_OPTIONS: ContestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
 
-// ===================== Pagination helper =====================
-/** Hien thi toi da 5 nut trang xung quanh trang hien tai (tranh overflow). */
-function buildPageWindow(currentPage: number, totalPages: number): (number | '...')[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  const delta = 2;
-  const pages: (number | '...')[] = [];
-  const left = Math.max(2, currentPage - delta);
-  const right = Math.min(totalPages - 1, currentPage + delta);
-
-  pages.push(1);
-  if (left > 2) pages.push('...');
-  for (let i = left; i <= right; i++) pages.push(i);
-  if (right < totalPages - 1) pages.push('...');
-  pages.push(totalPages);
-  return pages;
-}
 
 // ===================== Confirm Modal =====================
 interface ConfirmModalProps { title: string; message: string; onConfirm: () => void; onCancel: () => void; isLoading?: boolean; }

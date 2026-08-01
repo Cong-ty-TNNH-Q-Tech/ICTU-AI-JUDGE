@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+﻿import { useState, useCallback, useEffect, useRef } from 'react';
 import { ContestService } from '../services/contestService';
 import type { Challenge, Contest, ContestCreateRequest, ContestUpdateRequest } from '../models/api.types';
 
@@ -109,7 +109,7 @@ export const useContestManageVM = () => {
       setPage(p);
       pageRef.current = p; // Dong bo ref voi state
     } catch (err: unknown) {
-      console.error('[useContestManageVM] fetchContests failed:', err);
+      if (import.meta.env.DEV) console.error('[useContestManageVM] fetchContests failed:', err);
       setError('Không thể tải danh sách cuộc thi.');
     } finally {
       setIsLoading(false);
@@ -128,7 +128,7 @@ export const useContestManageVM = () => {
       // Contest mới nhất ở trang 1 (ORDER BY created_at DESC)
       await fetchContests(1);
     } catch (err: unknown) {
-      console.error('[useContestManageVM] createContest failed:', err);
+      if (import.meta.env.DEV) console.error('[useContestManageVM] createContest failed:', err);
       const msg = err instanceof Error ? err.message : 'Không thể tạo cuộc thi.';
       throw new Error(msg);
     } finally {
@@ -143,7 +143,7 @@ export const useContestManageVM = () => {
       // Dung pageRef.current thay vi page state de tranh stale closure
       await fetchContests(pageRef.current);
     } catch (err: unknown) {
-      console.error('[useContestManageVM] updateContest failed:', err);
+      if (import.meta.env.DEV) console.error('[useContestManageVM] updateContest failed:', err);
       const msg = err instanceof Error ? err.message : 'Khong the cap nhat cuoc thi.';
       throw new Error(msg);
     } finally {
@@ -161,7 +161,7 @@ export const useContestManageVM = () => {
       const targetPage = contests.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
       await fetchContests(targetPage);
     } catch (err: unknown) {
-      console.error('[useContestManageVM] deleteContest failed:', err);
+      if (import.meta.env.DEV) console.error('[useContestManageVM] deleteContest failed:', err);
       const msg = err instanceof Error ? err.message : 'Khong the xoa cuoc thi.';
       throw new Error(msg);
     } finally {

@@ -60,9 +60,11 @@ class ChallengeResponseDTO(BaseModel):
     team_lock_deadline: Optional[AwareDatetime] = None
     max_team_size: int
     parent_id: Optional[uuid.UUID] = None
-    tags: list[TagResponseDTO] = []
+    contest_id: Optional[uuid.UUID] = None
+    tags: list[TagResponseDTO] = Field(default_factory=list)
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ChallengeListResponseDTO(BaseModel):

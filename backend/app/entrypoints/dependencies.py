@@ -1,4 +1,4 @@
-"""
+﻿"""
 FastAPI Dependency Injection — Inbound layer.
 Inject DB session, Settings và current_user vào Use Cases qua Depends.
 """
@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
+from app.core.security import decode_access_token
+from app.domain.exceptions.exceptions import AuthenticationError
 from app.application.interfaces.repositories import (
     IUserRepository,
     ISolutionRepository,
@@ -289,8 +291,6 @@ def get_optional_current_user(
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> UserEntity | None:
     "Dependency: tra ve UserEntity neu co token hop le, else None."
-    from app.core.security import decode_access_token
-    from app.domain.exceptions.exceptions import AuthenticationError
     if not access_token:
         return None
     try:
@@ -300,7 +300,7 @@ def get_optional_current_user(
             return None
         user_id = uuid.UUID(user_id_str)
         return user_repo.get_by_id(user_id)
-    except (AuthenticationError, ValueError, Exception):
+    except (AuthenticationError, ValueError):
         return None
 
 

@@ -131,12 +131,14 @@ class ChallengeEntity:
     metric_direction: MetricDirection
     created_by: uuid.UUID
     created_at: datetime
+    # Thuộc về một Cuộc thi (Contest) nếu có (Issue #123). Dùng để gom nhóm challenges theo kỳ thi.
     contest_id: uuid.UUID | None = None
     dataset_url: str = ""
     ground_truth_url: str = ""
     custom_metric_url: str = ""
     team_lock_deadline: datetime | None = None
     deleted_at: datetime | None = None
+    # Dùng cho versioning hoặc chia stage trong Challenge (Self-referential FK - PR #136).
     parent_id: uuid.UUID | None = None
     tags: list[TagEntity] = field(default_factory=list)
 

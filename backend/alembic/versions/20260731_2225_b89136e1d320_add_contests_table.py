@@ -1,4 +1,4 @@
-"""Add contests table
+﻿"""Add contests table
 
 Revision ID: b89136e1d320
 Revises: a1b2c3d4e5f6
@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM
 
 
 # revision identifiers, used by Alembic.
@@ -19,17 +20,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Tao Enum type truoc, idempotent (IF NOT EXISTS tranh loi khi re-run sau rollback that bai)
-    op.execute(
-        "CREATE TYPE IF NOT EXISTS contest_status_enum AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED')"
-    )
+    # Tao Enum type truoc, idempotent bang DO block (PostgreSQL khong ho tro CREATE TYPE IF NOT EXISTS)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'contest_status_enum') THEN
+                CREATE TYPE contest_status_enum AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+            END IF;
+        END$$;
+    """)
     op.create_table(
         'contests',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('title', sa.String(length=500), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
         # create_type=False: SQLAlchemy khong tu create PG type -- migration da tao o tren
-        sa.Column('status', sa.Enum('DRAFT', 'PUBLISHED', 'ARCHIVED', name='contest_status_enum', create_type=False), nullable=False),
+        sa.Column('status', ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED', name='contest_status_enum', create_type=False), nullable=False),
         sa.Column('start_time', sa.DateTime(timezone=True), nullable=False),
         sa.Column('end_time', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_by', sa.UUID(), nullable=False),

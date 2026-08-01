@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.application.dtos.challenge_dtos import ChallengeResponseDTO
+from app.application.utils.mappers import challenge_to_dto
 from app.application.dtos.contest_dtos import (
     ContestChallengesResponseDTO,
     ContestCreateDTO,
@@ -41,30 +42,6 @@ class ContestUseCase:
             created_by=entity.created_by,
         )
 
-    @staticmethod
-    def _challenge_to_dto(entity: ChallengeEntity) -> ChallengeResponseDTO:
-        return ChallengeResponseDTO(
-            id=entity.id,
-            title=entity.title,
-            description=entity.description,
-            type=entity.type,
-            status=entity.status,
-            start_time=entity.start_time,
-            end_time=entity.end_time,
-            rate_limit_minutes=entity.rate_limit_minutes,
-            max_file_size_mb=entity.max_file_size_mb,
-            metric_name=entity.metric_name,
-            metric_direction=entity.metric_direction,
-            created_by=entity.created_by,
-            created_at=entity.created_at,
-            dataset_url=entity.dataset_url,
-            ground_truth_url=entity.ground_truth_url or None,
-            custom_metric_url=entity.custom_metric_url or None,
-            team_lock_deadline=entity.team_lock_deadline,
-            max_team_size=entity.max_team_size,
-            tags=[],
-        )
-
     # ------------------------------------------------------------------
     # Public Use Case methods
     # ------------------------------------------------------------------
@@ -92,7 +69,7 @@ class ContestUseCase:
         if not entity:
             raise NotFoundError(f"Contest {contest_id} không tồn tại.")
         challenges = self._contest_repo.get_challenges(contest_id)
-        items = [self._challenge_to_dto(c) for c in challenges]
+        items = [challenge_to_dto(c) for c in challenges]
         return ContestChallengesResponseDTO(
             contest_id=contest_id,
             items=items,
