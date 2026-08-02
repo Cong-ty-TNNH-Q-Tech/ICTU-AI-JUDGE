@@ -13,6 +13,7 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
   const {
     solutions,
     loading,
+    isLocked,
     showModal,
     openModal,
     closeModal,
@@ -37,11 +38,34 @@ export const SolutionsTab: React.FC<SolutionsTabProps> = ({ challengeId }) => {
         </div>
         <button
           onClick={openModal}
-          className="px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-semibold text-sm transition-all hover:bg-slate-800 dark:hover:bg-slate-100 shadow-sm hover:shadow-md"
+          disabled={isLocked}
+          className={`px-5 py-2.5 rounded-full font-semibold text-sm flex items-center gap-2 transition-all shadow-sm ${
+            isLocked
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 hover:shadow-md'
+          }`}
         >
+          {isLocked && (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          )}
           Đăng giải pháp
         </button>
       </div>
+
+      {/* Warning Banner */}
+      {isLocked && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 flex gap-3 text-amber-800 dark:text-amber-200">
+          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div className="text-sm">
+            <p className="font-bold mb-1">Mục giải pháp đang bị khóa</p>
+            <p className="opacity-90">Để đảm bảo công bằng trong thời gian thi, mục giải pháp tạm thời bị khóa. Bạn có thể xem và đăng giải pháp sau khi thời gian làm bài kết thúc.</p>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (
