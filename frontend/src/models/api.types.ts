@@ -243,6 +243,7 @@ export interface GoogleLoginRequest {
 }
 
 export interface ChallengeCreateRequest {
+  contest_id?: string | null;
   title: string;
   description?: string;
   type: ChallengeType;

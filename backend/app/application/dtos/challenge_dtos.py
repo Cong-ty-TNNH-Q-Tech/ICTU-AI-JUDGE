@@ -22,6 +22,7 @@ class ChallengeCreateRequestDTO(BaseModel):
     max_team_size: int = Field(default=5, ge=1)
     tag_ids: Optional[list[uuid.UUID]] = None
     parent_id: Optional[uuid.UUID] = None
+    contest_id: Optional[uuid.UUID] = None
 
 class ChallengeUpdateRequestDTO(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
@@ -38,6 +39,7 @@ class ChallengeUpdateRequestDTO(BaseModel):
     max_team_size: Optional[int] = Field(None, ge=1)
     tag_ids: Optional[list[uuid.UUID]] = None
     parent_id: Optional[uuid.UUID] = None
+    contest_id: Optional[uuid.UUID] = None
 
 class ChallengeResponseDTO(BaseModel):
     id: uuid.UUID

@@ -1,4 +1,4 @@
-﻿openapi: 3.0.3
+openapi: 3.0.3
 info:
   title: ICTU AI Judge API
   description: RESTful API spec for ICTU AI Judge Platform (FastAPI Backend)
@@ -1394,6 +1394,11 @@ components:
         - metric_name
         - metric_direction
       properties:
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID của cuộc thi (nếu thuộc cuộc thi)
         parent_id:
           type: string
           format: uuid
@@ -1451,6 +1456,10 @@ components:
       type: object
       description: Tất cả trường đều là tùy chọn (Partial Update). Bị khóa nếu có Submission.
       properties:
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
         parent_id:
           type: string
           format: uuid

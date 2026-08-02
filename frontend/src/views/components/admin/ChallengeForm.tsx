@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { Challenge, ChallengeCreateRequest } from '../../../models/api.types';
+import type { Challenge, ChallengeCreateRequest, Contest } from '../../../models/api.types';
 import { adminService } from '../../../services/adminService';
+import { ContestService } from '../../../services/contestService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -88,6 +89,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
     type: 'PUBLIC', status: 'DRAFT', dataset_url: '',
     metric_name: 'ACCURACY', metric_direction: 'HIGHER_IS_BETTER',
     max_file_size_mb: 50, rate_limit_minutes: 10, max_team_size: 1,
+    contest_id: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +104,12 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   const [previewMarkdown, setPreviewMarkdown] = useState(false);
   const [publicTestSplitRatio, setPublicTestSplitRatio] = useState(30);
 
+  const [contests, setContests] = useState<Contest[]>([]);
+
+  useEffect(() => {
+    ContestService.getContests(1, 100).then(res => setContests(res.items)).catch(console.error);
+  }, []);
+
   useEffect(() => {
     if (initialData) {
       setForm({
@@ -111,6 +119,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
         metric_name: initialData.metric_name, metric_direction: initialData.metric_direction,
         max_file_size_mb: initialData.max_file_size_mb, rate_limit_minutes: initialData.rate_limit_minutes,
         max_team_size: initialData.max_team_size,
+        contest_id: initialData.contest_id || null,
       });
       setIsUnlimitedTime(initialData.end_time === null);
     }
@@ -118,7 +127,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
 
   const set = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setForm(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : value }));
+    setForm(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : (value === '' && name === 'contest_id' ? null : value) }));
   };
 
   const handleTestMetric = async () => {
@@ -225,6 +234,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                   ) : (
                     <textarea name="description" value={form.description} onChange={set} rows={8} className="input-field resize-none font-mono text-[13px] shadow-sm leading-relaxed" placeholder="# Introduction&#10;Describe your challenge here..."></textarea>
                   )}
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Contest Assignment</label>
+                  <select name="contest_id" value={form.contest_id || ''} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark">
+                    <option value="">-- No Contest (Standalone Challenge) --</option>
+                    {contests.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Dataset URL</label>

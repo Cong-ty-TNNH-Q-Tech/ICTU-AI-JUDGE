@@ -92,6 +92,7 @@ class SQLChallengeRepository(IChallengeRepository):
             team_lock_deadline=challenge.team_lock_deadline,
             max_team_size=challenge.max_team_size,
             parent_id=challenge.parent_id,
+            contest_id=challenge.contest_id,
         )
         self.db.add(model)
         self.db.flush()
@@ -126,6 +127,7 @@ class SQLChallengeRepository(IChallengeRepository):
         model.team_lock_deadline = challenge.team_lock_deadline
         model.max_team_size = challenge.max_team_size
         model.parent_id = challenge.parent_id
+        model.contest_id = challenge.contest_id
         self.db.flush()
         return self._to_entity(model)
 

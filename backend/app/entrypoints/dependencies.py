@@ -1,4 +1,4 @@
-﻿"""
+"""
 FastAPI Dependency Injection — Inbound layer.
 Inject DB session, Settings và current_user vào Use Cases qua Depends.
 """
@@ -237,8 +237,9 @@ def get_challenge_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     tag_repo: ITagRepository = Depends(get_tag_repository),
+    uow: IUnitOfWork = Depends(get_uow),
 ) -> ChallengeUseCase:
-    return ChallengeUseCase(challenge_repo, storage_repo, tag_repo)
+    return ChallengeUseCase(challenge_repo, storage_repo, tag_repo, uow)
 
 
 def get_admin_use_case(

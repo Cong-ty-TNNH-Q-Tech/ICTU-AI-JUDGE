@@ -1,4 +1,4 @@
-﻿import csv
+import csv
 import io
 import logging
 import uuid
@@ -12,7 +12,7 @@ from app.application.dtos.challenge_dtos import (
     ChallengeResponseDTO,
     ChallengeUpdateRequestDTO,
 )
-from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository
+from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository, IUnitOfWork
 from app.application.utils.file_validation import validate_zip_format, validate_zip_contains_ground_truth_csv
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
 from app.application.dtos.tag_dtos import TagResponseDTO
@@ -26,10 +26,12 @@ class ChallengeUseCase:
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
         tag_repo: ITagRepository,
+        uow: IUnitOfWork,
     ):
         self.challenge_repo = challenge_repo
         self.storage_repo = storage_repo
         self.tag_repo = tag_repo
+        self.uow = uow
 
     def create_challenge(
         self, admin_id: uuid.UUID, data: ChallengeCreateRequestDTO
@@ -53,6 +55,8 @@ class ChallengeUseCase:
             team_lock_deadline=data.team_lock_deadline,
             max_team_size=data.max_team_size,
             created_at=datetime.now(timezone.utc),
+            contest_id=data.contest_id,
+            parent_id=data.parent_id,
             tags=[]
         )
         
@@ -63,6 +67,7 @@ class ChallengeUseCase:
             new_entity.tags = tags
 
         saved = self.challenge_repo.save(new_entity)
+        self.uow.commit()
         return challenge_to_dto(saved, is_admin=True)
 
     def update_challenge(
@@ -91,6 +96,7 @@ class ChallengeUseCase:
                 challenge.tags = tags
 
         updated = self.challenge_repo.update(challenge)
+        self.uow.commit()
         return challenge_to_dto(updated, is_admin=True)
 
     def get_challenge(
@@ -197,4 +203,5 @@ class ChallengeUseCase:
             challenge.custom_metric_url = metric_key
 
         updated = self.challenge_repo.update(challenge)
+        self.uow.commit()
         return challenge_to_dto(updated, is_admin=True)
