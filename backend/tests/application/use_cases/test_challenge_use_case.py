@@ -31,7 +31,8 @@ def challenge_use_case():
     repo = MagicMock()
     storage_repo = MagicMock()
     tag_repo = MagicMock()
-    return ChallengeUseCase(challenge_repo=repo, storage_repo=storage_repo, tag_repo=tag_repo)
+    uow = MagicMock()
+    return ChallengeUseCase(challenge_repo=repo, storage_repo=storage_repo, tag_repo=tag_repo, uow=uow)
 
 def test_list_challenges(challenge_use_case, dummy_challenge):
     challenge_use_case.challenge_repo.list_all.return_value = ([dummy_challenge], 1)

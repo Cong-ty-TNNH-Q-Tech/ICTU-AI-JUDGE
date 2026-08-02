@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
+from app.core.security import decode_access_token
+from app.domain.exceptions.exceptions import AuthenticationError
 from app.application.interfaces.repositories import (
     IUserRepository,
     ISolutionRepository,
@@ -21,6 +23,7 @@ from app.application.interfaces.repositories import (
     IUnitOfWork,
     ITagRepository,
     ILeaderboardRepository,
+    IContestRepository,
 )
 from app.adapters.database.user_repository import UserRepository
 from app.adapters.database.solution_repository import PostgresSolutionRepository
@@ -29,6 +32,7 @@ from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.database.tag_repository import SQLTagRepository
 from app.adapters.database.leaderboard_repository import SQLLeaderboardRepository
+from app.adapters.database.contest_repository import SQLContestRepository
 from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
@@ -43,6 +47,7 @@ from app.application.use_cases.team_use_case import TeamUseCase
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.use_cases.tag_use_case import TagUseCase
 from app.application.use_cases.auth_use_case import AuthUseCase
+from app.application.use_cases.contest_use_case import ContestUseCase
 from app.domain.entities.entities import UserEntity, UserRole
 
 settings = get_settings()
@@ -186,6 +191,10 @@ def get_leaderboard_repository(db: Session = Depends(get_db)) -> ILeaderboardRep
     return SQLLeaderboardRepository(db)
 
 
+def get_contest_repository(db: Session = Depends(get_db)) -> IContestRepository:
+    return SQLContestRepository(db)
+
+
 def get_message_broker() -> IMessageBroker:
     return CeleryMessageBroker()
 
@@ -228,8 +237,9 @@ def get_challenge_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     tag_repo: ITagRepository = Depends(get_tag_repository),
+    uow: IUnitOfWork = Depends(get_uow),
 ) -> ChallengeUseCase:
-    return ChallengeUseCase(challenge_repo, storage_repo, tag_repo)
+    return ChallengeUseCase(challenge_repo, storage_repo, tag_repo, uow)
 
 
 def get_admin_use_case(
@@ -277,6 +287,24 @@ def get_auth_use_case(
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
     )
 
+def get_optional_current_user(
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+    user_repo: IUserRepository = Depends(get_user_repository),
+) -> UserEntity | None:
+    "Dependency: tra ve UserEntity neu co token hop le, else None."
+    if not access_token:
+        return None
+    try:
+        payload = decode_access_token(access_token)
+        user_id_str: str | None = payload.get("sub")
+        if not user_id_str:
+            return None
+        user_id = uuid.UUID(user_id_str)
+        return user_repo.get_by_id(user_id)
+    except (AuthenticationError, ValueError):
+        return None
+
+
 get_current_admin = require_admin
 
 from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
@@ -287,3 +315,11 @@ def get_leaderboard_use_case(
     team_repo: ITeamRepository = Depends(get_team_repository),
 ) -> LeaderboardUseCase:
     return LeaderboardUseCase(leaderboard_repo, challenge_repo, team_repo)
+
+
+def get_contest_use_case(
+    contest_repo: IContestRepository = Depends(get_contest_repository),
+    uow: IUnitOfWork = Depends(get_uow),
+) -> ContestUseCase:
+    return ContestUseCase(contest_repo, uow)
+
