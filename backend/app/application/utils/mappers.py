@@ -1,4 +1,4 @@
-﻿from app.domain.entities.entities import ChallengeEntity
+from app.domain.entities.entities import ChallengeEntity
 from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 from app.application.dtos.tag_dtos import TagResponseDTO
 

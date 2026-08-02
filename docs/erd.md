@@ -1,6 +1,6 @@
-﻿# Thiết kế Cơ sở dữ liệu (Entity Relationship Diagram - ERD)
+# Thiết kế Cơ sở dữ liệu (Entity Relationship Diagram - ERD)
 **Tên dự án:** Nền tảng Tổ chức và Luyện tập Olympic AI ICTU
-**Ngày cập nhật:** 01/08/2026 — Cập nhật: Thêm bảng CONTEST riêng (Issue #123), xóa parent_id cũ khỏi CHALLENGE.
+**Ngày cập nhật:** 01/08/2026 — Cập nhật: Thêm bảng CONTEST riêng (Issue #123), thêm FK contest_id vào CHALLENGE.
 
 Dựa trên tài liệu Phân tích Nghiệp vụ (BA.md) và các tối ưu về chuẩn hóa CSDL cho hệ thống AI Judging thực tế (như Kaggle), dưới đây là thiết kế chi tiết CSDL cho hệ thống. CSDL đề xuất sử dụng là **PostgreSQL**.
 

@@ -1332,18 +1332,33 @@ components:
           type: string
           nullable: true
 
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        challenge_id:
+          type: string
+          format: uuid
+        leader_id:
+          type: string
+          format: uuid
+
     Challenge:
       type: object
       properties:
-        contest_id:
-          type: string
-          format: uuid
-          nullable: true
-          description: "UUID cua Contest neu challenge thuoc ve mot cuoc thi (Issue #123)"
         id:
           type: string
           format: uuid
         contest_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "UUID của Contest nếu challenge thuộc về một cuộc thi (Issue #123)"
+        parent_id:
           type: string
           format: uuid
           nullable: true

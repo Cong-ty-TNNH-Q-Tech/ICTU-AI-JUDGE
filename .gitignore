@@ -40,3 +40,5 @@ test_*.py
 demo_challenge/
 !backend/tests/
 !backend/tests/**
+backend/tests/**/__pycache__/
+backend/tests/**/*.pyc
