@@ -47,6 +47,16 @@ services:
       timeout: 20s
       retries: 3
 
+  init-weights:
+    image: python:3.11-slim
+    container_name: ictu_ai_judge_init_weights
+    restart: "no"
+    volumes:
+      - pretrained_weights_data:/shared
+      - ./backend/pretrained_weights/download_weights.py:/setup/download_weights.py:ro
+    command: >
+      sh -c "pip install huggingface_hub requests tqdm torch numpy torchvision && python /setup/download_weights.py && cp -r /setup/shared/* /shared/ || true"
+
   backend:
     build: 
       context: ./backend
@@ -67,6 +77,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      init-weights:
+        condition: service_completed_successfully
     command: >
       bash -c "python -m app.adapters.storage.minio_init && alembic upgrade head && uvicorn app.entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload"
 
@@ -77,6 +89,8 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - HOST_PRETRAINED_WEIGHTS_PATH=pretrained_weights_data
     volumes:
       - ./backend:/app
       # [CRITICAL] DooD (Docker-out-of-Docker) for Sandbox execution
@@ -90,6 +104,8 @@ services:
         condition: service_completed_successfully
       sandbox_nlp_builder:
         condition: service_completed_successfully
+      init-weights:
+        condition: service_completed_successfully
     command: celery -A app.adapters.worker.celery_app worker -Q cpu_tasks,celery --loglevel=info
 
   worker_gpu:
@@ -99,6 +115,8 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - HOST_PRETRAINED_WEIGHTS_PATH=pretrained_weights_data
     volumes:
       - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
@@ -110,6 +128,8 @@ services:
       sandbox_cv_builder:
         condition: service_completed_successfully
       sandbox_nlp_builder:
+        condition: service_completed_successfully
+      init-weights:
         condition: service_completed_successfully
     command: celery -A app.adapters.worker.celery_app worker -Q gpu_tasks --concurrency=1 --loglevel=info
 
@@ -152,3 +172,4 @@ services:
 volumes:
   pgdata:
   minio_data:
+  pretrained_weights_data:

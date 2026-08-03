@@ -260,9 +260,13 @@ try:
         score = f1_score(y_true, y_pred, average='macro')
     elif metric_name == 'RMSE':
         from sklearn.metrics import mean_squared_error
-        score = math.sqrt(mean_squared_error(
-            [float(x) for x in y_true], [float(x) for x in y_pred]
-        ))
+        try:
+            y_t = [float(x) for x in y_true]
+            y_p = [float(x) for x in y_pred]
+        except ValueError as e:
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính RMSE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            sys.exit(1)
+        score = math.sqrt(mean_squared_error(y_t, y_p))
     elif metric_name == 'RECALL':
         from sklearn.metrics import recall_score
         score = recall_score(y_true, y_pred, average='macro', zero_division=0)
@@ -331,7 +335,7 @@ except Exception as e:
     # Default to a generic host path if not set, but in production this should be in .env
     host_weights_path = os.getenv('HOST_PRETRAINED_WEIGHTS_PATH', '/app/backend/pretrained_weights')
     volumes_config = {
-        host_weights_path: {'bind': '/weights', 'mode': 'ro'}
+        host_weights_path: {'bind': '/weights/shared', 'mode': 'ro'}
     }
 
     # 1. Create the container (do not start yet)
