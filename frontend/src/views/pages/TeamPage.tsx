@@ -16,7 +16,8 @@ const TeamPage: React.FC = () => {
     inviteResult,
     canInvite,
     createInvite,
-    kickMember
+    kickMember,
+    updateTeamName
   } = useTeamVM(teamId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,6 +27,9 @@ const TeamPage: React.FC = () => {
     userName: string;
   }>({ isOpen: false, userId: '', userName: '' });
   const [kickLoading, setKickLoading] = useState(false);
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameInput, setEditNameInput] = useState('');
 
   const openKickConfirm = (userId: string, userName: string) => {
     setKickConfirm({ isOpen: true, userId, userName });
@@ -83,9 +87,60 @@ const TeamPage: React.FC = () => {
                 ID: {team.id.substring(0, 8)}...
               </span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              {team.name}
-            </h1>
+            <div className="flex items-center gap-3 mb-2">
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editNameInput}
+                    onChange={(e) => setEditNameInput(e.target.value)}
+                    className="input-field py-1 px-3 text-lg font-bold"
+                    placeholder="Nhập tên đội"
+                    autoFocus
+                  />
+                  <button
+                    onClick={async () => {
+                      if (editNameInput.trim() && editNameInput !== team.name) {
+                        try {
+                          await updateTeamName(editNameInput.trim());
+                        } catch (err) {
+                          // Handled by useTeamVM
+                          console.error('Failed to update team name', err);
+                        }
+                      }
+                      setIsEditingName(false);
+                    }}
+                    className="px-3 py-1 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90"
+                  >
+                    Lưu
+                  </button>
+                  <button
+                    onClick={() => setIsEditingName(false)}
+                    className="px-3 py-1 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-300 dark:hover:bg-slate-600"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              ) : (
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  {team.name}
+                  {canInvite && (
+                    <button
+                      onClick={() => {
+                        setEditNameInput(team.name);
+                        setIsEditingName(true);
+                      }}
+                      className="text-gray-400 hover:text-primary transition-colors"
+                      title="Đổi tên đội"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
+                </h1>
+              )}
+            </div>
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />

@@ -55,6 +55,7 @@ export interface UserProfile {
 }
 
 export interface UpdateProfileRequest {
+  full_name?: string | null;
   github_url?: string | null;
   linkedin_url?: string | null;
 }
@@ -109,6 +110,10 @@ export interface TeamDetailVM {
   members: TeamMemberInfo[];
   has_submissions: boolean;   // từ future API field
   challenge_title?: string;
+}
+
+export interface TeamUpdateRequest {
+  name: string;
 }
 
 /** Khớp với CreateInviteResponseDTO backend */

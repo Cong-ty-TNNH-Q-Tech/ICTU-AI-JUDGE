@@ -221,10 +221,11 @@ class UserRepository(IUserRepository):
         github_url: str | None,
         linkedin_url: str | None,
         avatar_url: str | None = _SENTINEL,  # type: ignore[assignment]
+        full_name: str | None = _SENTINEL,  # type: ignore[assignment]
     ) -> UserEntity | None:
         """
         Atomic profile update — chỉ cập nhật các trường được truyền vào.
-        avatar_url dùng sentinel pattern để phân biệt "không truyền" vs "xóa URL".
+        avatar_url và full_name dùng sentinel pattern để phân biệt "không truyền" vs "xóa URL/giá trị".
         """
         values: dict = {
             "github_url": github_url,
@@ -233,6 +234,8 @@ class UserRepository(IUserRepository):
         }
         if avatar_url is not _SENTINEL:
             values["avatar_url"] = avatar_url
+        if full_name is not _SENTINEL:
+            values["full_name"] = full_name
 
         stmt = (
             update(UserModel)

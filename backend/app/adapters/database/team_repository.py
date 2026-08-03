@@ -102,6 +102,28 @@ class SQLTeamRepository(ITeamRepository):
         self.db.refresh(model)
         return self._to_entity(model)
 
+    def update_name(self, team_id: uuid.UUID, new_name: str) -> TeamEntity | None:
+        model = (
+            self.db.execute(
+                select(TeamModel)
+                .where(TeamModel.id == team_id, TeamModel.deleted_at.is_(None))
+                .with_for_update()
+            )
+            .scalar_one_or_none()
+        )
+        if not model:
+            return None
+            
+        model.name = new_name
+        self.db.flush()
+        self.db.refresh(model)
+        
+        # Load members for entity representation if missing
+        # To populate members correctly after refresh, we either load it via joinedload in initial query,
+        # or we just let _to_entity use whatever lazy-loaded state it has. 
+        # But wait, if _to_entity accesses `model.members`, it will trigger a lazy load which is fine in a session.
+        return self._to_entity(model)
+
     def has_submissions(self, team_id: uuid.UUID) -> bool:
         result = (
             self.db.execute(
