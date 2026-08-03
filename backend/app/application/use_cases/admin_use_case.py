@@ -153,7 +153,7 @@ class AdminUseCase:
     def list_all_submissions(self, challenge_id: uuid.UUID, page: int, size: int) -> SubmissionListResponseDTO:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
-            raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
+            raise NotFoundError("Không tìm thấy bài thi")
             
         entities, total = self.submission_repo.list_all_by_challenge(challenge_id, page, size)
         dtos = [SubmissionResponseDTO.model_validate(e) for e in entities]
@@ -167,7 +167,7 @@ class AdminUseCase:
     def export_leaderboard_csv(self, challenge_id: uuid.UUID, leaderboard_type: str) -> tuple[str, str]:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
-            raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
+            raise NotFoundError("Không tìm thấy bài thi")
 
         data = self.leaderboard_repo.export_all(
             challenge_id=challenge_id,
