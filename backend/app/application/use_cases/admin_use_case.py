@@ -2,7 +2,6 @@ import csv
 import io
 import uuid
 
-from fastapi import HTTPException, status
 from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.user_repository import UserRepository
@@ -12,6 +11,7 @@ from app.application.interfaces.repositories import ILeaderboardRepository
 from app.domain.entities.entities import ChallengeType
 
 from app.adapters.worker.scoring_tasks import _run_sandbox
+from app.domain.exceptions.exceptions import NotFoundError, PermissionDeniedError
 
 class AdminUseCase:
     def test_metric(
@@ -30,7 +30,7 @@ class AdminUseCase:
             )
             return score
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise ValueError(str(e))
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class AdminUseCase:
         self.root_admin_email = root_admin_email
 
     def list_users(self, q: str, page: int, size: int) -> UserListResponseDTO:
-        users, total = self.user_repo.list_all(query=q, page=page, size=size)
+        users, total = self.user_repo.list_all_admin(query=q, page=page, size=size)
         return UserListResponseDTO(
             items=[UserDTO.model_validate(u) for u in users],
             total=total,
@@ -56,53 +56,35 @@ class AdminUseCase:
         )
 
     def update_user_status(self, user_id: uuid.UUID, is_active: bool) -> dict:
-        user = self.user_repo.get_by_id(user_id)
+        user = self.user_repo.get_by_id_admin(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy user với id {user_id}"
-            )
+            raise NotFoundError(f"Không tìm thấy user với id {user_id}")
             
         if self.root_admin_email and user.email == self.root_admin_email:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Không thể thay đổi trạng thái của Root Admin"
-            )
+            raise PermissionDeniedError("Không thể thay đổi trạng thái của Root Admin")
 
         success = self.user_repo.update_status(user_id=user_id, is_active=is_active)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy user với id {user_id}"
-            )
+            raise NotFoundError(f"Không tìm thấy user với id {user_id}")
         return {"detail": "Cập nhật trạng thái thành công"}
 
     def update_user_role(self, user_id: uuid.UUID, role: str) -> dict:
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Không tìm thấy user hoặc user đã bị khóa"
-            )
+            raise NotFoundError("Không tìm thấy user hoặc user đã bị khóa")
             
         if self.root_admin_email and user.email == self.root_admin_email:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Không thể thay đổi quyền của Root Admin"
-            )
+            raise PermissionDeniedError("Không thể thay đổi quyền của Root Admin")
 
         success = self.user_repo.update_role(user_id=user_id, role=role)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Không tìm thấy user hoặc user đã bị khóa"
-            )
+            raise NotFoundError("Không tìm thấy user hoặc user đã bị khóa")
         return {"detail": "Cập nhật quyền thành công"}
 
     def get_whitelist(self, challenge_id: uuid.UUID, page: int, size: int) -> dict:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
-            raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
+            raise NotFoundError("Không tìm thấy bài thi")
             
         participants, total = self.challenge_repo.list_participants(challenge_id, page, size)
         
@@ -116,13 +98,10 @@ class AdminUseCase:
     def add_whitelist(self, challenge_id: uuid.UUID, user_ids: list[uuid.UUID]) -> dict:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
-            raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
+            raise NotFoundError("Không tìm thấy bài thi")
             
         if challenge.type != ChallengeType.COMPETITION:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Tính năng whitelist chỉ áp dụng cho loại bài thi COMPETITION"
-            )
+            raise ValueError("Tính năng whitelist chỉ áp dụng cho loại bài thi COMPETITION")
             
         added_count = self.challenge_repo.add_participants(challenge_id, user_ids)
         return {"detail": f"Đã thêm {added_count} sinh viên vào whitelist thành công"}
@@ -137,13 +116,10 @@ class AdminUseCase:
         """
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
-            raise HTTPException(status_code=404, detail="Không tìm thấy bài thi")
+            raise NotFoundError("Không tìm thấy bài thi")
 
         if challenge.type != ChallengeType.COMPETITION:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Tính năng whitelist chỉ áp dụng cho loại bài thi COMPETITION",
-            )
+            raise ValueError("Tính năng whitelist chỉ áp dụng cho loại bài thi COMPETITION")
 
         # Resolve identifiers → UserEntity list
         resolved_users = self.user_repo.find_by_identifiers(identifiers)
@@ -161,10 +137,7 @@ class AdminUseCase:
         not_found = [i for i in identifiers if i.strip().lower() not in resolved_raw]
 
         if not resolved_ids:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Không tìm thấy user nào khớp với {len(identifiers)} identifier đã nhập.",
-            )
+            raise ValueError(f"Không tìm thấy user nào khớp với {len(identifiers)} identifier đã nhập.")
 
         added_count = self.challenge_repo.add_participants(challenge_id, resolved_ids)
         return {

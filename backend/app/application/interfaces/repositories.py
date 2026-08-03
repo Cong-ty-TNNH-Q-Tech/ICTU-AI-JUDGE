@@ -59,6 +59,16 @@ class IUserRepository(ABC):
         ...
 
     @abstractmethod
+    def get_by_id_admin(self, user_id: uuid.UUID) -> UserEntity | None:
+        """Dành riêng cho Admin, không lọc user bị khóa (soft-delete)."""
+        ...
+
+    @abstractmethod
+    def list_all_admin(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
+        """Dành riêng cho Admin, không lọc user bị khóa, sort Active trước."""
+        ...
+
+    @abstractmethod
     def update_password(self, user_id: uuid.UUID, new_password_hash: str) -> None:
         """UC: Đổi mật khẩu hoặc đặt lại mật khẩu."""
         ...
