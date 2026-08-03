@@ -1,70 +1,104 @@
 # 📁 Pretrained Weights
 
-Thư mục này dùng để lưu trữ các file **model weights đã huấn luyện sẵn** (pretrained model weights) cho các bài thi CV/NLP.
+Thư mục này lưu trữ các **pretrained model weights** dùng trong Custom Metric Script của Admin để chấm điểm bài thi CV/NLP.
 
-> **Lưu ý:** Thư mục này **KHÔNG được commit lên Git** (đã có trong `.gitignore`).  
-> Admin có trách nhiệm tự tải và đặt weights vào đây trên từng máy chủ.
+> **Git LFS đang được dùng** — Các file `.pth`, `.bin`, `.safetensors`, `.onnx`, `.h5` được tự động upload qua Git LFS khi `git push`.
 
 ---
 
-## Cấu trúc thư mục khuyến nghị
+## Tải weights về
+
+```bash
+# Cài dependencies trước
+pip install torch torchvision huggingface_hub
+
+# Chạy script tải (~880MB tổng)
+python backend/pretrained_weights/download_weights.py
+```
+
+---
+
+## Cấu trúc thư mục sau khi tải
 
 ```
 pretrained_weights/
-├── challenge-<challenge_id>/       # Weights riêng cho từng bài thi
-│   ├── model.pth                   # PyTorch checkpoint
-│   ├── config.json                 # Config model
-│   └── tokenizer/                  # Tokenizer (nếu NLP)
-│       ├── vocab.txt
-│       └── tokenizer_config.json
-└── shared/                         # Weights dùng chung cho nhiều bài thi
-    └── bert-base-multilingual/
-        └── pytorch_model.bin
+├── download_weights.py           ← Script tải weights
+├── shared/
+│   ├── inception_v3/
+│   │   └── inception_v3.pth      (~90MB)  — FID score
+│   ├── bert-base-multilingual-cased/
+│   │   ├── pytorch_model.bin     (~440MB) — BERTScore
+│   │   ├── config.json
+│   │   └── tokenizer_config.json
+│   └── clip-vit-base-patch32/
+│       ├── pytorch_model.bin     (~350MB) — CLIP Score
+│       └── config.json
+└── challenge-<uuid>/             ← Weights riêng cho bài thi cụ thể
+    └── model.pth
 ```
 
 ---
 
-## Cách sử dụng trong Custom Metric Script
+## Weights & Đường dẫn trong Container
 
-Weights được mount vào container tại đường dẫn **`/weights`** (read-only).
+Thư mục này được mount **Read-Only** vào container tại `/weights`.
 
+| Model | Đường dẫn trong container | Dùng cho |
+|---|---|---|
+| Inception v3 | `/weights/shared/inception_v3/inception_v3.pth` | FID Score (Image Generation) |
+| BERT-multilingual | `/weights/shared/bert-base-multilingual-cased/` | BERTScore (NLP) |
+| CLIP ViT-B/32 | `/weights/shared/clip-vit-base-patch32/` | CLIP Score (Vision-Language) |
+
+---
+
+## Ví dụ Custom Metric Script
+
+### FID Score (Image Generation)
 ```python
-# Ví dụ: Custom Metric Script (metric.py) cho bài thi CV
+import torch
+import torchvision.models as models
+import torchvision.transforms as transforms
+from PIL import Image
+import numpy as np
+import os
+
+def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
+    # Load Inception v3 từ weights đã mount
+    model = models.inception_v3(pretrained=False)
+    model.load_state_dict(torch.load("/weights/shared/inception_v3/inception_v3.pth"))
+    model.eval()
+
+    # ... tính FID score
+    return fid_score
+```
+
+### BERTScore (NLP - dịch máy, tóm tắt văn bản)
+```python
+from transformers import BertTokenizer, BertModel
+import torch, pandas as pd
+
+def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
+    tokenizer = BertTokenizer.from_pretrained("/weights/shared/bert-base-multilingual-cased")
+    model = BertModel.from_pretrained("/weights/shared/bert-base-multilingual-cased")
+    model.eval()
+
+    gt = pd.read_csv(f"{ground_truth_dir}/ground_truth.csv")
+    sub = pd.read_csv(f"{submission_dir}/submission.csv")
+
+    # ... tính BERTScore
+    return bert_score
+```
+
+### CLIP Score (Vision-Language)
+```python
+from transformers import CLIPModel, CLIPProcessor
 import torch
 
 def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
-    # Load model từ đường dẫn /weights (được mount tự động bởi hệ thống)
-    model = torch.load("/weights/challenge-xxx/model.pth", map_location="cpu")
+    model = CLIPModel.from_pretrained("/weights/shared/clip-vit-base-patch32")
+    processor = CLIPProcessor.from_pretrained("/weights/shared/clip-vit-base-patch32")
     model.eval()
 
-    # ... logic tính điểm
-    return score
+    # ... tính CLIP score
+    return clip_score
 ```
-
----
-
-## Hướng dẫn tải weights
-
-### PyTorch model thông thường
-```bash
-# Copy file weight vào thư mục tương ứng
-cp /path/to/your/model.pth backend/pretrained_weights/challenge-<id>/model.pth
-```
-
-### HuggingFace model
-```bash
-pip install huggingface_hub
-python -c "
-from huggingface_hub import snapshot_download
-snapshot_download(
-    repo_id='bert-base-multilingual-cased',
-    local_dir='backend/pretrained_weights/shared/bert-base-multilingual'
-)
-"
-```
-
----
-
-## Lưu ý bảo mật
-- Weights được mount **Read-Only** vào container sandbox → Code của sinh viên **không thể ghi đè** hoặc đánh cắp weights.
-- Chỉ Custom Metric Script (do Admin upload) mới có thể đọc weights từ `/weights`.

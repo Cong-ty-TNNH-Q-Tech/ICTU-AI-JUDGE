@@ -17,6 +17,8 @@ RUN pip install --no-cache-dir \
     sentencepiece \
     sacrebleu \
     evaluate \
+    rouge-score \
+    jiwer \
     spacy \
     nltk
 
