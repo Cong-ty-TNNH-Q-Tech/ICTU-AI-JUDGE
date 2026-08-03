@@ -322,23 +322,23 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 <div>
                   <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Evaluation Metric</label>
                   <select name="metric_name" value={form.metric_name} onChange={set} disabled={isLocked} className="input-field shadow-sm disabled:opacity-50 disabled:bg-surface-50 dark:disabled:bg-gray-900 text-sm py-2.5">
-                    <optgroup label="📊 Tabular">
+                    <optgroup label="Tabular">
                       <option value="ACCURACY">Accuracy (Hố trợ cao hơn)</option>
                       <option value="F1_SCORE">F1 Score — Macro (Hố trợ cao hơn)</option>
                       <option value="RMSE">RMSE — Root Mean Squared Error (Thấp hơn)</option>
                       <option value="RECALL">Recall — Macro (Hố trợ cao hơn)</option>
                     </optgroup>
-                    <optgroup label="🗣️ NLP">
+                    <optgroup label="NLP">
                       <option value="BLEU">BLEU Score — dịch máy, sinh văn bản (Cao hơn)</option>
                       <option value="ROUGE_L">ROUGE-L — tóm tắt văn bản (Cao hơn)</option>
                       <option value="WER">1 − WER — nhận dạng giọng nói (Cao hơn)</option>
                     </optgroup>
-                    <optgroup label="🖼️ Computer Vision">
+                    <optgroup label="Computer Vision">
                       <option value="PSNR">PSNR — khôi phục ảnh (Cao hơn)</option>
                       <option value="SSIM">SSIM — phục hồi cấu trúc ảnh (Cao hơn)</option>
                       <option value="MEAN_IOU">Mean IoU — phân vùng ảnh (Cao hơn)</option>
                     </optgroup>
-                    <optgroup label="⚙️ Tùy chỉnh">
+                    <optgroup label="Tùy chỉnh">
                       <option value="CUSTOM">Custom Script</option>
                     </optgroup>
                   </select>

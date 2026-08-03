@@ -15,21 +15,24 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def download_inception_v3():
-    """Tải Inception v3 weights qua torchvision (dùng cho FID score)."""
+    """Tải Inception v3 weights trực tiếp qua URL (dùng cho FID score)."""
     print("\n[1/3] Đang tải Inception v3 (~90MB)...")
     try:
         import torch
-        import torchvision.models as models
 
-        save_path = os.path.join(BASE_DIR, "shared", "inception_v3")
-        os.makedirs(save_path, exist_ok=True)
+        save_dir = os.path.join(BASE_DIR, "shared", "inception_v3")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, "inception_v3.pth")
 
-        model = models.inception_v3(weights=models.Inception_V3_Weights.DEFAULT)
-        model.eval()
-        torch.save(model.state_dict(), os.path.join(save_path, "inception_v3.pth"))
-        print(f"   ✅ Saved → {save_path}/inception_v3.pth")
+        if os.path.exists(save_path):
+            print(f"   ✔️ Đã có sẵn → bỏ qua.")
+            return
+
+        url = "https://download.pytorch.org/models/inception_v3_google-0cc3c7bd.pth"
+        torch.hub.download_url_to_file(url, save_path, hash_prefix=None, progress=True)
+        print(f"   ✅ Saved → {save_path}")
     except ImportError:
-        print("   ❌ Thiếu torch/torchvision. Chạy: pip install torch torchvision")
+        print("   ❌ Thiếu torch. Chạy: pip install torch")
 
 
 def download_bert_multilingual():
@@ -70,16 +73,19 @@ def check_dependencies():
     missing = []
     try:
         import torch  # noqa: F401
-        import torchvision  # noqa: F401
     except ImportError:
-        missing.append("torch torchvision")
+        missing.append("torch")
+    try:
+        import numpy  # noqa: F401
+    except ImportError:
+        missing.append("numpy")
     try:
         from huggingface_hub import snapshot_download  # noqa: F401
     except ImportError:
         missing.append("huggingface_hub")
 
     if missing:
-        print("❌ Thiếu dependencies. Chạy lệnh sau rồi thử lại:")
+        print("\u274c Thiếu dependencies. Chạy lệnh sau rồi thử lại:")
         print(f"   pip install {' '.join(missing)}")
         sys.exit(1)
 
