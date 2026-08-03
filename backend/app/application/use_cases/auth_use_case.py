@@ -21,7 +21,6 @@ class AuthUseCase:
         user_repo: IUserRepository,
         google_client: IGoogleAuthClient,
         password_reset_repo: IPasswordResetRepository,
-        mail_client: IMailClient,
         uow: IUnitOfWork,
         root_admin_email: str | None = None,
         frontend_url: str = "http://localhost:5173",
@@ -29,7 +28,6 @@ class AuthUseCase:
         self._user_repo = user_repo
         self._google_client = google_client
         self._password_reset_repo = password_reset_repo
-        self._mail_client = mail_client
         self._uow = uow
         self._root_admin_email = root_admin_email
         self._frontend_url = frontend_url
@@ -114,6 +112,9 @@ class AuthUseCase:
     def change_password(self, user_id: uuid.UUID, old_password: str, new_password: str) -> None:
         user = self._user_repo.get_by_id(user_id)
         if not user:
+            raise NotFoundError("User not found.")
+            
+        if not user.is_active():
             raise NotFoundError("User not found.")
         
         if not user.password_hash:

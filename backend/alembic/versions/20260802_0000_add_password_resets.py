@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'password_resets_123'
-down_revision: Union[str, None] = '5f6e7d8c9b0a'
+down_revision: Union[str, None] = 'c3d4e5f6a7b8'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -31,9 +31,11 @@ def upgrade() -> None:
     )
     op.create_index('ix_password_resets_token', 'password_resets', ['token'], unique=False)
     op.create_index('ix_password_resets_user_id', 'password_resets', ['user_id'], unique=False)
+    op.create_index('ix_password_resets_user_id_expires_at', 'password_resets', ['user_id', sa.text('expires_at DESC')], unique=False)
 
 
 def downgrade() -> None:
+    op.drop_index('ix_password_resets_user_id_expires_at', table_name='password_resets')
     op.drop_index('ix_password_resets_user_id', table_name='password_resets')
     op.drop_index('ix_password_resets_token', table_name='password_resets')
     op.drop_table('password_resets')

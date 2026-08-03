@@ -98,6 +98,14 @@ class UserRepository(IUserRepository):
         models = self._session.execute(stmt).scalars().all()
         return [self._to_entity(m) for m in models], total
 
+    def update_password(self, user_id: uuid.UUID, password_hash: str) -> None:
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(password_hash=password_hash)
+        )
+        self._session.execute(stmt)
+
     def soft_delete(self, user_id: uuid.UUID) -> None:
         stmt = (
             update(UserModel)

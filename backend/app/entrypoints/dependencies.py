@@ -287,7 +287,6 @@ def get_auth_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
     password_reset_repo: IPasswordResetRepository = Depends(get_password_reset_repository),
     google_client: IGoogleAuthClient = Depends(get_google_auth_client),
-    mail_client: IMailClient = Depends(get_mail_client),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> AuthUseCase:
     """
@@ -297,9 +296,8 @@ def get_auth_use_case(
     """
     return AuthUseCase(
         user_repo=user_repo,
-        password_reset_repo=password_reset_repo,
         google_client=google_client,
-        mail_client=mail_client,
+        password_reset_repo=password_reset_repo,
         uow=uow,
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
         frontend_url=settings.FRONTEND_URL,

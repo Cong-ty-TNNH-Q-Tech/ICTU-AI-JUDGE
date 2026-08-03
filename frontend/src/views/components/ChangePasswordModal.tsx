@@ -26,6 +26,10 @@ const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setConfirmError(null);
+    if (newPassword === oldPassword) {
+      setConfirmError('Mật khẩu mới không được trùng với mật khẩu cũ!');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setConfirmError('Mật khẩu xác nhận không khớp!');
       return;

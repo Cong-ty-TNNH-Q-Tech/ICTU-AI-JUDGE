@@ -13,9 +13,8 @@ def auth_use_case():
     user_repo = MagicMock()
     google_client = MagicMock()
     password_reset_repo = MagicMock()
-    mail_client = MagicMock()
     uow = MagicMock()
-    return AuthUseCase(user_repo, google_client, password_reset_repo, mail_client, uow)
+    return AuthUseCase(user_repo, google_client, password_reset_repo, uow)
 
 def test_login_with_google_success_new_user(auth_use_case):
     auth_use_case._google_client.verify_token.return_value = {

@@ -136,7 +136,8 @@ def forgot_password(
 ):
     """
     Yêu cầu đặt lại mật khẩu. Gửi email chứa link reset qua BackgroundTasks.
-    Luôn trả về 200 dù email có tồn tại hay không (chống email enumeration).
+    Trả về 200 dù email có tồn tại hay không (chống email enumeration).
+    Trả về 429 nếu yêu cầu quá nhanh trong khoảng thời gian token còn hiệu lực.
     """
     result = auth_use_case.request_password_reset(request.email)
     if result:

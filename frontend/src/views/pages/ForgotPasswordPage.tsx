@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePasswordVM } from '../../viewmodels/usePasswordVM';
 
 const ForgotPasswordPage = () => {
-  const { loading, requestPasswordReset } = usePasswordVM();
+  const { loading, error, requestPasswordReset } = usePasswordVM();
   const [email, setEmail] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -41,6 +41,11 @@ const ForgotPasswordPage = () => {
           </div>
         ) : (
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-md text-sm text-center">
+                {error}
+              </div>
+            )}
             <div className="rounded-md shadow-sm -space-y-px">
               <div>
                 <label htmlFor="email-address" className="sr-only">Email address</label>

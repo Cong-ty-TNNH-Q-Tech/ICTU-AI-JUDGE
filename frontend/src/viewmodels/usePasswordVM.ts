@@ -2,6 +2,14 @@ import { useCallback, useState } from 'react';
 import { authService } from '../services/authService';
 import type { ChangePasswordRequest, ResetPasswordRequest } from '../services/authService';
 import { useToastStore } from '../store/toastStore';
+import { isAxiosError } from 'axios';
+
+const getErrorMessage = (err: unknown, defaultMsg: string) => {
+  if (isAxiosError(err) && err.response?.data?.detail) {
+    return err.response.data.detail;
+  }
+  return err instanceof Error ? err.message : defaultMsg;
+};
 
 export function usePasswordVM() {
   const [loading, setLoading] = useState(false);
@@ -15,7 +23,7 @@ export function usePasswordVM() {
       useToastStore.getState().showToast(result.message || 'Đổi mật khẩu thành công.', 'success');
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Đổi mật khẩu thất bại';
+      const message = getErrorMessage(err, 'Đổi mật khẩu thất bại');
       setError(message);
       useToastStore.getState().showToast(message, 'error');
       throw err;
@@ -32,7 +40,7 @@ export function usePasswordVM() {
       useToastStore.getState().showToast(result.message || 'Yêu cầu thành công. Vui lòng kiểm tra email.', 'success');
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Yêu cầu thất bại';
+      const message = getErrorMessage(err, 'Yêu cầu thất bại');
       setError(message);
       useToastStore.getState().showToast(message, 'error');
       throw err;
@@ -49,7 +57,7 @@ export function usePasswordVM() {
       useToastStore.getState().showToast(result.message || 'Đặt lại mật khẩu thành công.', 'success');
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Đặt lại mật khẩu thất bại';
+      const message = getErrorMessage(err, 'Đặt lại mật khẩu thất bại');
       setError(message);
       useToastStore.getState().showToast(message, 'error');
       throw err;
