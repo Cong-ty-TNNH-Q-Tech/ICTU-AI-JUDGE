@@ -264,7 +264,7 @@ try:
             y_t = [float(x) for x in y_true]
             y_p = [float(x) for x in y_pred]
         except ValueError as e:
-            print(f"Lỗi ép kiểu dữ liệu sang float khi tính RMSE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính RMSE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
             sys.exit(1)
         score = math.sqrt(mean_squared_error(y_t, y_p))
     elif metric_name == 'RECALL':
