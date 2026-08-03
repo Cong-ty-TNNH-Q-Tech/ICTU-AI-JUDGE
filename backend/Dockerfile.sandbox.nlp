@@ -2,16 +2,21 @@ FROM python:3.11-slim
 
 WORKDIR /tmp
 
-RUN apt-get update && apt-get install -y \
+# Install system dependencies for NLP tasks
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir \
     pandas \
     scikit-learn \
     numpy \
-    transformers \
     torch \
+    transformers \
     huggingface_hub \
+    sentencepiece \
+    sacrebleu \
+    evaluate \
     spacy \
     nltk
 

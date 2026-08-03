@@ -42,3 +42,8 @@ demo_challenge/
 !backend/tests/**
 backend/tests/**/__pycache__/
 backend/tests/**/*.pyc
+
+# Pretrained model weights — quá lớn, không commit vào Git
+# Admin tự tải và bỏ vào backend/pretrained_weights/ trên từng server
+backend/pretrained_weights/**
+!backend/pretrained_weights/README.md
