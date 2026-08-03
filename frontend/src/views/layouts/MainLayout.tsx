@@ -29,7 +29,8 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const navLinks = [
-    { name: 'Competitions', path: '/challenges' },
+    { name: 'Contests', path: '/contests' },
+    { name: 'Challenges', path: '/challenges' },
     ...(user?.role === 'ADMIN' ? [{ name: 'Admin', path: '/admin' }] : []),
   ];
 

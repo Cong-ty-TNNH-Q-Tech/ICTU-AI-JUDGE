@@ -1,6 +1,6 @@
 # Thiết kế Cơ sở dữ liệu (Entity Relationship Diagram - ERD)
 **Tên dự án:** Nền tảng Tổ chức và Luyện tập Olympic AI ICTU
-**Ngày cập nhật:** 26/07/2026
+**Ngày cập nhật:** 01/08/2026 — Cập nhật: Thêm bảng CONTEST riêng (Issue #123), thêm FK contest_id vào CHALLENGE.
 
 Dựa trên tài liệu Phân tích Nghiệp vụ (BA.md) và các tối ưu về chuẩn hóa CSDL cho hệ thống AI Judging thực tế (như Kaggle), dưới đây là thiết kế chi tiết CSDL cho hệ thống. CSDL đề xuất sử dụng là **PostgreSQL**.
 
@@ -11,6 +11,7 @@ Dựa trên tài liệu Phân tích Nghiệp vụ (BA.md) và các tối ưu v�
 ```mermaid
 erDiagram
     USER ||--o{ TEAM_MEMBER : "Là thành viên"
+    USER ||--o{ CONTEST : "Tạo cuộc thi (Admin)"
     USER ||--o{ CHALLENGE : "Tạo bài thi (Admin)"
     USER ||--o{ CHALLENGE_PARTICIPANT : "Được cấp quyền thi"
     USER ||--o{ SUBMISSION : "Người trực tiếp thao tác nộp"
@@ -26,6 +27,8 @@ erDiagram
     CHALLENGE ||--o{ CHALLENGE_PARTICIPANT : "Danh sách Whitelist"
     CHALLENGE ||--o{ LEADERBOARD : "Bảng xếp hạng"
 
+    CONTEST ||--o{ CHALLENGE : "Bao gồm"
+
     USER {
         uuid id PK
         string email "Unique, @ictu.edu.vn"
@@ -38,9 +41,21 @@ erDiagram
         datetime deleted_at "Soft Delete"
     }
 
+    CONTEST {
+        uuid id PK
+        string title
+        text description
+        string status "ENUM: DRAFT, PUBLISHED, ARCHIVED"
+        datetime start_time
+        datetime end_time
+        uuid created_by FK "Admin ID"
+        datetime created_at
+        datetime deleted_at "Soft Delete"
+    }
+
     CHALLENGE {
         uuid id PK
-        uuid parent_id FK "ID của cuộc thi cha (Nếu là bài thi con)"
+        uuid contest_id FK "Thuộc cuộc thi nào (Có thể null)"
         string title
         text description
         string type "ENUM: PUBLIC, COMPETITION"

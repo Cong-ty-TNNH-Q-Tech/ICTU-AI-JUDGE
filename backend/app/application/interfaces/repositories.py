@@ -9,6 +9,7 @@ from datetime import datetime
 
 from app.domain.entities.entities import (
     ChallengeEntity,
+    InviteStatus,
     LeaderboardEntryEntity,
     SubmissionEntity,
     SubmissionStatus,
@@ -16,10 +17,10 @@ from app.domain.entities.entities import (
     TeamInviteEntity,
     UserEntity,
     MetricDirection,
-    InviteStatus,
     SolutionEntity,
     TagEntity,
     PasswordResetEntity,
+    ContestEntity,
 )
 
 
@@ -97,6 +98,26 @@ class IUserRepository(ABC):
         """
         ...
 
+
+class IContestRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, contest_id: uuid.UUID) -> ContestEntity | None: ...
+
+    @abstractmethod
+    def get_list(self, page: int, size: int, status: str | None = None) -> tuple[list[ContestEntity], int]: ...
+
+    @abstractmethod
+    def save(self, contest: ContestEntity) -> ContestEntity: ...
+
+    @abstractmethod
+    def delete(self, contest_id: uuid.UUID) -> None:
+        """Soft delete — cập nhật deleted_at thay vì xoá hàng."""
+        ...
+
+    @abstractmethod
+    def get_challenges(self, contest_id: uuid.UUID) -> list[ChallengeEntity]:
+        """Lấy danh sách challenges thuộc contest (chưa bị soft delete)."""
+        ...
 
 
 class IChallengeRepository(ABC):

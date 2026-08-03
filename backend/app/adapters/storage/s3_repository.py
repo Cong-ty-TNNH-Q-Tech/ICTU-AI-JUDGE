@@ -36,16 +36,28 @@ class S3StorageRepository(IStorageRepository):
     # ==========================================
 
     def _ensure_bucket(self) -> None:
-        """Tạo bucket nếu chưa tồn tại (idempotent, dùng khi startup)."""
+        """Tạo bucket nếu chưa tồn tại (idempotent, dùng khi startup).
+        Nếu MinIO/S3 chưa chạy (dev mode), chỉ log warning, không raise.
+        """
         try:
             self._client.head_bucket(Bucket=self._bucket)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code in ("404", "NoSuchBucket"):
-                self._client.create_bucket(Bucket=self._bucket)
-                logger.info("S3 bucket '%s' created.", self._bucket)
+                try:
+                    self._client.create_bucket(Bucket=self._bucket)
+                    logger.info("S3 bucket '%s' created.", self._bucket)
+                except Exception as create_err:
+                    logger.warning("S3 bucket create failed (MinIO unavailable?): %s", create_err)
             else:
                 logger.warning("S3 bucket check failed: %s", e)
+        except Exception as e:
+            # EndpointConnectionError khi MinIO chưa chạy — không crash server
+            logger.warning(
+                "S3 storage unavailable (endpoint=%s). "
+                "Upload/Download sẽ lỗi khi dùng. Error: %s",
+                settings.S3_ENDPOINT_URL, e,
+            )
 
     # ==========================================
     # IStorageRepository interface

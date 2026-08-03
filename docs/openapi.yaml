@@ -1186,6 +1186,189 @@ paths:
       responses:
         '204':
           description: Đã xóa
+  # ==========================================
+  # CONTEST ENDPOINTS (Issue #123)
+  # ==========================================
+  /contests:
+    get:
+      summary: Danh sach cuoc thi
+      tags:
+        - Contests
+      description: >
+        Public endpoint. Anonymous/Student luon chi thay PUBLISHED contests bat ke ?status= truyen vao.
+        Chi Admin moi duoc loc theo status tuy y.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/ContestStatus'
+          description: "Admin only: loc theo status. Student/Anonymous luon nhan PUBLISHED."
+      responses:
+        '200':
+          description: Danh sach cuoc thi (co phan trang).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestListResponse'
+        '422':
+          description: "Gia tri status khong hop le (khong phai DRAFT|PUBLISHED|ARCHIVED)."
+    post:
+      summary: Tao cuoc thi moi
+      tags:
+        - Contests
+      description: Admin only. Tao mot Contest moi voi trang thai mac dinh DRAFT.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContestCreateRequest'
+      responses:
+        '201':
+          description: Cuoc thi duoc tao thanh cong.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestResponse'
+        '401':
+          description: Chua dang nhap.
+        '403':
+          description: Khong phai Admin.
+        '422':
+          description: "Du lieu khong hop le (vd: end_time <= start_time)."
+
+  /contests/{contest_id}:
+    get:
+      summary: Chi tiet cuoc thi
+      tags:
+        - Contests
+      description: >
+        Public endpoint voi conditional visibility.
+        Admin thay tat ca status. Student/Anonymous chi thay PUBLISHED (tra 404 cho DRAFT/ARCHIVED).
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Thong tin chi tiet cuoc thi.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestResponse'
+        '404':
+          description: Contest khong ton tai hoac khong co quyen xem.
+    patch:
+      summary: Cap nhat cuoc thi
+      tags:
+        - Contests
+      description: Admin only. Cap nhat mot phan thong tin contest (PATCH semantics). PATCH {end_time null} xoa deadline.
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContestUpdateRequest'
+      responses:
+        '200':
+          description: Contest sau khi cap nhat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestResponse'
+        '401':
+          description: Chua dang nhap.
+        '403':
+          description: Khong phai Admin.
+        '404':
+          description: Contest khong ton tai.
+        '422':
+          description: "Du lieu khong hop le (vd: end_time <= start_time)."
+    delete:
+      summary: Xoa contest (soft delete)
+      tags:
+        - Contests
+      description: Admin only. Soft delete - dat deleted_at, khong xoa du lieu khoi DB.
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Xoa thanh cong (no content).
+        '401':
+          description: Chua dang nhap.
+        '403':
+          description: Khong phai Admin.
+        '404':
+          description: Contest khong ton tai.
+
+  /contests/{contest_id}/challenges:
+    get:
+      summary: Danh sach challenges trong contest
+      tags:
+        - Contests
+      description: >
+        Public endpoint voi conditional visibility.
+        Chi tra challenges cua PUBLISHED contest cho Student/Anonymous.
+        Admin thay challenges cua moi contest bat ke status.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Danh sach challenges con cua contest.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestChallengesResponse'
+        '404':
+          description: Contest khong ton tai hoac khong co quyen xem.
 components:
   securitySchemes:
     cookieAuth:
@@ -1268,6 +1451,11 @@ components:
         id:
           type: string
           format: uuid
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "UUID của Contest nếu challenge thuộc về một cuộc thi (Issue #123)"
         parent_id:
           type: string
           format: uuid
@@ -1304,6 +1492,11 @@ components:
         - metric_name
         - metric_direction
       properties:
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID của cuộc thi (nếu thuộc cuộc thi)
         parent_id:
           type: string
           format: uuid
@@ -1361,6 +1554,10 @@ components:
       type: object
       description: Tất cả trường đều là tùy chọn (Partial Update). Bị khóa nếu có Submission.
       properties:
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
         parent_id:
           type: string
           format: uuid
@@ -1550,6 +1747,114 @@ components:
                       format: uuid
                     score:
                       type: number
+
+
+    ContestStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+
+    ContestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/ContestStatus'
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+
+    ContestListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContestResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+        total_pages:
+          type: integer
+
+    ContestCreateRequest:
+      type: object
+      required:
+        - title
+        - start_time
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+          default: ""
+        status:
+          $ref: '#/components/schemas/ContestStatus'
+          default: DRAFT
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+
+    ContestUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+          nullable: true
+        description:
+          type: string
+          maxLength: 10000
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ContestStatus'
+          nullable: true
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Truyen null de xoa deadline (PATCH semantics)."
+
+    ContestChallengesResponse:
+      type: object
+      properties:
+        contest_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChallengeResponse'
+        total:
+          type: integer
 
     InviteStatus:
       type: string
