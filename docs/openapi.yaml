@@ -1027,6 +1027,13 @@ paths:
             $ref: "#/components/schemas/Solution"
         total:
           type: integer
+        is_locked:
+          type: boolean
+          description: |
+            True nếu challenge vẫn đang trong thời gian thi (end_time chưa qua).
+            Khi is_locked = true, items sẽ là mảng rỗng (nội dung bị ẩn với sinh viên thường).
+            Admin luôn nhận is_locked = false và thấy đầy đủ danh sách.
+          example: false
         page:
           type: integer
           default: 1

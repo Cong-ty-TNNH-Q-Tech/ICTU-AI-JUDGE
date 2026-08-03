@@ -19,3 +19,4 @@ class SolutionListResponseDTO(BaseModel):
     page: int = 1
     size: int = 100
     total_pages: int = 1
+    is_locked: bool = False
