@@ -24,6 +24,8 @@ def challenge_to_dto(entity: ChallengeEntity, is_admin: bool = False) -> Challen
         max_team_size=entity.max_team_size,
         parent_id=entity.parent_id,
         contest_id=entity.contest_id,
+        environment_image=entity.environment_image,
+        require_gpu=entity.require_gpu,
         tags=[
             TagResponseDTO(id=t.id, name=t.name, color_hex=t.color_hex, created_at=t.created_at)
             for t in entity.tags

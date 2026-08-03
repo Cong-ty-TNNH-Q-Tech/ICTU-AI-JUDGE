@@ -70,6 +70,8 @@ erDiagram
         string custom_metric_url "S3 Link file metric.py"
         string dataset_url "Link Google Drive chứa tài liệu đề thi"
         string ground_truth_url "S3 Link file đáp án chấm điểm"
+        string environment_image "Tên Docker image (vd: ictu-ai-judge-sandbox-cv)"
+        boolean require_gpu "Cờ báo cần GPU hay không"
         uuid created_by FK "Admin ID"
         datetime created_at
         datetime deleted_at "Soft Delete"

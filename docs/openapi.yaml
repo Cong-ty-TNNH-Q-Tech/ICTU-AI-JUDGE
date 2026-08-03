@@ -1535,6 +1535,12 @@ components:
         dataset_url:
           type: string
           format: uri
+        environment_image:
+          type: string
+          example: "ictu-ai-judge-sandbox-cv:latest"
+        require_gpu:
+          type: boolean
+          default: false
 
     ChallengeCreate:
       type: object
@@ -1602,6 +1608,14 @@ components:
           type: string
           format: uri
           description: Link Google Drive chứa dataset cho sinh viên tải về
+        environment_image:
+          type: string
+          example: "ictu-ai-judge-sandbox-cv:latest"
+          description: Tên Docker image của môi trường Sandbox
+        require_gpu:
+          type: boolean
+          default: false
+          description: Cờ cho biết có yêu cầu GPU chạy metric hay không
 
     ChallengeUpdate:
       type: object
@@ -1636,6 +1650,11 @@ components:
         dataset_url:
           type: string
           format: uri
+        environment_image:
+          type: string
+          example: "ictu-ai-judge-sandbox-cv:latest"
+        require_gpu:
+          type: boolean
         status:
           type: string
           enum: [DRAFT, PUBLISHED, ARCHIVED]

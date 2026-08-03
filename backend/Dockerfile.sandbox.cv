@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+WORKDIR /tmp
+
+# Install system dependencies for CV tasks (libGL for OpenCV)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    pandas \
+    scikit-learn \
+    scikit-image \
+    numpy \
+    opencv-python-headless \
+    torch \
+    torchvision \
+    torchaudio \
+    timm \
+    albumentations \
+    pillow
+
+# Run non-root user
+RUN useradd -m sandboxuser
+USER sandboxuser

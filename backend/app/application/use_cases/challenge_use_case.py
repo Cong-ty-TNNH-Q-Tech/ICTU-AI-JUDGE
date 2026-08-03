@@ -57,6 +57,8 @@ class ChallengeUseCase:
             created_at=datetime.now(timezone.utc),
             contest_id=data.contest_id,
             parent_id=data.parent_id,
+            environment_image=data.environment_image,
+            require_gpu=data.require_gpu,
             tags=[]
         )
         

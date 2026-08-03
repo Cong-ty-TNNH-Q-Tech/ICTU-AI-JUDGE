@@ -169,9 +169,15 @@ def test_submit_prediction_file_too_large(use_case, mock_repos, mock_challenge, 
         )
 
 def test_trigger_scoring(use_case, mock_repos):
-    submission_id = uuid.uuid4()
+    submission_id = str(uuid.uuid4())
+    mock_sub = MagicMock()
+    mock_sub.challenge_id = uuid.uuid4()
+    mock_repos["submission_repo"].get_by_id.return_value = mock_sub
+    mock_challenge = MagicMock()
+    mock_challenge.require_gpu = True
+    mock_repos["challenge_repo"].get_by_id.return_value = mock_challenge
     use_case.trigger_scoring(submission_id)
-    mock_repos["message_broker"].enqueue_scoring_task.assert_called_once_with(submission_id)
+    mock_repos["message_broker"].enqueue_scoring_task.assert_called_once_with(submission_id, require_gpu=True)
 
 def test_submit_prediction_no_team(use_case, mock_repos, mock_challenge):
     mock_repos["team_repo"].get_by_challenge_and_user.return_value = None

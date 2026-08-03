@@ -189,7 +189,13 @@ class SubmissionUseCase:
         SAU KHI db.commit() đã thành công ở Controller.
         """
         if self.message_broker:
-            self.message_broker.enqueue_scoring_task(submission_id)
+            submission = self.submission_repo.get_by_id(uuid.UUID(submission_id))
+            require_gpu = False
+            if submission:
+                challenge = self.challenge_repo.get_by_id(submission.challenge_id)
+                if challenge:
+                    require_gpu = challenge.require_gpu
+            self.message_broker.enqueue_scoring_task(submission_id, require_gpu=require_gpu)
         else:
             logger.warning("No message_broker injected, scoring task not enqueued.")
     # ==========================================
