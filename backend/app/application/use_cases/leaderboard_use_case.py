@@ -131,6 +131,8 @@ class LeaderboardUseCase:
                     team_lock_deadline=child.team_lock_deadline,
                     max_team_size=child.max_team_size,
                     parent_id=child.parent_id,
+                    environment_image=child.environment_image,
+                    require_gpu=child.require_gpu,
                     tags=[TagResponseDTO.model_validate(t) for t in child.tags]
                 )
             )
