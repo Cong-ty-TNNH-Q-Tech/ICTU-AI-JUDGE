@@ -10,11 +10,13 @@ import { useProfileVM } from '../../viewmodels/useProfileVM';
 import { useToastStore } from '../../store/toastStore';
 import BadgeGrid from '../components/BadgeGrid';
 import ProfileCover from '../../assets/profile-cover.png';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const currentUser = useAuthStore((state) => state.user);
   const isOwner = currentUser?.id === userId;
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
   // Global toast is mounted in App.tsx
 
   const {
@@ -196,12 +198,20 @@ const ProfilePage: React.FC = () => {
 
             {/* Edit button — chỉ hiện với owner */}
             {isOwner && (
-              <button
-                onClick={openEdit}
-                className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:bg-transparent dark:hover:bg-white/5 dark:border-slate-700 dark:text-slate-300 rounded-full font-semibold text-sm transition-colors shadow-sm"
-              >
-                Chỉnh sửa hồ sơ
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openEdit}
+                  className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:bg-transparent dark:hover:bg-white/5 dark:border-slate-700 dark:text-slate-300 rounded-full font-semibold text-sm transition-colors shadow-sm"
+                >
+                  Chỉnh sửa hồ sơ
+                </button>
+                <button
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="px-5 py-2.5 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border border-transparent dark:border-primary-800 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors font-semibold text-sm shadow-sm"
+                >
+                  Đổi mật khẩu
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -407,6 +417,12 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* ======== Change Password Modal ======== */}
+      <ChangePasswordModal 
+        isOpen={isPasswordModalOpen} 
+        onClose={() => setIsPasswordModalOpen(false)} 
+      />
+
     </div>
   );
 };

@@ -40,6 +40,79 @@ paths:
         '401':
           description: Token không hợp lệ hoặc email không thuộc @ictu.edu.vn
 
+  /auth/login:
+    post:
+      summary: Đăng nhập bằng Email & Mật khẩu
+      tags:
+        - Auth
+      description: Gửi Email và Mật khẩu để đổi lấy JWT HttpOnly Cookie. Trả về thông tin User.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Đăng nhập thành công (Cookie được set ngầm).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Thông tin đăng nhập không hợp lệ
+
+  /auth/forgot-password:
+    post:
+      summary: Quên mật khẩu
+      tags:
+        - Auth
+      description: Gửi yêu cầu cấp lại mật khẩu. Hệ thống sẽ gửi email chứa link reset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Yêu cầu được chấp nhận. Hệ thống luôn trả về 200 để tránh rò rỉ email.
+        '429':
+          description: Quá nhiều yêu cầu, vui lòng thử lại sau.
+
+  /auth/reset-password:
+    post:
+      summary: Đặt lại mật khẩu
+      tags:
+        - Auth
+      description: Nhập token và mật khẩu mới để đặt lại mật khẩu.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công.
+        '400':
+          description: Token không hợp lệ hoặc đã hết hạn.
+
   /auth/logout:
     post:
       summary: Đăng xuất
@@ -62,6 +135,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Chưa đăng nhập.
+
+  /users/me/password:
+    patch:
+      summary: Đổi mật khẩu
+      tags:
+        - Users
+      description: Đổi mật khẩu của người dùng hiện tại. Yêu cầu mật khẩu cũ (nếu có).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                old_password:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công.
+        '400':
+          description: Mật khẩu cũ không chính xác.
         '401':
           description: Chưa đăng nhập.
 
