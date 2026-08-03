@@ -44,6 +44,18 @@ class PasswordResetRepository(IPasswordResetRepository):
             return None
         return self._to_entity(result)
 
+    def get_latest_by_user_id(self, user_id: uuid.UUID) -> Optional[PasswordResetEntity]:
+        stmt = (
+            select(PasswordResetModel)
+            .where(PasswordResetModel.user_id == user_id)
+            .order_by(PasswordResetModel.expires_at.desc())
+            .limit(1)
+        )
+        result = self._session.execute(stmt).scalars().first()
+        if not result:
+            return None
+        return self._to_entity(result)
+
     def mark_as_used(self, token_id: uuid.UUID) -> None:
         stmt = (
             update(PasswordResetModel)

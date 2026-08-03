@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from app.application.interfaces.repositories import IUserRepository, IPasswordResetRepository, IUnitOfWork
 from app.application.interfaces.clients import IGoogleAuthClient, IMailClient
 from app.domain.entities.entities import UserEntity, UserRole, PasswordResetEntity
-from app.domain.exceptions.exceptions import AuthenticationError, InvalidPasswordError, InvalidTokenError, NotFoundError
+from app.domain.exceptions.exceptions import AuthenticationError, InvalidPasswordError, InvalidTokenError, NotFoundError, PasswordResetRateLimitError
 from app.core.security import verify_password, hash_password
 
 logger = logging.getLogger(__name__)
@@ -127,12 +127,20 @@ class AuthUseCase:
         self._uow.commit()
         logger.info("User %s changed password successfully.", user_id)
 
-    def request_password_reset(self, email: str) -> None:
+    def request_password_reset(self, email: str) -> tuple[str, str, str] | None:
         user = self._user_repo.get_by_email(email)
         if not user:
             # Do not throw error for security reasons (don't leak which emails exist)
             logger.info("Password reset requested for non-existent email: %s", email)
-            return
+            return None
+
+        # Rate Limit check: 15 phút (cùng vòng đời của token)
+        latest_reset = self._password_reset_repo.get_latest_by_user_id(user.id)
+        if latest_reset and not latest_reset.used:
+            now = datetime.now(tz=timezone.utc)
+            if latest_reset.expires_at > now:
+                time_left = (latest_reset.expires_at - now).total_seconds() / 60
+                raise PasswordResetRateLimitError(wait_minutes=int(time_left) + 1)
 
         token = secrets.token_urlsafe(32)
         expires = datetime.now(tz=timezone.utc) + timedelta(minutes=15)
@@ -146,28 +154,10 @@ class AuthUseCase:
         )
         self._password_reset_repo.save(reset_entity)
         self._uow.commit()
+        logger.info("Password reset token generated synchronously in DB for user %s", user.id)
 
         reset_link = f"{self._frontend_url}/reset-password?token={token}"
-        html_content = f"""
-        <html>
-            <body>
-                <h2>Đặt lại mật khẩu</h2>
-                <p>Xin chào {user.full_name},</p>
-                <p>Bạn đã yêu cầu đặt lại mật khẩu tại ICTU AI JUDGE. Vui lòng click vào đường dẫn bên dưới (có hiệu lực 15 phút):</p>
-                <a href="{reset_link}">{reset_link}</a>
-                <p>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
-            </body>
-        </html>
-        """
-        
-        # This will be called synchronously, but we should use background task if we don't want to block the request. 
-        # For now, it's ok, in router we will use BackgroundTasks.
-        self._mail_client.send_email(
-            to_email=user.email,
-            subject="[ICTU AI JUDGE] Đặt lại mật khẩu",
-            html_content=html_content
-        )
-        logger.info("Password reset token generated and email sent for user %s", user.id)
+        return user.email, user.full_name, reset_link
 
     def reset_password(self, token: str, new_password: str) -> None:
         reset_entity = self._password_reset_repo.get_by_token(token)

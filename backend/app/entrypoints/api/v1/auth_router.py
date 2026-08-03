@@ -103,6 +103,31 @@ def login_with_password(
     )
 
 
+def send_reset_email_task(email: str, full_name: str, reset_link: str):
+    from app.adapters.clients.mail_client import SMTPMailClient
+    html_content = f"""
+    <html>
+        <body>
+            <h2>Đặt lại mật khẩu</h2>
+            <p>Xin chào {full_name},</p>
+            <p>Bạn đã yêu cầu đặt lại mật khẩu tại ICTU AI JUDGE. Vui lòng click vào đường dẫn bên dưới (có hiệu lực 15 phút):</p>
+            <a href="{reset_link}">{reset_link}</a>
+            <p>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
+        </body>
+    </html>
+    """
+    try:
+        mail_client = SMTPMailClient()
+        mail_client.send_email(
+            to_email=email,
+            subject="[ICTU AI JUDGE] Đặt lại mật khẩu",
+            html_content=html_content
+        )
+        logger.info("Password reset email sent to %s", email)
+    except Exception as e:
+        logger.error("Failed to send password reset email to %s: %s", email, e)
+
+
 @router.post("/forgot-password")
 def forgot_password(
     request: ForgotPasswordRequestDTO,
@@ -113,7 +138,11 @@ def forgot_password(
     Yêu cầu đặt lại mật khẩu. Gửi email chứa link reset qua BackgroundTasks.
     Luôn trả về 200 dù email có tồn tại hay không (chống email enumeration).
     """
-    background_tasks.add_task(auth_use_case.request_password_reset, request.email)
+    result = auth_use_case.request_password_reset(request.email)
+    if result:
+        email, full_name, reset_link = result
+        background_tasks.add_task(send_reset_email_task, email, full_name, reset_link)
+
     return {"message": "Nếu email hợp lệ, hướng dẫn đặt lại mật khẩu sẽ được gửi đến email của bạn."}
 
 
