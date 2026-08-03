@@ -799,6 +799,10 @@ paths:
           description: Cập nhật trạng thái tài khoản thành công.
         '403':
           description: Không có quyền Admin.
+        '404':
+          description: Không tìm thấy user.
+
+  /admin/users/{id}/role:
 
   /admin/challenges/test-metric:
     post:
