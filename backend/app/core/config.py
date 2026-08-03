@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # ---- Authorization ----
     ROOT_ADMIN_EMAIL: str | None = None
     # Email duy nhất được tự động gán quyền ADMIN khi đăng nhập lần đầu qua Google OAuth.
+
+    # ---- SMTP / Mailer ----
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM_EMAIL: str | None = None
     # Để trống hoặc không set để tắt tính năng Root Admin tự động.
 
     # ---- Submission Defaults ----
