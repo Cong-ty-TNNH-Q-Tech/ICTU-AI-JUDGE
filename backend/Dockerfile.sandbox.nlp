@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /tmp
+
+RUN apt-get update && apt-get install -y \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    pandas \
+    scikit-learn \
+    numpy \
+    transformers \
+    torch \
+    huggingface_hub \
+    spacy \
+    nltk
+
+# Run non-root user
+RUN useradd -m sandboxuser
+USER sandboxuser

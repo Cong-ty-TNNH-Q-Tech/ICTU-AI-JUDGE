@@ -70,10 +70,10 @@ services:
     command: >
       bash -c "python -m app.adapters.storage.minio_init && alembic upgrade head && uvicorn app.entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload"
 
-  worker:
+  worker_cpu:
     build: 
       context: ./backend
-    container_name: ictu_ai_judge_worker
+    container_name: ictu_ai_judge_worker_cpu
     restart: always
     env_file:
       - .env
@@ -86,7 +86,32 @@ services:
         condition: service_healthy
       sandbox_builder:
         condition: service_completed_successfully
-    command: celery -A app.adapters.worker.celery_app worker --loglevel=info
+      sandbox_cv_builder:
+        condition: service_completed_successfully
+      sandbox_nlp_builder:
+        condition: service_completed_successfully
+    command: celery -A app.adapters.worker.celery_app worker -Q cpu_tasks,celery --loglevel=info
+
+  worker_gpu:
+    build: 
+      context: ./backend
+    container_name: ictu_ai_judge_worker_gpu
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      redis:
+        condition: service_healthy
+      sandbox_builder:
+        condition: service_completed_successfully
+      sandbox_cv_builder:
+        condition: service_completed_successfully
+      sandbox_nlp_builder:
+        condition: service_completed_successfully
+    command: celery -A app.adapters.worker.celery_app worker -Q gpu_tasks --concurrency=1 --loglevel=info
 
   frontend:
     build:
@@ -105,7 +130,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile.sandbox
     image: ictu-ai-judge-sandbox:latest
-    command: ["echo", "Sandbox image built successfully!"]
+    command: ["echo", "Sandbox tabular image built successfully!"]
+    restart: "no"
+
+  sandbox_cv_builder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.sandbox.cv
+    image: ictu-ai-judge-sandbox-cv:latest
+    command: ["echo", "Sandbox CV image built successfully!"]
+    restart: "no"
+
+  sandbox_nlp_builder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.sandbox.nlp
+    image: ictu-ai-judge-sandbox-nlp:latest
+    command: ["echo", "Sandbox NLP image built successfully!"]
     restart: "no"
 
 volumes:

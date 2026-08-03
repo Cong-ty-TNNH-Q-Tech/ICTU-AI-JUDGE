@@ -88,12 +88,25 @@ def score_submission(self, submission_id: str) -> dict:
             submission_csv = storage.download(submission.file_url)
             ground_truth_csv = storage.download(challenge.ground_truth_url)
 
-            # 3. Gọi Docker Sandbox
+            # 3. Determine resource limits
+            env_img = challenge.environment_image
+            if "cv" in env_img or "nlp" in env_img:
+                memory_limit = "8g"
+                time_limit_seconds = 600
+            else:
+                memory_limit = "1g"
+                time_limit_seconds = 120
+
+            # 4. Gọi Docker Sandbox
             score = _run_sandbox(
                 submission_csv=submission_csv,
                 ground_truth_csv=ground_truth_csv,
                 metric_script=storage.download(challenge.custom_metric_url) if challenge.custom_metric_url else None,
                 metric_name=challenge.metric_name,
+                environment_image=challenge.environment_image,
+                memory_limit=memory_limit,
+                time_limit_seconds=time_limit_seconds,
+                require_gpu=challenge.require_gpu,
             )
 
             elapsed_ms = int(time.monotonic() * 1000) - start_ms
@@ -142,6 +155,10 @@ def _run_sandbox(
     ground_truth_csv: bytes,
     metric_script: bytes | None,
     metric_name: str,
+    environment_image: str,
+    memory_limit: str,
+    time_limit_seconds: int,
+    require_gpu: bool,
 ) -> float:
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
@@ -260,18 +277,29 @@ except Exception as e:
 
     tar_stream.seek(0)
 
-    # Timeout: ZIP 120s, CSV 30s
-    timeout = settings.SANDBOX_ZIP_TIMEOUT if is_zip else 30
+    timeout = time_limit_seconds
+    device_requests = []
+    if require_gpu:
+        device_requests = [docker.types.DeviceRequest(count=-1, capabilities=[['gpu']])]
+
+    import os
+    # Default to a generic host path if not set, but in production this should be in .env
+    host_weights_path = os.getenv('HOST_PRETRAINED_WEIGHTS_PATH', '/app/backend/pretrained_weights')
+    volumes_config = {
+        host_weights_path: {'bind': '/weights', 'mode': 'ro'}
+    }
 
     # 1. Create the container (do not start yet)
     container = client.containers.create(
-        image="ictu-ai-judge-sandbox:latest",
+        image=environment_image,
         command=f"bash -c '{cmd}'",
-        mem_limit=settings.SANDBOX_MEMORY_LIMIT,
+        mem_limit=memory_limit,
         cpu_period=settings.SANDBOX_CPU_PERIOD,
         cpu_quota=settings.SANDBOX_CPU_QUOTA,
         network_disabled=True,          # [SECURITY] Chặn network
         detach=True,
+        device_requests=device_requests,
+        volumes=volumes_config,
     )
 
     try:
