@@ -109,8 +109,8 @@ export function useTeamVM(teamId: string | undefined) {
     if (!teamId || !newName.trim()) return;
     try {
       await teamService.updateTeam(teamId, { name: newName });
-      useToastStore.getState().showToast('Đổi tên đội thành công', 'success');
       await fetchTeam(); // refetch after update
+      useToastStore.getState().showToast('Đổi tên đội thành công', 'success');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { detail?: string } } };
       const detail = errorObj.response?.data?.detail || 'Lỗi khi đổi tên đội';
