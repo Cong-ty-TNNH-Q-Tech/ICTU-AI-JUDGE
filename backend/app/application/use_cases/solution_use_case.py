@@ -78,7 +78,7 @@ class SolutionUseCase:
             raise ValueError(f"Challenge {challenge_id} không tồn tại.")
         
         now = datetime.datetime.now(datetime.timezone.utc)
-        is_admin = user and user.role.value == "ADMIN"
+        is_admin = user is not None and user.is_admin()
         is_locked = False if is_admin else bool(challenge.end_time and now < challenge.end_time)
 
         if is_locked:
@@ -106,7 +106,7 @@ class SolutionUseCase:
             raise ValueError("Chỉ có thể chia sẻ giải pháp trên các bài thi đang PUBLISHED.")
             
         now = datetime.datetime.now(datetime.timezone.utc)
-        is_admin = user.role.value == "ADMIN"
+        is_admin = user.is_admin()
         is_locked = False if is_admin else bool(challenge.end_time and now < challenge.end_time)
         if is_locked:
             raise ValueError("Mục giải pháp đang bị khóa trong thời gian diễn ra cuộc thi. Vui lòng quay lại sau khi kết thúc deadline.")
