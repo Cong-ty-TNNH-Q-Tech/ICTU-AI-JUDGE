@@ -140,6 +140,9 @@ class ChallengeEntity:
     deleted_at: datetime | None = None
     # Dùng cho versioning hoặc chia stage trong Challenge (Self-referential FK - PR #136).
     parent_id: uuid.UUID | None = None
+    # [SANDBOX] Môi trường chấm bài và GPU routing (Issue dynamic-sandbox)
+    environment_image: str = "ictu-ai-judge-sandbox:latest"
+    require_gpu: bool = False
     tags: list[TagEntity] = field(default_factory=list)
 
     def is_accepting_submissions(self, now: datetime) -> bool:
