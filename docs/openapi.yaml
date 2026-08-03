@@ -1752,7 +1752,6 @@ components:
       properties:
         full_name:
           type: string
-          nullable: true
           example: "Nguyen Van A"
         github_url:
           type: string

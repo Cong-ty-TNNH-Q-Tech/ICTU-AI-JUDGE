@@ -30,12 +30,12 @@ class UpdateProfileRequest(BaseModel):
 
     @field_validator('full_name', mode='before')
     @classmethod
-    def full_name_strip_whitespace(cls, v: str | None) -> str | None:
+    def validate_full_name(cls, v: str | None) -> str | None:
         if v is None:
-            return None
+            return None  # Cho phép omitted (để xử lý ở Use Case bằng model_fields_set)
         stripped = v.strip()
-        if stripped == '':
-            return None  # Treat empty string as None (xóa tên)
+        if not stripped:
+            raise ValueError('Họ và tên không được để trống')
         if len(stripped) > 100:
             raise ValueError('Họ và tên không được vượt quá 100 ký tự')
         return stripped
