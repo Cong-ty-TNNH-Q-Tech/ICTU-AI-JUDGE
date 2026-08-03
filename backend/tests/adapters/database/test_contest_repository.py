@@ -69,14 +69,17 @@ def test_save_new_contest_passes_enum_instance_not_string(contest_entity):
 
     model: ContestModel = captured_model['instance']
 
-    # ❌ BUG cũ: model.status == "DRAFT" (string)
+    # ❌ BUG cũ: model.status == "DRAFT" (raw string, type là str)
     # ✅ Fix đúng: model.status phải là ContestStatus.DRAFT (Enum instance)
-    assert model.status == ContestStatus.DRAFT, (
-        f"Expected ContestStatus.DRAFT (Enum), got {model.status!r} (type: {type(model.status).__name__}). "
+    #
+    # Lưu ý: ContestStatus(str, Enum) → isinstance(ContestStatus.DRAFT, str) luôn True
+    # vì Enum kế thừa str. Cần dùng type() để phân biệt raw string vs Enum.
+    assert isinstance(model.status, ContestStatus), (
+        f"Expected ContestStatus Enum instance, got {model.status!r} (type: {type(model.status).__name__}). "
         "Lỗi này gây DataError khi SQLAlchemy flush với PgEnum."
     )
-    assert not isinstance(model.status, str), (
-        "model.status không được là string — phải là Enum instance để PgEnum hoạt động đúng."
+    assert type(model.status) is not str, (
+        f"model.status là raw string '{model.status}' — phải là ContestStatus Enum instance, không phải str thuần."
     )
 
 
@@ -96,14 +99,17 @@ def test_update_contest_passes_enum_instance_not_string(contest_entity, now):
         repo = SQLContestRepository(db_session=mock_session)
         repo.save(contest_entity)
 
-    # ❌ BUG cũ: existing_model.status = "DRAFT" (string)
+    # ❌ BUG cũ: existing_model.status = "DRAFT" (raw string)
     # ✅ Fix đúng: existing_model.status = ContestStatus.DRAFT (Enum)
-    assert existing_model.status == ContestStatus.DRAFT, (
-        f"UPDATE: Expected ContestStatus.DRAFT (Enum), got {existing_model.status!r}. "
-        "Lỗi này gây DataError khi SQLAlchemy flush với PgEnum."
+    #
+    # Lưu ý: ContestStatus(str, Enum) → isinstance(ContestStatus.DRAFT, str) luôn True.
+    # Dùng type() để phân biệt chính xác raw string vs Enum instance.
+    assert isinstance(existing_model.status, ContestStatus), (
+        f"UPDATE: Expected ContestStatus Enum instance, got {existing_model.status!r} "
+        f"(type: {type(existing_model.status).__name__}). Lỗi này gây DataError với PgEnum."
     )
-    assert not isinstance(existing_model.status, str), (
-        "UPDATE: model.status không được là string khi dùng PgEnum."
+    assert type(existing_model.status) is not str, (
+        f"UPDATE: model.status là raw string — phải là ContestStatus Enum instance."
     )
 
 
