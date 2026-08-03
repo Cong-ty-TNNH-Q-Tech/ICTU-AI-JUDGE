@@ -115,6 +115,8 @@ def test_get_contest_leaderboard_success(leaderboard_use_case):
     child1.max_team_size = 3
     child1.parent_id = uuid.uuid4()
     child1.tags = []
+    child1.environment_image = "python:3.11-slim"
+    child1.require_gpu = False
     
     leaderboard_use_case.challenge_repo.get_children.return_value = [child1]
     

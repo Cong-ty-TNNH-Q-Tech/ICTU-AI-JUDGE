@@ -169,7 +169,7 @@ def test_submit_prediction_file_too_large(use_case, mock_repos, mock_challenge, 
         )
 
 def test_trigger_scoring(use_case, mock_repos):
-    submission_id = "test-123"
+    submission_id = uuid.uuid4()
     use_case.trigger_scoring(submission_id)
     mock_repos["message_broker"].enqueue_scoring_task.assert_called_once_with(submission_id)
 
