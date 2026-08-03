@@ -1,4 +1,4 @@
-"""
+﻿"""
 SQLAlchemy ORM Models — Adapter/Database layer.
 Map trực tiếp đến các bảng PostgreSQL theo thiết kế ERD.
 """
@@ -18,7 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PgEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -26,6 +26,7 @@ from app.core.database import Base
 from app.domain.entities.entities import (
     ChallengeStatus,
     ChallengeType,
+    ContestStatus,
     InviteStatus,
     MetricDirection,
     SubmissionStatus,
@@ -61,11 +62,32 @@ class UserModel(Base):
 
 
 
+class ContestModel(Base):
+    __tablename__ = "contests"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(
+        PgEnum(ContestStatus, name="contest_status_enum", create_type=False),
+        nullable=False,
+        default=ContestStatus.DRAFT,
+    )
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    challenges: Mapped[list["ChallengeModel"]] = relationship("ChallengeModel", back_populates="contest")
+
 
 class ChallengeModel(Base):
     __tablename__ = "challenges"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contest_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contests.id"), nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     type: Mapped[str] = mapped_column(
@@ -92,14 +114,22 @@ class ChallengeModel(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("challenges.id"), nullable=True, index=True)
 
     # Relationships
+    contest: Mapped["ContestModel | None"] = relationship("ContestModel", back_populates="challenges")
     teams: Mapped[list["TeamModel"]] = relationship("TeamModel", back_populates="challenge")
     submissions: Mapped[list["SubmissionModel"]] = relationship("SubmissionModel", back_populates="challenge")
     leaderboard_entries: Mapped[list["LeaderboardModel"]] = relationship("LeaderboardModel", back_populates="challenge")
     participants: Mapped[list["ChallengeParticipantModel"]] = relationship("ChallengeParticipantModel", back_populates="challenge")
     tags: Mapped[list["TagModel"]] = relationship(
         "TagModel", secondary="challenge_tags", back_populates="challenges"
+    )
+    children: Mapped[list["ChallengeModel"]] = relationship(
+        "ChallengeModel", back_populates="parent"
+    )
+    parent: Mapped["ChallengeModel | None"] = relationship(
+        "ChallengeModel", back_populates="children", remote_side="[ChallengeModel.id]"
     )
 
 class TagModel(Base):

@@ -241,7 +241,7 @@ class TeamUseCase:
             raise NotFoundError("Đội không tồn tại hoặc đã bị xóa")
 
         self.uow.commit()
-        logger.info(f"Team {team_id} renamed to {new_name} by user {requester_id}")
+        logger.info("Team %s renamed to '%s' by user %s", team_id, new_name, requester_id)
 
         return TeamResponseDTO(
             id=updated_team.id,

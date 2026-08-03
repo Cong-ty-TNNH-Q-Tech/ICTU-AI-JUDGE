@@ -9,6 +9,7 @@ from datetime import datetime
 
 from app.domain.entities.entities import (
     ChallengeEntity,
+    InviteStatus,
     LeaderboardEntryEntity,
     SubmissionEntity,
     SubmissionStatus,
@@ -16,10 +17,10 @@ from app.domain.entities.entities import (
     TeamInviteEntity,
     UserEntity,
     MetricDirection,
-    InviteStatus,
     SolutionEntity,
     TagEntity,
     UserRole,
+    ContestEntity,
 )
 from typing import Optional
 
@@ -61,6 +62,10 @@ class IUserRepository(ABC):
         ...
 
     @abstractmethod
+    def update_role(self, user_id: uuid.UUID, role: UserRole) -> bool:
+        ...
+
+    @abstractmethod
     def update_profile(
         self,
         user_id: uuid.UUID,
@@ -93,6 +98,26 @@ class IUserRepository(ABC):
 
 
 
+class IContestRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, contest_id: uuid.UUID) -> ContestEntity | None: ...
+
+    @abstractmethod
+    def get_list(self, page: int, size: int, status: str | None = None) -> tuple[list[ContestEntity], int]: ...
+
+    @abstractmethod
+    def save(self, contest: ContestEntity) -> ContestEntity: ...
+
+    @abstractmethod
+    def delete(self, contest_id: uuid.UUID) -> None:
+        """Soft delete — cập nhật deleted_at thay vì xoá hàng."""
+        ...
+
+    @abstractmethod
+    def get_challenges(self, contest_id: uuid.UUID) -> list[ChallengeEntity]:
+        """Lấy danh sách challenges thuộc contest (chưa bị soft delete)."""
+        ...
+
 
 class IChallengeRepository(ABC):
     @abstractmethod
@@ -114,6 +139,9 @@ class IChallengeRepository(ABC):
 
     @abstractmethod
     def has_successful_submission(self, challenge_id: uuid.UUID) -> bool: ...
+
+    @abstractmethod
+    def get_children(self, parent_id: uuid.UUID) -> list[ChallengeEntity]: ...
 
 
 class ITeamRepository(ABC):
@@ -159,6 +187,9 @@ class ITeamRepository(ABC):
 
     @abstractmethod
     def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> tuple[list[TeamEntity], int]: ...
+
+    @abstractmethod
+    def get_teams_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[TeamEntity]: ...
 
 class ISubmissionRepository(ABC):
     @abstractmethod
@@ -282,6 +313,10 @@ class ILeaderboardRepository(ABC):
         Mỗi team_member chiếm 1 dòng.
         leaderboard_type: "public" | "private" — xác định dùng score nào để xếp hạng.
         """
+        ...
+
+    @abstractmethod
+    def get_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[LeaderboardEntryEntity]:
         ...
 
 

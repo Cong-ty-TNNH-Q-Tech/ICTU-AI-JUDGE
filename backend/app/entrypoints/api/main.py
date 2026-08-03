@@ -36,6 +36,7 @@ from app.entrypoints.api.v1 import (
     admin_router,
     tags_router,
     storage_router,
+    contests_router,
 )
 
 logging.basicConfig(
@@ -140,6 +141,7 @@ async def generic_domain_handler(request: Request, exc: DomainException):
 # ==========================================
 app.include_router(auth_router.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Auth"])
 app.include_router(users_router.router, prefix=f"{settings.API_V1_PREFIX}/users", tags=["Users"])
+app.include_router(contests_router.router, prefix=f"{settings.API_V1_PREFIX}/contests", tags=["Contests"])
 app.include_router(challenges_router.router, prefix=f"{settings.API_V1_PREFIX}/challenges", tags=["Challenges"])
 app.include_router(teams_router.router, prefix=f"{settings.API_V1_PREFIX}/teams", tags=["Teams"])
 app.include_router(submissions_router.router, prefix=f"{settings.API_V1_PREFIX}/submissions", tags=["Submissions"])

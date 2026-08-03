@@ -5,7 +5,7 @@ Pure Python dataclasses. KHÔNG import FastAPI hay SQLAlchemy.
 """
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -21,6 +21,12 @@ class UserRole(str, Enum):
 class ChallengeType(str, Enum):
     PUBLIC = "PUBLIC"
     COMPETITION = "COMPETITION"
+
+
+class ContestStatus(str, Enum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
 
 
 class ChallengeStatus(str, Enum):
@@ -85,6 +91,31 @@ class TagEntity:
 
 
 @dataclass
+class ContestEntity:
+    """Contest domain entity. Tat ca datetime fields PHAI la timezone-aware (UTC)."""
+    id: uuid.UUID
+    title: str
+    description: str
+    status: ContestStatus
+    start_time: datetime  # Must be timezone-aware
+    end_time: datetime | None  # Must be timezone-aware if set
+    created_by: uuid.UUID
+    created_at: datetime  # Must be timezone-aware
+    deleted_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        """Ensure datetime fields la timezone-aware de tranh TypeError khi compare."""
+        def _ensure_tz(dt: datetime | None) -> datetime | None:
+            if dt is not None and dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+        self.start_time = _ensure_tz(self.start_time)  # type: ignore[assignment]
+        self.end_time = _ensure_tz(self.end_time)
+        self.created_at = _ensure_tz(self.created_at)  # type: ignore[assignment]
+        self.deleted_at = _ensure_tz(self.deleted_at)
+
+
+@dataclass
 class ChallengeEntity:
     id: uuid.UUID
     title: str
@@ -100,11 +131,15 @@ class ChallengeEntity:
     metric_direction: MetricDirection
     created_by: uuid.UUID
     created_at: datetime
+    # Thuộc về một Cuộc thi (Contest) nếu có (Issue #123). Dùng để gom nhóm challenges theo kỳ thi.
+    contest_id: uuid.UUID | None = None
     dataset_url: str = ""
     ground_truth_url: str = ""
     custom_metric_url: str = ""
     team_lock_deadline: datetime | None = None
     deleted_at: datetime | None = None
+    # Dùng cho versioning hoặc chia stage trong Challenge (Self-referential FK - PR #136).
+    parent_id: uuid.UUID | None = None
     tags: list[TagEntity] = field(default_factory=list)
 
     def is_accepting_submissions(self, now: datetime) -> bool:

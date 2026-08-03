@@ -13,10 +13,11 @@ import ChallengeTimer from '../components/ChallengeTimer';
 import SubmitFileZone from '../components/SubmitFileZone';
 import SubmissionHistoryTable from '../components/SubmissionHistoryTable';
 import { SolutionsTab } from '../components/Challenge/SolutionsTab';
+import { ContestLeaderboardTab } from '../components/Challenge/ContestLeaderboardTab';
 
 import RulesIllustration from '../../assets/competition-rules.png';
 
-type Tab = 'description' | 'leaderboard' | 'submit' | 'history' | 'solutions';
+type Tab = 'description' | 'leaderboard' | 'contest_leaderboard' | 'submit' | 'history' | 'solutions';
 
 const ChallengeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -61,6 +62,7 @@ const ChallengeDetailPage = () => {
   const tabs = [
     { id: 'description' as Tab, label: 'Tổng quan' },
     { id: 'leaderboard' as Tab, label: 'Bảng xếp hạng' },
+    { id: 'contest_leaderboard' as Tab, label: 'BXH Tổng' },
     { id: 'submit' as Tab, label: 'Nộp bài' },
     { id: 'history' as Tab, label: 'Lịch sử' },
     { id: 'solutions' as Tab, label: 'Giải pháp' },
@@ -360,6 +362,11 @@ const ChallengeDetailPage = () => {
               </>
             )}
           </div>
+        )}
+
+        {/* TAB 2.5: CONTEST LEADERBOARD */}
+        {activeTab === 'contest_leaderboard' && (
+          <ContestLeaderboardTab challengeId={challenge.id} />
         )}
 
         {/* TAB 3: SUBMIT */}

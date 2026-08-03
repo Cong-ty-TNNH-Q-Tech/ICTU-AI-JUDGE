@@ -12,6 +12,8 @@ import LandingPage from './views/pages/LandingPage';
 import LoginPage from './views/pages/LoginPage';
 import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
+import ContestListPage from './views/pages/ContestListPage';
+import ContestDetailPage from './views/pages/ContestDetailPage';
 import AdminPage from './views/pages/AdminPage';
 // Issue #30 — Profile
 import ProfilePage from './views/pages/ProfilePage';
@@ -98,6 +100,19 @@ function App() {
               <ChallengeDetailPage />
             </MainLayout>
           </ProtectedRoute>
+        } />
+
+        {/* Contests: public endpoints — anonymous co the xem PUBLISHED contests */}
+        <Route path="/contests" element={
+          <MainLayout>
+            <ContestListPage />
+          </MainLayout>
+        } />
+
+        <Route path="/contests/:id" element={
+          <MainLayout>
+            <ContestDetailPage />
+          </MainLayout>
         } />
 
         <Route path="/admin" element={

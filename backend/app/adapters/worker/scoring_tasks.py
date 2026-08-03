@@ -2,9 +2,11 @@
 Scoring Task — Celery Worker chấm điểm qua Docker Sandbox.
 [SECURITY] Không bao giờ import metric.py trực tiếp — luôn dùng Docker Container.
 """
+import io
 import logging
-import time
 import math
+import tarfile
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -144,32 +146,45 @@ def _run_sandbox(
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
+    Tự động phát hiện zip (magic bytes) → giải nén thành thư mục riêng.
     """
-    import tarfile
-    import io
-
     client = docker.from_env()
 
-    # Create tar stream in memory
-    tar_stream = io.BytesIO()
-    with tarfile.open(fileobj=tar_stream, mode='w') as tar:
-        # Add submission.csv
-        sub_info = tarfile.TarInfo(name='submission.csv')
-        sub_info.size = len(submission_csv)
-        tar.addfile(sub_info, io.BytesIO(submission_csv))
+    # ---- Phát hiện ZIP mode qua magic bytes ----
+    is_gt_zip = ground_truth_csv[:4] == b'PK\x03\x04'
+    is_sub_zip = submission_csv[:4] == b'PK\x03\x04'
+    is_zip = is_gt_zip or is_sub_zip
 
-        # Add ground_truth.csv
-        gt_info = tarfile.TarInfo(name='ground_truth.csv')
-        gt_info.size = len(ground_truth_csv)
-        tar.addfile(gt_info, io.BytesIO(ground_truth_csv))
+    if is_zip:
+        tar_stream, cmd = _prepare_sandbox_files_zip(
+            submission_data=submission_csv,
+            ground_truth_data=ground_truth_csv,
+            is_gt_zip=is_gt_zip,
+            is_sub_zip=is_sub_zip,
+            metric_script=metric_script,
+            metric_name=metric_name,
+        )
+    else:
+        # === CSV mode: giữ nguyên logic hiện tại ===
+        tar_stream = io.BytesIO()
+        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+            # Add submission.csv
+            sub_info = tarfile.TarInfo(name='submission.csv')
+            sub_info.size = len(submission_csv)
+            tar.addfile(sub_info, io.BytesIO(submission_csv))
 
-        if metric_script:
-            script_info = tarfile.TarInfo(name='metric.py')
-            script_info.size = len(metric_script)
-            tar.addfile(script_info, io.BytesIO(metric_script))
-            
-            # Wrapper script để gọi hàm calculate_score từ metric.py
-            wrapper_script = """
+            # Add ground_truth.csv
+            gt_info = tarfile.TarInfo(name='ground_truth.csv')
+            gt_info.size = len(ground_truth_csv)
+            tar.addfile(gt_info, io.BytesIO(ground_truth_csv))
+
+            if metric_script:
+                script_info = tarfile.TarInfo(name='metric.py')
+                script_info.size = len(metric_script)
+                tar.addfile(script_info, io.BytesIO(metric_script))
+
+                # Wrapper script để gọi hàm calculate_score từ metric.py
+                wrapper_script = """
 import sys
 try:
     sys.path.append('/tmp')
@@ -181,14 +196,14 @@ except Exception as e:
     sys.exit(1)
 """.strip().encode('utf-8')
 
-            wrapper_info = tarfile.TarInfo(name='runner.py')
-            wrapper_info.size = len(wrapper_script)
-            tar.addfile(wrapper_info, io.BytesIO(wrapper_script))
-            
-            cmd = "python /tmp/runner.py"
-        else:
-            # Strategy Pattern cho Built-in metrics
-            built_in_script = f"""
+                wrapper_info = tarfile.TarInfo(name='runner.py')
+                wrapper_info.size = len(wrapper_script)
+                tar.addfile(wrapper_info, io.BytesIO(wrapper_script))
+
+                cmd = "python /tmp/runner.py"
+            else:
+                # Strategy Pattern cho Built-in metrics
+                built_in_script = f"""
 import pandas as pd
 import sys
 import math
@@ -200,7 +215,7 @@ try:
 
     if 'Usage' in gt.columns:
         gt = gt.drop(columns=['Usage'])
-        
+
     if len(gt.columns) == 0:
         print('Không tìm thấy cột mục tiêu trong Ground Truth.')
         sys.exit(1)
@@ -219,7 +234,7 @@ try:
     y_pred = sub[target_col]
 
     metric_name = '{metric_name}'
-    
+
     if metric_name == 'ACCURACY':
         score = accuracy_score(y_true, y_pred)
     elif metric_name == 'F1_SCORE':
@@ -237,13 +252,16 @@ except Exception as e:
     print(f"Lỗi khi chấm điểm: {{str(e)}}")
     sys.exit(1)
 """.encode('utf-8')
-            
-            script_info = tarfile.TarInfo(name='built_in_metric.py')
-            script_info.size = len(built_in_script)
-            tar.addfile(script_info, io.BytesIO(built_in_script))
-            cmd = "python /tmp/built_in_metric.py"
+
+                script_info = tarfile.TarInfo(name='built_in_metric.py')
+                script_info.size = len(built_in_script)
+                tar.addfile(script_info, io.BytesIO(built_in_script))
+                cmd = "python /tmp/built_in_metric.py"
 
     tar_stream.seek(0)
+
+    # Timeout: ZIP 120s, CSV 30s
+    timeout = settings.SANDBOX_ZIP_TIMEOUT if is_zip else 30
 
     # 1. Create the container (do not start yet)
     container = client.containers.create(
@@ -257,15 +275,15 @@ except Exception as e:
     )
 
     try:
-        # 2. Inject files via put_archive (Docker automatically creates /tmp if it doesn't exist)
+        # 2. Inject files via put_archive
         container.put_archive("/tmp", tar_stream)
 
         # 3. Start container and wait for it to finish
         container.start()
-        result = container.wait(timeout=30)
-        
+        result = container.wait(timeout=timeout)
+
         output = container.logs(stdout=True, stderr=False).decode("utf-8").strip()
-        
+
         if result['StatusCode'] != 0:
             error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
             raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
@@ -273,11 +291,141 @@ except Exception as e:
         score = float(output)
         if math.isnan(score) or math.isinf(score):
             raise ValueError(f"Invalid score value returned by metric script: {output}")
-            
+
         return score
+    except docker.errors.APIError as exc:
+        if "Read timed out" in str(exc) or "timed out" in str(exc).lower():
+            raise Exception(
+                "Sandbox execution timed out. "
+                "Metric script may contain an infinite loop or process too large files."
+            ) from exc
+        raise
     finally:
         # Ensure container is destroyed even on error
         container.remove(force=True)
+
+
+def _prepare_sandbox_files_zip(
+    submission_data: bytes,
+    ground_truth_data: bytes,
+    is_gt_zip: bool,
+    is_sub_zip: bool,
+    metric_script: bytes | None,
+    metric_name: str,
+) -> tuple[io.BytesIO, str]:
+    """
+    Chuẩn bị tar stream cho Docker Sandbox trong ZIP mode.
+    Giải nén zip → thư mục riêng biệt trong container.
+    Trả về (tar_stream, cmd).
+    """
+    import zipfile
+
+    tar_stream = io.BytesIO()
+    with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+        # --- Ground Truth ---
+        if is_gt_zip:
+            with zipfile.ZipFile(io.BytesIO(ground_truth_data)) as zf:
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    # [SECURITY] Path Traversal (double-check)
+                    if '..' in info.filename or info.filename.startswith('/'):
+                        raise ValueError(f"Unsafe filename in GT zip: {info.filename}")
+                    file_data = zf.read(info)
+                    tarinfo = tarfile.TarInfo(name=f'ground_truth/{info.filename}')
+                    tarinfo.size = len(file_data)
+                    tar.addfile(tarinfo, io.BytesIO(file_data))
+        else:
+            gt_info = tarfile.TarInfo(name='ground_truth/ground_truth.csv')
+            gt_info.size = len(ground_truth_data)
+            tar.addfile(gt_info, io.BytesIO(ground_truth_data))
+
+        # --- Submission ---
+        if is_sub_zip:
+            with zipfile.ZipFile(io.BytesIO(submission_data)) as zf:
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    if '..' in info.filename or info.filename.startswith('/'):
+                        raise ValueError(f"Unsafe filename in submission zip: {info.filename}")
+                    file_data = zf.read(info)
+                    tarinfo = tarfile.TarInfo(name=f'submission/{info.filename}')
+                    tarinfo.size = len(file_data)
+                    tar.addfile(tarinfo, io.BytesIO(file_data))
+        else:
+            sub_info = tarfile.TarInfo(name='submission/submission.csv')
+            sub_info.size = len(submission_data)
+            tar.addfile(sub_info, io.BytesIO(submission_data))
+
+        # --- Metric script ---
+        if metric_script:
+            script_info = tarfile.TarInfo(name='metric.py')
+            script_info.size = len(metric_script)
+            tar.addfile(script_info, io.BytesIO(metric_script))
+
+        # --- Wrapper script ---
+        wrapper = _generate_zip_wrapper(
+            has_custom_metric=metric_script is not None,
+            metric_name=metric_name,
+        )
+        wrapper_bytes = wrapper.encode('utf-8')
+        wrapper_info = tarfile.TarInfo(name='runner.py')
+        wrapper_info.size = len(wrapper_bytes)
+        tar.addfile(wrapper_info, io.BytesIO(wrapper_bytes))
+
+    tar_stream.seek(0)
+    return tar_stream, "python /tmp/runner.py"
+
+
+def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str) -> str:
+    """Tạo wrapper script cho ZIP mode (thư mục giải nén)."""
+    if has_custom_metric:
+        return """
+import sys
+sys.path.append('/tmp')
+from metric import calculate_score
+score = calculate_score('/tmp/ground_truth', '/tmp/submission')
+print(score)
+""".strip()
+    else:
+        return f"""
+import pandas as pd
+import sys
+import math
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
+
+gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
+sub_csv_path = '/tmp/submission/submission.csv'
+
+gt = pd.read_csv(gt_csv_path)
+sub = pd.read_csv(sub_csv_path)
+
+if 'Usage' in gt.columns:
+    gt_scoring = gt.drop(columns=['Usage'])
+else:
+    gt_scoring = gt
+
+label_col = gt_scoring.columns[-1]
+if label_col not in sub.columns:
+    print(f'Thiếu cột {{label_col}} trong bài nộp.')
+    sys.exit(1)
+
+y_true = gt_scoring[label_col]
+y_pred = sub[label_col]
+
+metric_name = '{metric_name}'
+if metric_name == 'ACCURACY':
+    score = accuracy_score(y_true, y_pred)
+elif metric_name == 'F1_SCORE':
+    score = f1_score(y_true, y_pred, average='macro')
+elif metric_name == 'RMSE':
+    score = math.sqrt(mean_squared_error(y_true, y_pred))
+else:
+    print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
+    sys.exit(1)
+
+print(score)
+""".strip()
 
 
 

@@ -28,6 +28,18 @@ class UpdateProfileRequest(BaseModel):
     github_url: Optional[str] = None
     linkedin_url: Optional[str] = None
 
+    @field_validator('full_name', mode='before')
+    @classmethod
+    def full_name_strip_whitespace(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        if stripped == '':
+            return None  # Treat empty string as None (xóa tên)
+        if len(stripped) > 100:
+            raise ValueError('Họ và tên không được vượt quá 100 ký tự')
+        return stripped
+
     @field_validator("github_url", "linkedin_url", mode="before")
     @classmethod
     def validate_url(cls, v: str | None) -> str | None:

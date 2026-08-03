@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { Challenge, ChallengeCreateRequest } from '../../../models/api.types';
+import type { Challenge, ChallengeCreateRequest, Contest } from '../../../models/api.types';
 import { adminService } from '../../../services/adminService';
+import { ContestService } from '../../../services/contestService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -88,6 +89,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
     type: 'PUBLIC', status: 'DRAFT', dataset_url: '',
     metric_name: 'ACCURACY', metric_direction: 'HIGHER_IS_BETTER',
     max_file_size_mb: 50, rate_limit_minutes: 10, max_team_size: 1,
+    contest_id: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +104,12 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   const [previewMarkdown, setPreviewMarkdown] = useState(false);
   const [publicTestSplitRatio, setPublicTestSplitRatio] = useState(30);
 
+  const [contests, setContests] = useState<Contest[]>([]);
+
+  useEffect(() => {
+    ContestService.getContests(1, 100).then(res => setContests(res.items)).catch(console.error);
+  }, []);
+
   useEffect(() => {
     if (initialData) {
       setForm({
@@ -111,6 +119,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
         metric_name: initialData.metric_name, metric_direction: initialData.metric_direction,
         max_file_size_mb: initialData.max_file_size_mb, rate_limit_minutes: initialData.rate_limit_minutes,
         max_team_size: initialData.max_team_size,
+        contest_id: initialData.contest_id || null,
       });
       setIsUnlimitedTime(initialData.end_time === null);
     }
@@ -118,7 +127,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
 
   const set = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setForm(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : value }));
+    setForm(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : (value === '' && name === 'contest_id' ? null : value) }));
   };
 
   const handleTestMetric = async () => {
@@ -227,6 +236,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                   )}
                 </div>
                 <div>
+                  <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Contest Assignment</label>
+                  <select name="contest_id" value={form.contest_id || ''} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark">
+                    <option value="">-- No Contest (Standalone Challenge) --</option>
+                    {contests.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Dataset URL</label>
                   <input type="url" name="dataset_url" value={form.dataset_url} onChange={set} className="input-field shadow-sm" placeholder="https://drive.google.com/..." />
                   <p className="text-[11px] text-content-tertiary mt-1.5">Provide a link where participants can download the dataset (Google Drive, Kaggle, etc.)</p>
@@ -304,15 +322,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 </div>
 
                 <div className="pt-2">
-                  <FileUploadZone 
-                    label="Ground Truth File" 
-                    accept=".csv" 
-                    required={!isEdit} 
-                    disabled={isLocked}
-                    file={groundTruthFile} 
-                    onChange={setGroundTruthFile}
-                    hint={isEdit && !isLocked ? "Upload a new CSV to replace the existing ground truth file." : "Contains the actual labels/values used for scoring submissions."}
-                  />
+                    <FileUploadZone 
+                      label="Ground Truth File" 
+                      accept=".csv,.zip"
+                      required={!isEdit} 
+                      disabled={isLocked}
+                      file={groundTruthFile} 
+                      onChange={setGroundTruthFile}
+                      hint={isEdit && !isLocked ? "Upload a new CSV/ZIP to replace the existing ground truth file." : "CSV hoặc ZIP chứa ground truth data. ZIP bắt buộc có file ground_truth.csv bên trong."}
+                    />
                   {groundTruthFile && (
                     <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-2">
@@ -357,7 +375,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <h3 className="text-sm font-semibold text-content-primary dark:text-content-dark-primary mb-4">Test Evaluation Script</h3>
                     <FileUploadZone 
                       label="Sample Submission File" 
-                      accept=".csv" 
+                      accept=".csv,.zip" 
                       file={sampleSubmissionFile} 
                       onChange={setSampleSubmissionFile}
                       hint="Upload a sample submission CSV to test against the ground truth."

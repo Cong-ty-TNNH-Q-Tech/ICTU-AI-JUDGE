@@ -14,6 +14,8 @@ export type ChallengeType = 'PUBLIC' | 'COMPETITION';
 
 export type ChallengeStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
+export type ContestStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
 export type MetricDirection = 'HIGHER_IS_BETTER' | 'LOWER_IS_BETTER';
 
 export type SubmissionStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
@@ -128,8 +130,36 @@ export interface JoinTeamRequest {
 /** POST /teams/join trả về TeamResponseDTO */
 export type JoinTeamResponse = TeamResponse;
 
+export interface Contest {
+  id: string;
+  title: string;
+  description: string;
+  status: ContestStatus;
+  start_time: string; // ISO 8601
+  end_time: string | null;
+  created_at: string;
+  created_by: string;
+}
+
+export interface ContestCreateRequest {
+  title: string;
+  description: string;
+  status: ContestStatus;
+  start_time: string;
+  end_time?: string | null;
+}
+
+export interface ContestUpdateRequest {
+  title?: string;
+  description?: string;
+  status?: ContestStatus;
+  start_time?: string;
+  end_time?: string | null;
+}
+
 export interface Challenge {
   id: string;
+  contest_id?: string | null;
   title: string;
   description?: string;
   type: ChallengeType;
@@ -175,6 +205,20 @@ export interface LeaderboardResponse {
   items: LeaderboardEntry[];
 }
 
+export interface ContestLeaderboardEntry {
+  rank: number;
+  team_id: string;
+  team_name: string;
+  total_score: number;
+  scores: Record<string, number>;
+}
+
+export interface ContestLeaderboardResponse {
+  contest_id: string;
+  child_challenges: Challenge[];
+  leaderboard: ContestLeaderboardEntry[];
+}
+
 export interface Participant {
   user_id: string;
   email: string;
@@ -204,6 +248,7 @@ export interface GoogleLoginRequest {
 }
 
 export interface ChallengeCreateRequest {
+  contest_id?: string | null;
   title: string;
   description?: string;
   type: ChallengeType;
