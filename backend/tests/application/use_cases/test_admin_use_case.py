@@ -1,7 +1,7 @@
 import uuid
 from unittest.mock import MagicMock
 import pytest
-from fastapi import HTTPException
+from app.domain.exceptions.exceptions import NotFoundError, PermissionDeniedError
 from datetime import datetime
 
 from app.application.use_cases.admin_use_case import AdminUseCase
@@ -27,7 +27,7 @@ def test_list_users(admin_use_case):
         created_at=datetime.now(),
         updated_at=datetime.now()
     )
-    admin_use_case.user_repo.list_all.return_value = ([mock_user], 1)
+    admin_use_case.user_repo.list_all_admin.return_value = ([mock_user], 1)
     
     result = admin_use_case.list_users(q="test", page=1, size=10)
     assert result.total == 1
@@ -41,9 +41,8 @@ def test_update_user_status_success(admin_use_case):
 
 def test_update_user_status_not_found(admin_use_case):
     admin_use_case.user_repo.update_status.return_value = False
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError):
         admin_use_case.update_user_status(uuid.uuid4(), True)
-    assert exc.value.status_code == 404
 
 def test_update_user_role_success(admin_use_case):
     admin_use_case.user_repo.update_role.return_value = True
@@ -52,9 +51,8 @@ def test_update_user_role_success(admin_use_case):
 
 def test_update_user_role_not_found(admin_use_case):
     admin_use_case.user_repo.update_role.return_value = False
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError):
         admin_use_case.update_user_role(uuid.uuid4(), "ADMIN")
-    assert exc.value.status_code == 404
 
 def test_get_whitelist_success(admin_use_case):
     challenge_id = uuid.uuid4()
@@ -67,9 +65,8 @@ def test_get_whitelist_success(admin_use_case):
 
 def test_get_whitelist_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError):
         admin_use_case.get_whitelist(uuid.uuid4(), 1, 10)
-    assert exc.value.status_code == 404
 
 def test_add_whitelist_success(admin_use_case):
     challenge = MagicMock()
@@ -85,9 +82,8 @@ def test_add_whitelist_not_competition(admin_use_case):
     challenge.type = ChallengeType.PUBLIC
     admin_use_case.challenge_repo.get_by_id.return_value = challenge
     
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ValueError):
         admin_use_case.add_whitelist(uuid.uuid4(), [uuid.uuid4()])
-    assert exc.value.status_code == 400
 
 def test_list_all_submissions_success(admin_use_case):
     challenge = MagicMock()
@@ -112,9 +108,8 @@ def test_list_all_submissions_success(admin_use_case):
 
 def test_list_all_submissions_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError):
         admin_use_case.list_all_submissions(uuid.uuid4(), 1, 10)
-    assert exc.value.status_code == 404
 
 def test_export_leaderboard_csv_success(admin_use_case):
     challenge = MagicMock()
@@ -142,9 +137,8 @@ def test_export_leaderboard_csv_success(admin_use_case):
 
 def test_export_leaderboard_csv_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError):
         admin_use_case.export_leaderboard_csv(uuid.uuid4(), "public")
-    assert exc.value.status_code == 404
 
 
 # ==========================================
@@ -208,9 +202,8 @@ def test_add_whitelist_by_identifiers_partial_not_found(admin_use_case):
 def test_add_whitelist_by_identifiers_challenge_not_found(admin_use_case):
     """Challenge không tồn tại → 404."""
     admin_use_case.challenge_repo.get_by_id.return_value = None
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError):
         admin_use_case.add_whitelist_by_identifiers(uuid.uuid4(), ["DTC001"])
-    assert exc.value.status_code == 404
 
 
 def test_add_whitelist_by_identifiers_not_competition(admin_use_case):
@@ -219,9 +212,8 @@ def test_add_whitelist_by_identifiers_not_competition(admin_use_case):
     challenge.type = ChallengeType.PUBLIC
     admin_use_case.challenge_repo.get_by_id.return_value = challenge
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ValueError):
         admin_use_case.add_whitelist_by_identifiers(uuid.uuid4(), ["DTC001"])
-    assert exc.value.status_code == 400
 
 
 def test_add_whitelist_by_identifiers_no_users_resolved(admin_use_case):
@@ -231,11 +223,10 @@ def test_add_whitelist_by_identifiers_no_users_resolved(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = challenge
     admin_use_case.user_repo.find_by_identifiers.return_value = []
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ValueError):
         admin_use_case.add_whitelist_by_identifiers(
             uuid.uuid4(), ["ghost_student_999"]
         )
-    assert exc.value.status_code == 422
 
 
 def test_add_whitelist_by_identifiers_with_uuid(admin_use_case):
