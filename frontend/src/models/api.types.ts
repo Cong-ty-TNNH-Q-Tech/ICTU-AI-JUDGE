@@ -297,6 +297,10 @@ export interface PaginatedResponse<T> extends PaginationMeta {
   items: T[];
 }
 
+export interface SolutionListResponse extends PaginatedResponse<Solution> {
+  is_locked: boolean;
+}
+
 /** GET /users/me/teams trả về paginated Team list */
 export type MyTeamsResponse = PaginatedResponse<TeamResponse>;
 

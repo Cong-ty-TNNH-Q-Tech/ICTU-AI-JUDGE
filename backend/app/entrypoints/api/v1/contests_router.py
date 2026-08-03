@@ -60,8 +60,8 @@ def get_contests(
     """
     # [SECURITY] Chi Admin moi duoc filter theo status tuy y
     # Student co JWT hop le van bi force PUBLISHED -- khong the enumerate DRAFT/ARCHIVED
-    if _is_admin(current_user) and status is not None:
-        effective_status = status.value
+    if _is_admin(current_user):
+        effective_status = status.value if status is not None else None
     else:
         effective_status = ContestStatus.PUBLISHED.value
 

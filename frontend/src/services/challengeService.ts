@@ -14,6 +14,7 @@ import type {
   Solution,
   LeaderboardResponse,
   ContestLeaderboardResponse,
+  SolutionListResponse,
 } from '../models/api.types';
 
 export const challengeService = {
@@ -170,8 +171,8 @@ export const challengeService = {
   /** Feature: Kernels / Solutions - Lấy danh sách giải pháp */
   async listSolutions(
     id: string,
-  ): Promise<PaginatedResponse<Solution>> {
-    const { data } = await apiClient.get<PaginatedResponse<Solution>>(
+  ): Promise<SolutionListResponse> {
+    const { data } = await apiClient.get<SolutionListResponse>(
       `/challenges/${id}/solutions`,
     );
     return data;
