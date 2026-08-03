@@ -16,6 +16,7 @@ def solution_use_case():
 
 def test_list_solutions_success(solution_use_case):
     challenge = MagicMock()
+    challenge.end_time = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
     solution_use_case._challenge_repo.get_by_id.return_value = challenge
     
     sol = SolutionEntity(
@@ -38,6 +39,17 @@ def test_list_solutions_success(solution_use_case):
     assert res.total == 1
     assert len(res.items) == 1
     assert res.items[0].notebook_url == "http://presigned"
+    assert res.is_locked == False
+
+def test_list_solutions_locked(solution_use_case):
+    challenge = MagicMock()
+    challenge.end_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    solution_use_case._challenge_repo.get_by_id.return_value = challenge
+    
+    res = solution_use_case.list_solutions(uuid.uuid4())
+    assert res.total == 0
+    assert len(res.items) == 0
+    assert res.is_locked == True
 
 def test_list_solutions_not_found(solution_use_case):
     solution_use_case._challenge_repo.get_by_id.return_value = None
@@ -47,6 +59,7 @@ def test_list_solutions_not_found(solution_use_case):
 def test_publish_solution_success(solution_use_case):
     challenge = MagicMock()
     challenge.status = ChallengeStatus.PUBLISHED
+    challenge.end_time = None
     solution_use_case._challenge_repo.get_by_id.return_value = challenge
     
     user = UserEntity(
@@ -72,9 +85,62 @@ def test_publish_solution_success(solution_use_case):
     solution_use_case._storage_repo.upload.assert_called_once()
     solution_use_case._solution_repo.save.assert_called_once()
 
+def test_publish_solution_locked(solution_use_case):
+    """Sinh viên thường (STUDENT) bị chặn khi solution đang bị khóa."""
+    challenge = MagicMock()
+    challenge.status = ChallengeStatus.PUBLISHED
+    challenge.end_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    solution_use_case._challenge_repo.get_by_id.return_value = challenge
+
+    user = UserEntity(
+        id=uuid.uuid4(),
+        email="student@test.com",
+        student_id="SV001",
+        full_name="Sinh Vien A",
+        role=UserRole.STUDENT,
+        password_hash="",
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+    )
+    with pytest.raises(ValueError, match="Mục giải pháp đang bị khóa"):
+        solution_use_case.publish_solution(user, uuid.uuid4(), "title", "content", b"bytes", "test.ipynb")
+
+
+def test_publish_solution_locked_admin_bypass(solution_use_case):
+    """Admin PHẢI bypass được khóa thời gian và publish thành công."""
+    challenge = MagicMock()
+    challenge.status = ChallengeStatus.PUBLISHED
+    # Challenge vẫn đang trong thời gian thi (chưa hết deadline)
+    challenge.end_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    solution_use_case._challenge_repo.get_by_id.return_value = challenge
+
+    admin_user = UserEntity(
+        id=uuid.uuid4(),
+        email="admin@test.com",
+        student_id="ADMIN001",
+        full_name="Admin",
+        role=UserRole.ADMIN,
+        password_hash="",
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now(),
+    )
+
+    solution_use_case._storage_repo.get_download_url.return_value = "http://presigned"
+
+    def mock_save(s):
+        return s
+    solution_use_case._solution_repo.save.side_effect = mock_save
+
+    # Admin không bị raise ValueError — publish thành công
+    res = solution_use_case.publish_solution(admin_user, uuid.uuid4(), "Admin title", "Admin content", b"bytes", "admin.ipynb")
+    assert res.title == "Admin title"
+    solution_use_case._storage_repo.upload.assert_called_once()
+    solution_use_case._solution_repo.save.assert_called_once()
+
 def test_publish_solution_invalid_file(solution_use_case):
     challenge = MagicMock()
     challenge.status = ChallengeStatus.PUBLISHED
+    challenge.end_time = None
     solution_use_case._challenge_repo.get_by_id.return_value = challenge
     
     user = MagicMock()

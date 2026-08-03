@@ -19,8 +19,11 @@ from app.domain.entities.entities import (
     MetricDirection,
     SolutionEntity,
     TagEntity,
+    UserRole,
+    PasswordResetEntity,
     ContestEntity,
 )
+from typing import Optional
 
 
 class IUnitOfWork(ABC):
@@ -34,24 +37,48 @@ class IUnitOfWork(ABC):
     def rollback(self) -> None: ...
 
 
+_SENTINEL = object()
+
+
 class IUserRepository(ABC):
     @abstractmethod
-    def get_by_id(self, user_id: uuid.UUID) -> UserEntity | None: ...
+    def get_by_id(self, user_id: uuid.UUID) -> Optional[UserEntity]:
+        ...
 
     @abstractmethod
-    def get_by_email(self, email: str) -> UserEntity | None: ...
+    def get_by_email(self, email: str) -> Optional[UserEntity]:
+        ...
 
     @abstractmethod
-    def save(self, user: UserEntity) -> UserEntity: ...
+    def save(self, user: UserEntity) -> UserEntity:
+        ...
+
 
     @abstractmethod
-    def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]: ...
+    def list_all(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
+        ...
+
+    @abstractmethod
+    def get_by_id_admin(self, user_id: uuid.UUID) -> UserEntity | None:
+        """Dành riêng cho Admin, không lọc user bị khóa (soft-delete)."""
+        ...
+
+    @abstractmethod
+    def list_all_admin(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
+        """Dành riêng cho Admin, không lọc user bị khóa, sort Active trước."""
+        ...
+
+    @abstractmethod
+    def update_password(self, user_id: uuid.UUID, new_password_hash: str) -> None:
+        """UC: Đổi mật khẩu hoặc đặt lại mật khẩu."""
+        ...
 
     @abstractmethod
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool: ...
 
     @abstractmethod
-    def update_role(self, user_id: uuid.UUID, role: str) -> bool: ...
+    def update_role(self, user_id: uuid.UUID, role: UserRole) -> bool:
+        ...
 
     @abstractmethod
     def update_profile(
@@ -59,7 +86,8 @@ class IUserRepository(ABC):
         user_id: uuid.UUID,
         github_url: str | None,
         linkedin_url: str | None,
-        avatar_url: str | None = ...,  # type: ignore[assignment]
+        avatar_url: str | None = _SENTINEL,  # type: ignore[assignment]
+        full_name: str | None = _SENTINEL,  # type: ignore[assignment]
     ) -> UserEntity | None:
         """
         Cập nhật thông tin profile (github_url, linkedin_url, avatar_url).
@@ -82,15 +110,7 @@ class IUserRepository(ABC):
         """Atomic update chỉ trường avatar_url — dùng sau khi upload thành công."""
         ...
 
-    @abstractmethod
-    def find_by_identifiers(self, identifiers: list[str]) -> list[UserEntity]:
-        """
-        Tra cứu users theo danh sách định danh linh hoạt.
-        Hỗ trợ: Email (có @), MSSV/student_id (không có @), hoặc UUID.
-        Bỏ qua các identifier không tìm thấy (không raise lỗi).
-        Returns list[UserEntity] — đã lọc trùng.
-        """
-        ...
+
 
 
 class IContestRepository(ABC):
@@ -149,7 +169,12 @@ class ITeamRepository(ABC):
     ) -> TeamEntity | None: ...
 
     @abstractmethod
-    def save(self, team: TeamEntity) -> TeamEntity: ...
+    def save(self, team: TeamEntity) -> TeamEntity:
+        pass
+
+    @abstractmethod
+    def update_name(self, team_id: uuid.UUID, new_name: str) -> TeamEntity | None:
+        pass
 
     @abstractmethod
     def has_submissions(self, team_id: uuid.UUID) -> bool: ...
@@ -378,3 +403,16 @@ class ITagRepository(ABC):
     @abstractmethod
     def list_all(self) -> list[TagEntity]: ...
 
+
+class IPasswordResetRepository(ABC):
+    @abstractmethod
+    def save(self, reset_entity: PasswordResetEntity) -> PasswordResetEntity: ...
+
+    @abstractmethod
+    def get_by_token(self, token: str) -> PasswordResetEntity | None: ...
+
+    @abstractmethod
+    def get_latest_by_user_id(self, user_id: uuid.UUID) -> PasswordResetEntity | None: ...
+
+    @abstractmethod
+    def mark_as_used(self, token_id: uuid.UUID) -> None: ...

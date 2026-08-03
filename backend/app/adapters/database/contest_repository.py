@@ -92,7 +92,7 @@ class SQLContestRepository(IContestRepository):
                 id=contest.id,
                 title=contest.title,
                 description=contest.description,
-                status=contest.status.value,
+                status=contest.status,
                 start_time=contest.start_time,
                 end_time=contest.end_time,
                 created_by=contest.created_by,
@@ -103,7 +103,7 @@ class SQLContestRepository(IContestRepository):
         else:
             model.title = contest.title
             model.description = contest.description
-            model.status = contest.status.value
+            model.status = contest.status
             model.start_time = contest.start_time
             model.end_time = contest.end_time
             model.deleted_at = contest.deleted_at

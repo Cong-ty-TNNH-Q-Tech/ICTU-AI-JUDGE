@@ -22,6 +22,13 @@ class RateLimitExceededError(DomainException):
         super().__init__(f"Vui lòng chờ {wait_minutes} phút nữa để nộp lần tiếp theo.")
 
 
+class PasswordResetRateLimitError(RateLimitExceededError):
+    """Yêu cầu đặt lại mật khẩu quá nhiều lần."""
+    def __init__(self, wait_minutes: int):
+        self.wait_minutes = wait_minutes
+        DomainException.__init__(self, f"Vui lòng chờ {wait_minutes} phút nữa để yêu cầu đặt lại mật khẩu lần tiếp theo.")
+
+
 class DuplicateSubmissionError(DomainException):
     """File CSV trùng MD5 Hash với lần nộp trước."""
     pass
@@ -82,4 +89,9 @@ class AuthenticationError(DomainException):
 
 class InvalidTokenError(DomainException):
     """Mã xác nhận hoặc token không hợp lệ hoặc đã hết hạn."""
+    pass
+
+
+class InvalidPasswordError(DomainException):
+    """Mật khẩu cũ không chính xác."""
     pass

@@ -23,6 +23,8 @@ from app.domain.exceptions.exceptions import (
     TeamFullError,
     TeamHasSubmissionsError,
     UserAlreadyInTeamError,
+    InvalidTokenError,
+    InvalidPasswordError,
 )
 
 # ---- Routers (sẽ được implement bởi từng thành viên) ----
@@ -104,6 +106,16 @@ async def file_size_handler(request: Request, exc: FileSizeExceededError):
         status_code=413,
         content={"detail": str(exc), "max_mb": exc.max_mb},
     )
+
+
+@app.exception_handler(InvalidTokenError)
+async def invalid_token_handler(request: Request, exc: InvalidTokenError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidPasswordError)
+async def invalid_password_handler(request: Request, exc: InvalidPasswordError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.exception_handler(SubmissionDeadlinePassedError)
