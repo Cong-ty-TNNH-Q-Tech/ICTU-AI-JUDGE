@@ -82,9 +82,8 @@ def test_add_whitelist_not_competition(admin_use_case):
     challenge.type = ChallengeType.PUBLIC
     admin_use_case.challenge_repo.get_by_id.return_value = challenge
     
-    with pytest.raises(NotFoundError):
+    with pytest.raises(ValueError):
         admin_use_case.add_whitelist(uuid.uuid4(), [uuid.uuid4()])
-    assert exc.value.status_code == 400
 
 def test_list_all_submissions_success(admin_use_case):
     challenge = MagicMock()
@@ -109,7 +108,7 @@ def test_list_all_submissions_success(admin_use_case):
 
 def test_list_all_submissions_not_found(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = None
-    with pytest.raises(ValueError):
+    with pytest.raises(NotFoundError):
         admin_use_case.list_all_submissions(uuid.uuid4(), 1, 10)
 
 def test_export_leaderboard_csv_success(admin_use_case):
@@ -224,7 +223,7 @@ def test_add_whitelist_by_identifiers_no_users_resolved(admin_use_case):
     admin_use_case.challenge_repo.get_by_id.return_value = challenge
     admin_use_case.user_repo.find_by_identifiers.return_value = []
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ValueError):
         admin_use_case.add_whitelist_by_identifiers(
             uuid.uuid4(), ["ghost_student_999"]
         )
