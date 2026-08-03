@@ -93,9 +93,9 @@ const ContestFormModal: React.FC<ContestFormProps> = ({ initial, onSave, onCance
 // ===================== Status Badge =====================
 const StatusBadge: React.FC<{ status: ContestStatus }> = ({ status }) => {
   const map: Record<ContestStatus, { label: string; cls: string }> = {
-    DRAFT: { label: 'Draft', cls: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' },
-    PUBLISHED: { label: 'Published', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' },
-    ARCHIVED: { label: 'Archived', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400' },
+    DRAFT: { label: 'Bản nháp', cls: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' },
+    PUBLISHED: { label: 'Đã phát hành', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    ARCHIVED: { label: 'Đã lưu trữ', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400' },
   };
   const { label, cls } = map[status] ?? map.DRAFT;
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>{label}</span>;
@@ -160,54 +160,58 @@ const ContestManagePage: React.FC = () => {
         </div>
       )}
       {/* Error banner -- hien thi khi fetch that bai */}
+      {/* Error banner -- hien thi khi fetch that bai */}
       {error && !isLoading && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-sm text-red-700 dark:text-red-400">
+        <div className="flex items-center gap-3 px-4 py-3 mb-6 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-sm text-red-700 dark:text-red-400">
           <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
           <span>{error}</span>
-          <button onClick={() => goToPage(page)} className="ml-auto text-xs font-semibold underline hover:no-underline">Thu lai</button>
+          <button onClick={() => goToPage(page)} className="ml-auto text-xs font-semibold underline hover:no-underline">Thử lại</button>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Quan ly Cuoc thi</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Tong cong {total} cuoc thi</p>
+      <div className="glass-panel overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-surface-200 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-content-primary dark:text-content-dark-primary tracking-tight">Tất cả cuộc thi</h2>
+            <p className="text-[13px] text-content-secondary dark:text-content-dark-secondary mt-1">{total} cuộc thi</p>
+          </div>
+          <button onClick={() => { setEditTarget(null); setShowForm(true); }} className="btn-primary rounded-xl px-4 py-2.5 shadow-lg shadow-primary-500/20 hover:-translate-y-0.5 hover:shadow-primary-500/30 transition-all">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Tạo cuộc thi mới
+          </button>
         </div>
-        <button onClick={() => { setEditTarget(null); setShowForm(true); }} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition-colors shadow-sm">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Tao cuoc thi
-        </button>
-      </div>
-      <div className="bg-white dark:bg-surface-dark rounded-2xl border border-surface-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        
+        {/* Table Body */}
         {isLoading ? (
           <div className="flex justify-center items-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" /></div>
         ) : contests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Chua co cuoc thi nao.</p>
-            <button onClick={() => { setEditTarget(null); setShowForm(true); }} className="mt-3 text-sm text-primary-600 dark:text-primary-400 font-semibold hover:underline">Tao cuoc thi dau tien</button>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Không tìm thấy cuộc thi nào.</p>
+            <button onClick={() => { setEditTarget(null); setShowForm(true); }} className="mt-3 text-sm text-primary-600 dark:text-primary-400 font-semibold hover:underline">Tạo cuộc thi đầu tiên</button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto p-4">
+            <table className="w-full text-sm border-separate border-spacing-y-2">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Ten cuoc thi</th>
-                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide hidden sm:table-cell">Trang thai</th>
-                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide hidden md:table-cell">Bat dau</th>
-                  <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide hidden md:table-cell">Ket thuc</th>
-                  <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Hanh dong</th>
+                <tr className="text-xs text-content-secondary dark:text-content-dark-secondary uppercase tracking-widest bg-transparent">
+                  <th className="text-left px-5 py-3 font-semibold">Tiêu đề</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">Trạng thái</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Bắt đầu</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Kết thúc</th>
+                  <th className="text-right px-5 py-3 font-semibold">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              <tbody>
                 {contests.map(contest => (
-                  <tr key={contest.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-5 py-4"><div className="font-semibold text-slate-900 dark:text-white line-clamp-1">{contest.title}</div></td>
+                  <tr key={contest.id} className="bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition-all duration-300 shadow-sm rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-[1px]">
+                    <td className="px-5 py-4 rounded-l-xl"><div className="font-semibold text-content-primary dark:text-content-dark-primary line-clamp-1">{contest.title}</div></td>
                     <td className="px-4 py-4 hidden sm:table-cell"><StatusBadge status={contest.status} /></td>
-                    <td className="px-4 py-4 hidden md:table-cell text-slate-500 dark:text-slate-400 text-xs">{new Date(contest.start_time).toLocaleDateString('vi-VN')}</td>
-                    <td className="px-4 py-4 hidden md:table-cell text-slate-500 dark:text-slate-400 text-xs">{contest.end_time ? new Date(contest.end_time).toLocaleDateString('vi-VN') : '\u2014'}</td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4 hidden md:table-cell text-content-secondary dark:text-content-dark-secondary text-xs">{new Date(contest.start_time).toLocaleDateString('vi-VN')}</td>
+                    <td className="px-4 py-4 hidden md:table-cell text-content-secondary dark:text-content-dark-secondary text-xs">{contest.end_time ? new Date(contest.end_time).toLocaleDateString('vi-VN') : '\u2014'}</td>
+                    <td className="px-5 py-4 rounded-r-xl">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => { setEditTarget(contest); setShowForm(true); }} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Sua</button>
-                        <button onClick={() => setDeleteTarget(contest)} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors">Xoa</button>
+                        <button onClick={() => { setEditTarget(contest); setShowForm(true); }} className="glass-btn px-3 py-1.5 text-xs font-semibold text-primary-600 dark:text-primary-400">Sửa</button>
+                        <button onClick={() => setDeleteTarget(contest)} className="glass-btn px-3 py-1.5 text-xs font-semibold text-red-500 hover:text-red-600 dark:hover:text-red-400">Xóa</button>
                       </div>
                     </td>
                   </tr>
@@ -216,23 +220,24 @@ const ContestManagePage: React.FC = () => {
             </table>
           </div>
         )}
-      </div>
-      {/* Windowed pagination — max 7 nut, khong overflow */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3">
-          <button onClick={() => goToPage(Math.max(1, page - 1))} disabled={page === 1} className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">Trang truoc</button>
-          <div className="flex items-center gap-1">
-            {pageWindow.map((p, idx) =>
-              p === '...'
-                ? <span key={`ellipsis-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-sm select-none">...</span>
-                : <button key={p} onClick={() => goToPage(p as number)} className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${page === p ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{p}</button>
-            )}
+        
+        {/* Windowed pagination */}
+        {!isLoading && totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-surface-200 dark:border-white/10 flex items-center justify-center gap-3">
+            <button onClick={() => goToPage(Math.max(1, page - 1))} disabled={page === 1} className="px-4 py-2 text-sm font-medium rounded-lg glass-btn disabled:opacity-40 shadow-sm">Trước</button>
+            <div className="flex items-center gap-1">
+              {pageWindow.map((p, idx) =>
+                p === '...'
+                  ? <span key={`ellipsis-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-sm select-none">...</span>
+                  : <button key={p} onClick={() => goToPage(p as number)} className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${page === p ? 'bg-primary-500 text-white shadow-sm' : 'glass-btn hover:bg-white/80 dark:hover:bg-white/20'}`}>{p}</button>
+              )}
+            </div>
+            <button onClick={() => goToPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-4 py-2 text-sm font-medium rounded-lg glass-btn disabled:opacity-40 shadow-sm">Sau</button>
           </div>
-          <button onClick={() => goToPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">Trang sau</button>
-        </div>
-      )}
+        )}
+      </div>
       {showForm && <ContestFormModal initial={editTarget} onSave={handleSave} onCancel={() => { setShowForm(false); setEditTarget(null); }} isSaving={isSaving} />}
-      {deleteTarget && <ConfirmModal title="Xoa cuoc thi?" message={`Ban co chac muon xoa "${deleteTarget.title}"?`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} isLoading={isDeleting} />}
+      {deleteTarget && <ConfirmModal title="Xóa cuộc thi?" message={`Bạn có chắc chắn muốn xóa "${deleteTarget.title}"?`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} isLoading={isDeleting} />}
     </div>
   );
 };
