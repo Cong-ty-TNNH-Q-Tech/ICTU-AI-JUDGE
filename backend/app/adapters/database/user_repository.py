@@ -98,6 +98,14 @@ class UserRepository(IUserRepository):
         models = self._session.execute(stmt).scalars().all()
         return [self._to_entity(m) for m in models], total
 
+    def update_password(self, user_id: uuid.UUID, password_hash: str) -> None:
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(password_hash=password_hash)
+        )
+        self._session.execute(stmt)
+
     def soft_delete(self, user_id: uuid.UUID) -> None:
         stmt = (
             update(UserModel)
@@ -106,6 +114,18 @@ class UserRepository(IUserRepository):
         )
         self._session.execute(stmt)
         self._session.commit()
+
+    def update_password(self, user_id: uuid.UUID, new_password_hash: str) -> None:
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(
+                password_hash=new_password_hash,
+                updated_at=func.now()
+            )
+        )
+        self._session.execute(stmt)
+        self._session.flush()
 
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
         """Kích hoạt / vô hiệu hóa tài khoản (Admin feature)."""

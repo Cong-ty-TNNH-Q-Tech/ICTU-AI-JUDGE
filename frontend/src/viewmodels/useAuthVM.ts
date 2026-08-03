@@ -4,7 +4,7 @@
  * Kết nối authService + useAuthStore.
  */
 import { useCallback, useState } from 'react';
-import { authService } from '../services/authService';
+import { authService, type LoginRequest } from '../services/authService';
 import { useAuthStore } from '../store';
 import { useToastStore } from '../store/toastStore';
 
@@ -53,12 +53,30 @@ export function useAuthVM() {
   }, [isAuthenticated, setUser]);
 
 
+  const login = useCallback(async (payload: LoginRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const userData = await authService.login(payload);
+      setUser(userData);
+      return userData;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Đăng nhập thất bại';
+      setError(message);
+      useToastStore.getState().showToast(message, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser]);
+
   return {
     user,
     isAuthenticated,
     loading,
     error,
     loginWithGoogle,
+    login,
     logout,
     initUser,
   };
