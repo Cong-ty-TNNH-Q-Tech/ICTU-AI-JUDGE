@@ -1,7 +1,7 @@
 """add dynamic sandbox config with default
 
 Revision ID: f2fbe3d4c86d
-Revises: c3d4e5f6a7b8
+Revises: password_resets_123
 Create Date: 2026-08-03 21:42:48.954381+07:00
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'f2fbe3d4c86d'
-down_revision: Union[str, None] = 'c3d4e5f6a7b8'
+down_revision: Union[str, None] = 'password_resets_123'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
