@@ -173,6 +173,8 @@ export interface Challenge {
   max_team_size: number;
   metric_name: string;
   metric_direction: MetricDirection;
+  environment_image: string;
+  require_gpu: boolean;
   dataset_url: string;
 }
 
@@ -261,6 +263,8 @@ export interface ChallengeCreateRequest {
   max_team_size?: number;
   metric_name: string;
   metric_direction: MetricDirection;
+  environment_image?: string;
+  require_gpu?: boolean;
   dataset_url?: string;
 }
 

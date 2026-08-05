@@ -1,4 +1,4 @@
-﻿"""
+"""
 SQLAlchemy ORM Models — Adapter/Database layer.
 Map trực tiếp đến các bảng PostgreSQL theo thiết kế ERD.
 """
@@ -124,6 +124,8 @@ class ChallengeModel(Base):
     custom_metric_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     dataset_url: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
     ground_truth_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    environment_image: Mapped[str] = mapped_column(String(255), nullable=False, default="ictu-ai-judge-sandbox:latest", server_default="ictu-ai-judge-sandbox:latest")
+    require_gpu: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
