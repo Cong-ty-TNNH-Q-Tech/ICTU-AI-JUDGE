@@ -70,6 +70,38 @@ export function useAuthVM() {
     }
   }, [setUser]);
 
+  const register = useCallback(async (payload: import('../models/api.types').RegisterRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await authService.register(payload);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Đăng ký thất bại';
+      setError(message);
+      useToastStore.getState().showToast(message, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const verifyOtp = useCallback(async (payload: import('../models/api.types').VerifyOTPRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const userData = await authService.verifyOtp(payload);
+      setUser(userData);
+      return userData;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Xác thực OTP thất bại';
+      setError(message);
+      useToastStore.getState().showToast(message, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser]);
+
   return {
     user,
     isAuthenticated,
@@ -79,5 +111,7 @@ export function useAuthVM() {
     login,
     logout,
     initUser,
+    register,
+    verifyOtp,
   };
 }
