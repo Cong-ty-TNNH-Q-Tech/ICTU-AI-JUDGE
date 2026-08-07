@@ -10,6 +10,7 @@ import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
 import LandingPage from './views/pages/LandingPage';
 import LoginPage from './views/pages/LoginPage';
+import RegisterPage from './views/pages/RegisterPage';
 import ForgotPasswordPage from './views/pages/ForgotPasswordPage';
 import ResetPasswordPage from './views/pages/ResetPasswordPage';
 import ChallengesPage from './views/pages/ChallengesPage';
@@ -85,6 +86,12 @@ function App() {
         <Route path="/login" element={
           <AuthLayout>
             <LoginPage />
+          </AuthLayout>
+        } />
+
+        <Route path="/register" element={
+          <AuthLayout>
+            <RegisterPage />
           </AuthLayout>
         } />
 
