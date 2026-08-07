@@ -39,9 +39,10 @@ from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
 from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
-from app.application.interfaces.clients import IGoogleAuthClient, IMailClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.adapters.clients.mail_client import SMTPMailClient
+from app.application.interfaces.clients import IGoogleAuthClient, IMailClient, ICacheClient
+from app.adapters.clients.redis_client import RedisCacheClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
 from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.application.use_cases.submission_use_case import SubmissionUseCase
@@ -283,10 +284,15 @@ def get_tag_use_case(
 def get_mail_client() -> IMailClient:
     return SMTPMailClient()
 
+def get_cache_client() -> ICacheClient:
+    return RedisCacheClient()
+
 def get_auth_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
     password_reset_repo: IPasswordResetRepository = Depends(get_password_reset_repository),
     google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+    mail_client: IMailClient = Depends(get_mail_client),
+    cache_client: ICacheClient = Depends(get_cache_client),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> AuthUseCase:
     """
@@ -298,6 +304,8 @@ def get_auth_use_case(
         user_repo=user_repo,
         google_client=google_client,
         password_reset_repo=password_reset_repo,
+        mail_client=mail_client,
+        cache_client=cache_client,
         uow=uow,
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
         frontend_url=settings.FRONTEND_URL,
