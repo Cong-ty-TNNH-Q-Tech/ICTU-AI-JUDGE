@@ -232,6 +232,20 @@ def test_update_contest_title(contest_use_case, dummy_contest):
 
 def test_update_contest_status(contest_use_case, dummy_contest):
     contest_use_case._contest_repo.get_by_id.return_value = dummy_contest
+    
+    # Mock get_challenges to return at least one PUBLISHED challenge
+    from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
+    import uuid
+    from datetime import datetime, timezone
+    mock_challenge = ChallengeEntity(
+        id=uuid.uuid4(), title="Mock", description="", type="PUBLIC", status=ChallengeStatus.PUBLISHED,
+        start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc),
+        rate_limit_minutes=0, max_file_size_mb=0, metric_name="Accuracy", metric_direction="HIGHER_IS_BETTER",
+        created_by=uuid.uuid4(), dataset_url="", ground_truth_url="", custom_metric_url="", max_team_size=1,
+        created_at=datetime.now(timezone.utc), tags=[]
+    )
+    contest_use_case._contest_repo.get_challenges.return_value = [mock_challenge]
+
     updated = ContestEntity(**{**dummy_contest.__dict__, "status": ContestStatus.PUBLISHED})
     contest_use_case._contest_repo.save.return_value = updated
 
