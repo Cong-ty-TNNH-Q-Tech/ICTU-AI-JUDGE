@@ -12,7 +12,7 @@ from app.application.dtos.challenge_dtos import (
     ChallengeResponseDTO,
     ChallengeUpdateRequestDTO,
 )
-from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository, IUnitOfWork
+from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository, IUnitOfWork, IContestRepository
 from app.application.utils.file_validation import validate_zip_format, validate_zip_contains_ground_truth_csv
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
 from app.application.dtos.tag_dtos import TagResponseDTO
@@ -26,6 +26,7 @@ class ChallengeUseCase:
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
         tag_repo: ITagRepository,
+        contest_repo: IContestRepository,
         uow: IUnitOfWork,
         zip_max_uncompressed_mb: int = 500,
         zip_max_file_count: int = 10000,
@@ -33,6 +34,7 @@ class ChallengeUseCase:
         self.challenge_repo = challenge_repo
         self.storage_repo = storage_repo
         self.tag_repo = tag_repo
+        self.contest_repo = contest_repo
         self.zip_max_uncompressed_mb = zip_max_uncompressed_mb
         self.zip_max_file_count = zip_max_file_count
         self.uow = uow
@@ -72,6 +74,16 @@ class ChallengeUseCase:
                 raise ValueError("Một số tags không tồn tại.")
             new_entity.tags = tags
 
+        if data.contest_id:
+            contest = self.contest_repo.get_by_id(data.contest_id)
+            if not contest:
+                raise ValueError("Contest không tồn tại.")
+            if new_entity.start_time < contest.start_time:
+                raise ValueError("Thời gian bắt đầu của Challenge không được trước thời gian bắt đầu của Contest.")
+            if contest.end_time:
+                if not new_entity.end_time or new_entity.end_time > contest.end_time:
+                    raise ValueError("Thời gian kết thúc của Challenge không được vượt quá thời gian kết thúc của Contest.")
+
         saved = self.challenge_repo.save(new_entity)
         self.uow.commit()
         return challenge_to_dto(saved, is_admin=True)
@@ -100,6 +112,16 @@ class ChallengeUseCase:
                 if len(tags) != len(data.tag_ids):
                     raise ValueError("Một số tags không tồn tại.")
                 challenge.tags = tags
+
+        if challenge.contest_id:
+            contest = self.contest_repo.get_by_id(challenge.contest_id)
+            if not contest:
+                raise ValueError("Contest không tồn tại.")
+            if challenge.start_time < contest.start_time:
+                raise ValueError("Thời gian bắt đầu của Challenge không được trước thời gian bắt đầu của Contest.")
+            if contest.end_time:
+                if not challenge.end_time or challenge.end_time > contest.end_time:
+                    raise ValueError("Thời gian kết thúc của Challenge không được vượt quá thời gian kết thúc của Contest.")
 
         updated = self.challenge_repo.update(challenge)
         self.uow.commit()

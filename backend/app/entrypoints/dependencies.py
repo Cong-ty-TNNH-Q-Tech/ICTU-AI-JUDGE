@@ -248,11 +248,12 @@ def get_challenge_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     tag_repo: ITagRepository = Depends(get_tag_repository),
+    contest_repo: IContestRepository = Depends(get_contest_repository),
     settings: Settings = Depends(get_settings_dep),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> ChallengeUseCase:
     return ChallengeUseCase(
-        challenge_repo, storage_repo, tag_repo, uow,
+        challenge_repo, storage_repo, tag_repo, contest_repo, uow,
         zip_max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
         zip_max_file_count=settings.ZIP_MAX_FILE_COUNT,
     )
