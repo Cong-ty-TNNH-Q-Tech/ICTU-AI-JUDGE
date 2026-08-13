@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuthVM } from '../../viewmodels/useAuthVM';
 import OTPVerificationModal from '../components/OTPVerificationModal';
+import { useToastStore } from '../../store/toastStore';
+import { useAuthVM } from '../../viewmodels/useAuthVM';
 
 const RegisterPage = () => {
   const { loading, register } = useAuthVM();
@@ -11,11 +12,16 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      useToastStore.getState().showToast("Mật khẩu xác nhận không khớp.", "error");
+      return;
+    }
     try {
       await register({
         email,
@@ -79,6 +85,19 @@ const RegisterPage = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Ít nhất 8 ký tự"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Xác nhận mật khẩu</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Nhập lại mật khẩu"
           />
         </div>
         

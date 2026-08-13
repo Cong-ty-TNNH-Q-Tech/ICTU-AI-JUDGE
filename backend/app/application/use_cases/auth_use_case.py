@@ -189,11 +189,11 @@ class AuthUseCase:
 
     def request_registration(self, email: str, password: str, full_name: str, student_id: str) -> None:
         if not email.endswith("@ictu.edu.vn"):
-            raise AuthenticationError("Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn.")
+            raise ValueError("Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn.")
             
         user = self._user_repo.get_by_email(email)
         if user:
-            raise AuthenticationError("Email này đã được đăng ký.")
+            raise ValueError("Email này đã được đăng ký.")
             
         # Generate 6-digit OTP
         otp = f"{random.randint(0, 999999):06d}"
