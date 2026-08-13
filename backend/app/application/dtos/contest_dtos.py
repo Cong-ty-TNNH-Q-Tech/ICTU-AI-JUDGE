@@ -31,6 +31,7 @@ class ContestResponseDTO(BaseModel):
     start_time: AwareDatetime
     end_time: Optional[AwareDatetime] = None
     created_at: AwareDatetime
+    updated_at: Optional[AwareDatetime] = None
     created_by: uuid.UUID
 
     model_config = {"from_attributes": True}

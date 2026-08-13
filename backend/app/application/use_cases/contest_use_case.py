@@ -40,6 +40,7 @@ class ContestUseCase:
             start_time=entity.start_time,
             end_time=entity.end_time,
             created_at=entity.created_at,
+            updated_at=entity.updated_at,
             created_by=entity.created_by,
         )
 
@@ -121,6 +122,7 @@ class ContestUseCase:
         if entity.end_time is not None and entity.end_time <= entity.start_time:
             raise ValueError("end_time phải sau start_time.")
 
+        entity.updated_at = datetime.now(timezone.utc)
         saved_entity = self._contest_repo.save(entity)
         self._uow.commit()
         logger.info("Contest updated: id=%s", contest_id)
