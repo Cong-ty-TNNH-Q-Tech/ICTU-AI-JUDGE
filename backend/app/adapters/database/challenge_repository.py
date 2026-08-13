@@ -3,7 +3,7 @@ Challenge Repository Adapter (SQLAlchemy).
 Implements IChallengeRepository.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -142,7 +142,7 @@ class SQLChallengeRepository(IChallengeRepository):
         self.db.execute(
             update(ChallengeModel)
             .where(ChallengeModel.id == challenge_id)
-            .values(deleted_at=datetime.utcnow())
+            .values(deleted_at=datetime.now(timezone.utc))
         )
         self.db.flush()
 

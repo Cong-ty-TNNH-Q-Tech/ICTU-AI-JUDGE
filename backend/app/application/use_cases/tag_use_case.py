@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.application.dtos.tag_dtos import TagCreateRequestDTO, TagUpdateRequestDTO, TagResponseDTO
 from app.application.interfaces.repositories import IUnitOfWork, ITagRepository
@@ -20,7 +20,7 @@ class TagUseCase:
             id=uuid.uuid4(),
             name=dto.name,
             color_hex=dto.color_hex,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         saved = self.tag_repo.save(entity)
         self.uow.commit()
