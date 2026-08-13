@@ -72,7 +72,8 @@ def dummy_challenge(now, admin_id):
 def contest_use_case():
     repo = MagicMock()
     uow = MagicMock()
-    return ContestUseCase(contest_repo=repo, uow=uow)
+    challenge_repo = MagicMock()
+    return ContestUseCase(contest_repo=repo, challenge_repo=challenge_repo, uow=uow)
 
 
 # ---------------------------------------------------------------------------
