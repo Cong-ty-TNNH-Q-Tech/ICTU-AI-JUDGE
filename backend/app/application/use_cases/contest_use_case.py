@@ -15,7 +15,7 @@ from app.application.dtos.contest_dtos import (
     ContestUpdateDTO,
 )
 from app.application.interfaces.repositories import IContestRepository, IChallengeRepository, IUnitOfWork
-from app.domain.entities.entities import ChallengeEntity, ContestEntity, ContestStatus
+from app.domain.entities.entities import ChallengeEntity, ContestEntity, ContestStatus, ChallengeStatus
 from app.domain.exceptions.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,13 @@ class ContestUseCase:
         if "description" in update_data:
             entity.description = update_data["description"]
         if "status" in update_data and update_data["status"] is not None:
-            entity.status = ContestStatus(update_data["status"])
+            new_status = ContestStatus(update_data["status"])
+            if new_status == ContestStatus.PUBLISHED and entity.status != ContestStatus.PUBLISHED:
+                challenges = self._contest_repo.get_challenges(contest_id)
+                published_challenges = [c for c in challenges if getattr(c, "status", None) == ChallengeStatus.PUBLISHED]
+                if not published_challenges:
+                    raise ValueError("Không thể publish Contest khi chưa có bài thi (Challenge) nào được PUBLISHED.")
+            entity.status = new_status
         if "start_time" in update_data:
             entity.start_time = update_data["start_time"]
         if "end_time" in update_data:
