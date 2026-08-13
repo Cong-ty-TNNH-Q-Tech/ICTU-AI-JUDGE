@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { AppError } from '../core/apiClient';
 import { challengeService } from '../services/challengeService';
 import { submissionService } from '../services/submissionService';
 import { useToastStore } from '../store/toastStore';
@@ -156,15 +156,15 @@ export function useSubmissionVM(challengeId: string) {
       setSubmitSuccess('Nộp bài thành công! Đang chờ chấm điểm...');
       await fetchSubmissions(false);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        if (err.response.status === 429) {
-          const waitMinutes = err.response.data?.wait_minutes || 1;
+      if (err instanceof AppError && err.status) {
+        if (err.status === 429) {
+          const waitMinutes = err.data?.wait_minutes || 1;
           setRateLimitCountdown(waitMinutes * 60);
           setSubmitError(`Vi phạm Rate Limit. Vui lòng thử lại sau.`);
-        } else if (err.response.status === 409) {
+        } else if (err.status === 409) {
           setSubmitError('File này đã được nộp trước đó. Vui lòng không nộp trùng lặp.');
         } else {
-          setSubmitError(err.response.data?.detail || err.message || 'Lỗi nộp bài');
+          setSubmitError(err.message || 'Lỗi nộp bài');
         }
       } else {
         setSubmitError(err instanceof Error ? err.message : 'Lỗi nộp bài');
