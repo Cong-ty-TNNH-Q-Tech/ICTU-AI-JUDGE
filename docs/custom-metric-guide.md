@@ -60,6 +60,9 @@ Admin upload `.zip` chứa dữ liệu chấm điểm (ảnh, text, audio...). F
 
 1. **`ground_truth.csv`**: CSV 3 cột — `filename`, `label`, `Usage`
 
+> [!IMPORTANT]
+> Với Ground Truth ZIP, file `ground_truth.csv` bên trong **bắt buộc** phải có cột `Usage` (giá trị `Public`/`Private`) vì hệ thống không tự generate như ở chế độ CSV Mode.
+
 | filename | label | Usage |
 |----------|-------|-------|
 | img_001.png | cat | Public |

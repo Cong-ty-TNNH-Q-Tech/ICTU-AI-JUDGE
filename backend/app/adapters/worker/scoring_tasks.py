@@ -148,8 +148,6 @@ def _run_sandbox(
     Container bị giới hạn RAM/CPU và chặn network.
     Tự động phát hiện zip (magic bytes) → giải nén thành thư mục riêng.
     """
-    from app.core.config import get_settings
-    settings = get_settings()
     client = docker.from_env()
 
     # ---- Phát hiện ZIP mode qua magic bytes ----
@@ -364,6 +362,20 @@ def _prepare_sandbox_files_zip(
 def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str, is_gt_zip: bool, is_sub_zip: bool) -> str:
     """Tạo wrapper script cho ZIP mode (thư mục giải nén)."""
     
+    gt_logic = """
+extract_safe('/tmp/ground_truth.zip', '/tmp/ground_truth')
+""" if is_gt_zip else """
+os.makedirs('/tmp/ground_truth', exist_ok=True)
+os.rename('/tmp/ground_truth.csv', '/tmp/ground_truth/ground_truth.csv')
+"""
+    
+    sub_logic = """
+extract_safe('/tmp/submission.zip', '/tmp/submission')
+""" if is_sub_zip else """
+os.makedirs('/tmp/submission', exist_ok=True)
+os.rename('/tmp/submission.csv', '/tmp/submission/submission.csv')
+"""
+
     # Python script logic để giải nén bên trong sandbox
     unzip_logic = f"""
 import os
@@ -371,23 +383,17 @@ import zipfile
 
 def extract_safe(zip_path, extract_to):
     if os.path.exists(zip_path):
+        abs_extract_to = os.path.realpath(os.path.abspath(extract_to))
         with zipfile.ZipFile(zip_path, 'r') as zf:
             for info in zf.infolist():
-                if info.is_dir() or '..' in info.filename or info.filename.startswith('/'):
+                if info.is_dir():
+                    continue
+                target_path = os.path.realpath(os.path.join(abs_extract_to, info.filename))
+                if not target_path.startswith(abs_extract_to + os.sep):
                     continue
                 zf.extract(info, extract_to)
-
-if {is_gt_zip}:
-    extract_safe('/tmp/ground_truth.zip', '/tmp/ground_truth')
-else:
-    os.makedirs('/tmp/ground_truth', exist_ok=True)
-    os.rename('/tmp/ground_truth.csv', '/tmp/ground_truth/ground_truth.csv')
-
-if {is_sub_zip}:
-    extract_safe('/tmp/submission.zip', '/tmp/submission')
-else:
-    os.makedirs('/tmp/submission', exist_ok=True)
-    os.rename('/tmp/submission.csv', '/tmp/submission/submission.csv')
+{gt_logic}
+{sub_logic}
 """
 
     if has_custom_metric:
@@ -405,37 +411,41 @@ import sys
 import math
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error
 
-gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
-sub_csv_path = '/tmp/submission/submission.csv'
-
-gt = pd.read_csv(gt_csv_path)
-sub = pd.read_csv(sub_csv_path)
-
-if 'Usage' in gt.columns:
-    gt_scoring = gt.drop(columns=['Usage'])
-else:
-    gt_scoring = gt
-
-label_col = gt_scoring.columns[-1]
-if label_col not in sub.columns:
-    print(f'Thiếu cột {{label_col}} trong bài nộp.')
+try:
+    gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
+    sub_csv_path = '/tmp/submission/submission.csv'
+    
+    gt = pd.read_csv(gt_csv_path)
+    sub = pd.read_csv(sub_csv_path)
+    
+    if 'Usage' in gt.columns:
+        gt_scoring = gt.drop(columns=['Usage'])
+    else:
+        gt_scoring = gt
+    
+    label_col = gt_scoring.columns[-1]
+    if label_col not in sub.columns:
+        print(f'Thiếu cột {{label_col}} trong bài nộp.')
+        sys.exit(1)
+    
+    y_true = gt_scoring[label_col]
+    y_pred = sub[label_col]
+    
+    metric_name = '{metric_name}'
+    if metric_name == 'ACCURACY':
+        score = accuracy_score(y_true, y_pred)
+    elif metric_name == 'F1_SCORE':
+        score = f1_score(y_true, y_pred, average='macro')
+    elif metric_name == 'RMSE':
+        score = math.sqrt(mean_squared_error(y_true, y_pred))
+    else:
+        print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
+        sys.exit(1)
+    
+    print(score)
+except Exception as e:
+    print(str(e))
     sys.exit(1)
-
-y_true = gt_scoring[label_col]
-y_pred = sub[label_col]
-
-metric_name = '{metric_name}'
-if metric_name == 'ACCURACY':
-    score = accuracy_score(y_true, y_pred)
-elif metric_name == 'F1_SCORE':
-    score = f1_score(y_true, y_pred, average='macro')
-elif metric_name == 'RMSE':
-    score = math.sqrt(mean_squared_error(y_true, y_pred))
-else:
-    print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
-    sys.exit(1)
-
-print(score)
 """
 
 
