@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store';
 import { useToastStore } from './store/toastStore';
@@ -8,22 +8,19 @@ import { ToastContainer } from './views/components/Toast';
 
 import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
-import LandingPage from './views/pages/LandingPage';
-import LoginPage from './views/pages/LoginPage';
-import RegisterPage from './views/pages/RegisterPage';
-import ForgotPasswordPage from './views/pages/ForgotPasswordPage';
-import ResetPasswordPage from './views/pages/ResetPasswordPage';
-import ChallengesPage from './views/pages/ChallengesPage';
-import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
-import ContestListPage from './views/pages/ContestListPage';
-import ContestDetailPage from './views/pages/ContestDetailPage';
-import AdminPage from './views/pages/AdminPage';
-// Issue #30 — Profile
-import ProfilePage from './views/pages/ProfilePage';
-
-// Team pages — từ nhánh main
-import TeamPage from './views/pages/TeamPage';
-import JoinTeamPage from './views/pages/JoinTeamPage';
+const LandingPage = React.lazy(() => import('./views/pages/LandingPage'));
+const LoginPage = React.lazy(() => import('./views/pages/LoginPage'));
+const RegisterPage = React.lazy(() => import('./views/pages/RegisterPage'));
+const ForgotPasswordPage = React.lazy(() => import('./views/pages/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('./views/pages/ResetPasswordPage'));
+const ChallengesPage = React.lazy(() => import('./views/pages/ChallengesPage'));
+const ChallengeDetailPage = React.lazy(() => import('./views/pages/ChallengeDetailPage'));
+const ContestListPage = React.lazy(() => import('./views/pages/ContestListPage'));
+const ContestDetailPage = React.lazy(() => import('./views/pages/ContestDetailPage'));
+const AdminPage = React.lazy(() => import('./views/pages/AdminPage'));
+const ProfilePage = React.lazy(() => import('./views/pages/ProfilePage'));
+const TeamPage = React.lazy(() => import('./views/pages/TeamPage'));
+const JoinTeamPage = React.lazy(() => import('./views/pages/JoinTeamPage'));
 
 // Route Guard
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -80,7 +77,8 @@ function App() {
   return (
     <ErrorBoundary>
       <ToastContainer />
-      <Routes>
+      <Suspense fallback={<div className="h-screen w-full flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div>}>
+        <Routes>
         <Route path="/" element={<LandingPage />} />
 
         <Route path="/login" element={
@@ -174,7 +172,8 @@ function App() {
         } />
 
         <Route path="*" element={<Navigate to="/challenges" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   );
 }
