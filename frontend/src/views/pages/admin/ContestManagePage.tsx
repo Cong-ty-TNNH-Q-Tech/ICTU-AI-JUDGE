@@ -265,6 +265,7 @@ const ContestManagePage: React.FC = () => {
         <ChallengeForm 
           defaultContestId={addChallengeContestId}
           onSubmit={async (data, file, script, ratio) => {
+            if (!file) throw new Error("File ground truth bị thiếu.");
             await createChallenge(data, file, script, ratio);
             setAddChallengeContestId(null);
             showToast('Đã thêm bài thi thành công.');
