@@ -1,46 +1,59 @@
 import pytest
 
-def run_r2_metric(y_true, y_pred):
+def run_recall_macro_metric(y_true, y_pred):
     """
-    Simulates the R2 Score calculation used in the docker container.
+    Simulates the Recall (macro) calculation used in the docker container.
     """
     if len(y_true) != len(y_pred):
         raise ValueError("Số lượng dòng không khớp.")
         
-    n = len(y_true)
-    mean_y = sum(y_true) / n
-    var_y = sum((y - mean_y)**2 for y in y_true) / n
+    classes = set(y_true)
+    recalls = []
     
-    if var_y == 0:
-        return 0.0
+    for c in classes:
+        tp = sum(1 for t, p in zip(y_true, y_pred) if t == c and p == c)
+        fn = sum(1 for t, p in zip(y_true, y_pred) if t == c and p != c)
         
-    ss_tot = sum((y - mean_y)**2 for y in y_true)
-    ss_res = sum((t - p)**2 for t, p in zip(y_true, y_pred))
-    
-    return 1 - (ss_res / ss_tot)
+        if tp + fn == 0:
+            recalls.append(0.0) # zero_division=0
+        else:
+            recalls.append(tp / (tp + fn))
+            
+    return sum(recalls) / len(classes)
 
-def test_r2_metric_logic():
+def test_recall_metric_logic():
     # Ground truth and predictions
-    y_true = [3.0, -0.5, 2.0, 7.0]
-    y_pred = [2.5, 0.0, 2.0, 8.0]
+    y_true = [0, 1, 2, 0, 1, 2]
+    y_pred = [0, 2, 1, 0, 0, 1]
     
-    actual_r2 = run_r2_metric(y_true, y_pred)
+    # Classes: 0, 1, 2
+    # For class 0: 
+    # TP: 2 (indices 0, 3)
+    # FN: 0
+    # R_0 = 2 / 2 = 1.0
     
-    # ss_tot: mean = 11.5 / 4 = 2.875
-    # (3-2.875)^2 + (-0.5-2.875)^2 + (2-2.875)^2 + (7-2.875)^2
-    # 0.015625 + 11.390625 + 0.765625 + 17.015625 = 29.1875
+    # For class 1:
+    # TP: 0
+    # FN: 2 (indices 1, 4)
+    # R_1 = 0 / 2 = 0.0
     
-    # ss_res: (3-2.5)^2 + (-0.5-0)^2 + (2-2)^2 + (7-8)^2 
-    # 0.25 + 0.25 + 0 + 1 = 1.5
+    # For class 2:
+    # TP: 0
+    # FN: 2 (indices 2, 5)
+    # R_2 = 0 / 2 = 0.0
     
-    # R2 = 1 - 1.5/29.1875 = 0.948608137...
-    expected_r2 = 1 - (1.5 / 29.1875)
+    # Macro Recall = (1.0 + 0.0 + 0.0) / 3 = 1/3 = 0.3333333333333333
+    actual_recall = run_recall_macro_metric(y_true, y_pred)
+    expected_recall = 1 / 3
     
-    assert abs(actual_r2 - expected_r2) < 1e-7
+    assert abs(actual_recall - expected_recall) < 1e-7
 
-def test_r2_metric_zero_variance():
-    # True values are all the same -> Variance = 0
-    # Expected behavior according to logic: return 0.0
-    y_true = [5.0, 5.0, 5.0]
-    y_pred = [5.0, 6.0, 4.0]
-    assert run_r2_metric(y_true, y_pred) == 0.0
+def test_recall_metric_zero_division():
+    y_true = [0, 0]
+    y_pred = [0, 1]
+    
+    # In this case, y_true only has class 0.
+    # Class 0: TP=1, FN=1 -> Recall = 0.5
+    # Macro = 0.5 (since only 1 class exists in y_true)
+    actual_recall = run_recall_macro_metric(y_true, y_pred)
+    assert actual_recall == 0.5

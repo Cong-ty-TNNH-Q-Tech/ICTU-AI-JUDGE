@@ -29,8 +29,9 @@ const SubmitFileZone: React.FC<SubmitFileZoneProps> = ({
   const handleFile = (file: File) => {
     setLocalError(null);
     onClearErrors();
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setLocalError('Chỉ chấp nhận file định dạng .csv');
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith('.csv') && !ext.endsWith('.zip')) {
+      setLocalError('Chỉ chấp nhận file định dạng .csv hoặc .zip');
       setSelectedFile(null);
       return;
     }
@@ -110,7 +111,7 @@ const SubmitFileZone: React.FC<SubmitFileZoneProps> = ({
       {/* Upload card */}
       <div className="bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
         <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Nộp kết quả dự đoán</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Upload file .csv chứa kết quả dự đoán của bạn</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Upload file .csv hoặc .zip chứa kết quả dự đoán của bạn</p>
 
         {/* Dropzone */}
         <div
@@ -137,12 +138,12 @@ const SubmitFileZone: React.FC<SubmitFileZoneProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                 </svg>
               </div>
-              <p className="text-slate-700 dark:text-slate-300 font-semibold mb-1">Kéo thả file .csv vào đây</p>
+              <p className="text-slate-700 dark:text-slate-300 font-semibold mb-1">Kéo thả file .csv hoặc .zip vào đây</p>
               <p className="text-slate-400 dark:text-slate-500 text-sm mb-4">hoặc click để chọn file</p>
               <input
                 type="file"
                 className="hidden"
-                accept=".csv"
+                accept=".csv,.zip"
                 onChange={handleFileChange}
                 ref={fileInputRef}
               />

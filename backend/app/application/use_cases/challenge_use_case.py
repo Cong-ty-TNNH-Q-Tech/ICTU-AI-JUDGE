@@ -5,13 +5,15 @@ import uuid
 import random
 from datetime import datetime, timezone
 
+from app.application.utils.mappers import challenge_to_dto
 from app.application.dtos.challenge_dtos import (
     ChallengeCreateRequestDTO,
     ChallengeListResponseDTO,
     ChallengeResponseDTO,
     ChallengeUpdateRequestDTO,
 )
-from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository
+from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository, IUnitOfWork
+from app.application.utils.file_validation import validate_zip_format, validate_zip_contains_ground_truth_csv
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
 from app.application.dtos.tag_dtos import TagResponseDTO
 
@@ -24,36 +26,12 @@ class ChallengeUseCase:
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
         tag_repo: ITagRepository,
+        uow: IUnitOfWork,
     ):
         self.challenge_repo = challenge_repo
         self.storage_repo = storage_repo
         self.tag_repo = tag_repo
-
-    def _to_dto(
-        self, entity: ChallengeEntity, is_admin: bool = False
-    ) -> ChallengeResponseDTO:
-        dto = ChallengeResponseDTO(
-            id=entity.id,
-            title=entity.title,
-            description=entity.description,
-            type=entity.type,
-            status=entity.status,
-            start_time=entity.start_time,
-            end_time=entity.end_time,
-            rate_limit_minutes=entity.rate_limit_minutes,
-            max_file_size_mb=entity.max_file_size_mb,
-            metric_name=entity.metric_name,
-            metric_direction=entity.metric_direction,
-            created_by=entity.created_by,
-            created_at=entity.created_at,
-            dataset_url=entity.dataset_url,
-            team_lock_deadline=entity.team_lock_deadline,
-            max_team_size=entity.max_team_size,
-            ground_truth_url=entity.ground_truth_url if is_admin else None,
-            custom_metric_url=entity.custom_metric_url if is_admin else None,
-            tags=[TagResponseDTO.model_validate(t) for t in entity.tags]
-        )
-        return dto
+        self.uow = uow
 
     def create_challenge(
         self, admin_id: uuid.UUID, data: ChallengeCreateRequestDTO
@@ -77,6 +55,10 @@ class ChallengeUseCase:
             team_lock_deadline=data.team_lock_deadline,
             max_team_size=data.max_team_size,
             created_at=datetime.now(timezone.utc),
+            contest_id=data.contest_id,
+            parent_id=data.parent_id,
+            environment_image=data.environment_image,
+            require_gpu=data.require_gpu,
             tags=[]
         )
         
@@ -87,7 +69,8 @@ class ChallengeUseCase:
             new_entity.tags = tags
 
         saved = self.challenge_repo.save(new_entity)
-        return self._to_dto(saved, is_admin=True)
+        self.uow.commit()
+        return challenge_to_dto(saved, is_admin=True)
 
     def update_challenge(
         self, challenge_id: uuid.UUID, data: ChallengeUpdateRequestDTO
@@ -115,7 +98,8 @@ class ChallengeUseCase:
                 challenge.tags = tags
 
         updated = self.challenge_repo.update(challenge)
-        return self._to_dto(updated, is_admin=True)
+        self.uow.commit()
+        return challenge_to_dto(updated, is_admin=True)
 
     def get_challenge(
         self, challenge_id: uuid.UUID, is_admin: bool = False
@@ -127,7 +111,7 @@ class ChallengeUseCase:
         if not is_admin and challenge.status != ChallengeStatus.PUBLISHED:
             raise ValueError("Bài thi không tồn tại.")
 
-        return self._to_dto(challenge, is_admin=is_admin)
+        return challenge_to_dto(challenge, is_admin=is_admin)
 
     def list_challenges(
         self, page: int, size: int, status_filter: str | None = None, is_admin: bool = False, tag_id: uuid.UUID | None = None
@@ -138,7 +122,7 @@ class ChallengeUseCase:
         entities, total = self.challenge_repo.list_all(
             page=page, size=size, status_filter=status_filter, tag_id=tag_id
         )
-        dtos = [self._to_dto(c, is_admin=is_admin) for c in entities]
+        dtos = [challenge_to_dto(c, is_admin=is_admin) for c in entities]
         return ChallengeListResponseDTO(items=dtos, total=total, page=page, size=size)
 
     def delete_challenge(self, challenge_id: uuid.UUID) -> None:
@@ -148,7 +132,8 @@ class ChallengeUseCase:
         self,
         challenge_id: uuid.UUID,
         ground_truth_bytes: bytes,
-        metric_script_bytes: bytes | None,
+        ground_truth_filename: str = "ground_truth.csv",
+        metric_script_bytes: bytes | None = None,
         public_test_split_ratio: int = 30,
     ) -> ChallengeResponseDTO:
         challenge = self.challenge_repo.get_by_id(challenge_id)
@@ -158,44 +143,58 @@ class ChallengeUseCase:
         if self.challenge_repo.has_successful_submission(challenge_id):
             raise ValueError("Không thể đổi file chấm điểm do đã có người nộp thành công.")
 
-        # Validate ground_truth_bytes has 'Usage' column, if not, generate it
-        try:
-            content = ground_truth_bytes.decode("utf-8")
-            reader = csv.reader(io.StringIO(content))
-            rows = list(reader)
-            
-            if not rows:
-                raise ValueError("File CSV rỗng.")
-                
-            headers = rows[0]
-            if "Usage" not in headers:
-                headers.append("Usage")
-                data_rows = rows[1:]
-                
-                n_total = len(data_rows)
-                n_public = int(n_total * (public_test_split_ratio / 100))
-                n_private = n_total - n_public
-                
-                usages = ["Public"] * n_public + ["Private"] * n_private
-                random.shuffle(usages)
-                
-                for row, usage in zip(data_rows, usages):
-                    row.append(usage)
-                    
-                out_stream = io.StringIO()
-                writer = csv.writer(out_stream)
-                writer.writerow(headers)
-                writer.writerows(data_rows)
-                ground_truth_bytes = out_stream.getvalue().encode("utf-8")
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            raise ValueError(f"Không thể đọc file CSV: {e}")
+        is_zip = ground_truth_filename.lower().endswith(".zip")
 
-        # Upload Ground Truth
-        gt_key = f"challenges/{challenge_id}/ground_truth.csv"
-        self.storage_repo.upload(key=gt_key, data=ground_truth_bytes)
-        challenge.ground_truth_url = gt_key
+        if is_zip:
+            # [SECURITY] Validate zip bomb + path traversal
+            validate_zip_format(ground_truth_bytes, ground_truth_filename)
+            # [REQUIRED] Zip must contain ground_truth.csv for Public/Private split
+            validate_zip_contains_ground_truth_csv(ground_truth_bytes)
+            # Upload nguyên zip lên S3
+            gt_key = f"challenges/{challenge_id}/ground_truth.zip"
+            self.storage_repo.upload(
+                key=gt_key, data=ground_truth_bytes, content_type="application/zip"
+            )
+            challenge.ground_truth_url = gt_key
+        else:
+            # Validate ground_truth_bytes has 'Usage' column, if not, generate it
+            try:
+                content = ground_truth_bytes.decode("utf-8")
+                reader = csv.reader(io.StringIO(content))
+                rows = list(reader)
+
+                if not rows:
+                    raise ValueError("File CSV rỗng.")
+
+                headers = rows[0]
+                if "Usage" not in headers:
+                    headers.append("Usage")
+                    data_rows = rows[1:]
+
+                    n_total = len(data_rows)
+                    n_public = int(n_total * (public_test_split_ratio / 100))
+                    n_private = n_total - n_public
+
+                    usages = ["Public"] * n_public + ["Private"] * n_private
+                    random.shuffle(usages)
+
+                    for row, usage in zip(data_rows, usages):
+                        row.append(usage)
+
+                    out_stream = io.StringIO()
+                    writer = csv.writer(out_stream)
+                    writer.writerow(headers)
+                    writer.writerows(data_rows)
+                    ground_truth_bytes = out_stream.getvalue().encode("utf-8")
+            except ValueError as e:
+                raise e
+            except Exception as e:
+                raise ValueError(f"Không thể đọc file CSV: {e}")
+
+            # Upload Ground Truth CSV
+            gt_key = f"challenges/{challenge_id}/ground_truth.csv"
+            self.storage_repo.upload(key=gt_key, data=ground_truth_bytes)
+            challenge.ground_truth_url = gt_key
 
         # Upload Metric Script if provided
         if metric_script_bytes:
@@ -206,4 +205,5 @@ class ChallengeUseCase:
             challenge.custom_metric_url = metric_key
 
         updated = self.challenge_repo.update(challenge)
-        return self._to_dto(updated, is_admin=True)
+        self.uow.commit()
+        return challenge_to_dto(updated, is_admin=True)

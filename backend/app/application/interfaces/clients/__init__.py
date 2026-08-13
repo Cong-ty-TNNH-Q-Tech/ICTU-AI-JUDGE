@@ -12,3 +12,12 @@ class IGoogleAuthClient(ABC):
         Raises AuthenticationError if token is invalid.
         """
         ...
+
+
+class IMailClient(ABC):
+    @abstractmethod
+    def send_email(self, to_email: str, subject: str, html_content: str) -> None:
+        """
+        Gửi email qua SMTP.
+        """
+        ...
