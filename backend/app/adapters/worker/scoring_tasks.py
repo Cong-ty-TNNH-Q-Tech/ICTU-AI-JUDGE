@@ -225,7 +225,7 @@ import pandas as pd
 import sys
 import os
 import math
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score, precision_score
 
 try:
     if not os.path.exists('/tmp/submission.csv'):
@@ -264,6 +264,11 @@ try:
         from sklearn.metrics import f1_score
         score = f1_score(y_true, y_pred, average='macro')
     elif metric_name == 'RMSE':
+<<<<<<< HEAD
+        score = math.sqrt(mean_squared_error(y_true, y_pred))
+    elif metric_name == 'PRECISION':
+        score = precision_score(y_true, y_pred, average='macro', zero_division=0)
+=======
         from sklearn.metrics import mean_squared_error
         try:
             y_t = [float(x) for x in y_true]
@@ -517,6 +522,9 @@ try:
         score = math.sqrt(mean_squared_error(
             [float(x) for x in y_true], [float(x) for x in y_pred]
         ))
+    elif metric_name == 'PRECISION':
+        from sklearn.metrics import precision_score
+        score = precision_score(y_true, y_pred, average='macro', zero_division=0)
     elif metric_name == 'RECALL':
         score = recall_score(y_true, y_pred, average='macro', zero_division=0)
     # ---- NLP Metrics ----

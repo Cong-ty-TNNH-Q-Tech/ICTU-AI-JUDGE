@@ -326,6 +326,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                       <option value="ACCURACY">Accuracy (Hố trợ cao hơn)</option>
                       <option value="F1_SCORE">F1 Score — Macro (Hố trợ cao hơn)</option>
                       <option value="RMSE">RMSE — Root Mean Squared Error (Thấp hơn)</option>
+                      <option value="PRECISION">Precision (Hố trợ cao hơn)</option>
                       <option value="RECALL">Recall — Macro (Hố trợ cao hơn)</option>
                     </optgroup>
                     <optgroup label="NLP">
