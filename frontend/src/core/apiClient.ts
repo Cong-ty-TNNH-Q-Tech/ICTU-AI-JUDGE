@@ -10,7 +10,7 @@ import type { ApiError } from '../models/api.types';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 export class AppError extends Error {
-  constructor(message: string, public status?: number, public data?: any) {
+  constructor(message: string, public status?: number, public data?: unknown) {
     super(message);
     this.name = 'AppError';
   }
