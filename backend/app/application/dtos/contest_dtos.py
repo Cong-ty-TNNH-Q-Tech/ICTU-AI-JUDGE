@@ -33,6 +33,7 @@ class ContestResponseDTO(BaseModel):
     created_at: AwareDatetime
     updated_at: Optional[AwareDatetime] = None
     created_by: uuid.UUID
+    challenge_count: int = 0
 
     model_config = {"from_attributes": True}
 

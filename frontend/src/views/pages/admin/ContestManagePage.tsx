@@ -7,8 +7,10 @@
  */
 import React, { useState } from 'react';
 import { useContestManageVM } from '../../../viewmodels/useContestVM';
+import { useAdminChallengesVM } from '../../../viewmodels/useAdminVM';
 import { buildPageWindow } from '../../../utils/pagination';
-import type { Contest, ContestCreateRequest, ContestUpdateRequest, ContestStatus } from '../../../models/api.types';
+import type { Contest, ContestCreateRequest, ContestUpdateRequest, ContestStatus, ChallengeCreateRequest } from '../../../models/api.types';
+import ChallengeForm from '../../components/admin/ChallengeForm';
 
 const STATUS_OPTIONS: ContestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
 
@@ -123,9 +125,12 @@ const ContestManagePage: React.FC = () => {
     createContest, updateContest, deleteContest, goToPage,
   } = useContestManageVM();
 
+  const { createChallenge } = useAdminChallengesVM({ page: 1, size: 1 });
+
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Contest | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Contest | null>(null);
+  const [addChallengeContestId, setAddChallengeContestId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -218,12 +223,16 @@ const ContestManagePage: React.FC = () => {
               <tbody>
                 {contests.map(contest => (
                   <tr key={contest.id} className="bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition-all duration-300 shadow-sm rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-[1px]">
-                    <td className="px-5 py-4 rounded-l-xl"><div className="font-semibold text-content-primary dark:text-content-dark-primary line-clamp-1">{contest.title}</div></td>
+                    <td className="px-5 py-4 rounded-l-xl">
+                      <div className="font-semibold text-content-primary dark:text-content-dark-primary line-clamp-1">{contest.title}</div>
+                      <div className="text-xs text-content-secondary mt-0.5">{contest.challenge_count} bài thi</div>
+                    </td>
                     <td className="px-4 py-4 hidden sm:table-cell"><StatusBadge status={contest.status} /></td>
                     <td className="px-4 py-4 hidden md:table-cell text-content-secondary dark:text-content-dark-secondary text-xs">{new Date(contest.start_time).toLocaleDateString('vi-VN')}</td>
                     <td className="px-4 py-4 hidden md:table-cell text-content-secondary dark:text-content-dark-secondary text-xs">{contest.end_time ? new Date(contest.end_time).toLocaleDateString('vi-VN') : '\u2014'}</td>
                     <td className="px-5 py-4 rounded-r-xl">
                       <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => setAddChallengeContestId(contest.id)} className="glass-btn px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Thêm bài thi</button>
                         <button onClick={() => { setEditTarget(contest); setShowForm(true); }} className="glass-btn px-3 py-1.5 text-xs font-semibold text-primary-600 dark:text-primary-400">Sửa</button>
                         <button onClick={() => setDeleteTarget(contest)} className="glass-btn px-3 py-1.5 text-xs font-semibold text-red-500 hover:text-red-600 dark:hover:text-red-400">Xóa</button>
                       </div>
@@ -252,6 +261,17 @@ const ContestManagePage: React.FC = () => {
       </div>
       {showForm && <ContestFormModal initial={editTarget} onSave={handleSave} onCancel={() => { setShowForm(false); setEditTarget(null); }} isSaving={isSaving} />}
       {deleteTarget && <ConfirmModal title="Xóa cuộc thi?" message={`Bạn có chắc chắn muốn xóa "${deleteTarget.title}"?`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} isLoading={isDeleting} />}
+      {addChallengeContestId && (
+        <ChallengeForm 
+          defaultContestId={addChallengeContestId}
+          onSubmit={async (data, file, script, ratio) => {
+            await createChallenge(data, file, script, ratio);
+            setAddChallengeContestId(null);
+            showToast('Đã thêm bài thi thành công.');
+          }}
+          onCancel={() => setAddChallengeContestId(null)}
+        />
+      )}
     </div>
   );
 };

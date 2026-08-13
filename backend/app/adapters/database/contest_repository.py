@@ -25,7 +25,7 @@ class SQLContestRepository(IContestRepository):
         self.db = db_session
 
     @staticmethod
-    def _to_entity(model: ContestModel) -> ContestEntity:
+    def _to_entity(model: ContestModel, challenge_count: int = 0) -> ContestEntity:
         return ContestEntity(
             id=model.id,
             title=model.title,
@@ -36,6 +36,7 @@ class SQLContestRepository(IContestRepository):
             created_by=model.created_by,
             created_at=model.created_at,
             deleted_at=model.deleted_at,
+            challenge_count=challenge_count,
         )
 
     @staticmethod
@@ -63,27 +64,42 @@ class SQLContestRepository(IContestRepository):
             deleted_at=model.deleted_at,
         )
 
+    def _get_count_subquery(self):
+        return (
+            select(func.count(ChallengeModel.id))
+            .where(ChallengeModel.contest_id == ContestModel.id)
+            .where(ChallengeModel.deleted_at.is_(None))
+            .scalar_subquery()
+        )
+
     def get_by_id(self, contest_id: uuid.UUID) -> ContestEntity | None:
         stmt = (
-            select(ContestModel)
+            select(ContestModel, self._get_count_subquery().label("challenge_count"))
             .where(ContestModel.id == contest_id)
             .where(ContestModel.deleted_at.is_(None))
         )
-        model = self.db.scalars(stmt).first()
-        return self._to_entity(model) if model else None
+        row = self.db.execute(stmt).first()
+        return self._to_entity(row[0], row[1]) if row else None
 
     def get_list(self, page: int, size: int, status: str | None = None) -> tuple[list[ContestEntity], int]:
-        stmt = select(ContestModel).where(ContestModel.deleted_at.is_(None))
+        base_stmt = select(ContestModel).where(ContestModel.deleted_at.is_(None))
         if status:
-            stmt = stmt.where(ContestModel.status == status)
+            base_stmt = base_stmt.where(ContestModel.status == status)
 
-        count_stmt = select(func.count()).select_from(stmt.subquery())
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
         total = self.db.scalars(count_stmt).one()
 
+        stmt = (
+            select(ContestModel, self._get_count_subquery().label("challenge_count"))
+            .where(ContestModel.deleted_at.is_(None))
+        )
+        if status:
+            stmt = stmt.where(ContestModel.status == status)
+            
         stmt = stmt.order_by(ContestModel.created_at.desc()).offset((page - 1) * size).limit(size)
-        models = self.db.scalars(stmt).all()
+        rows = self.db.execute(stmt).all()
 
-        return [self._to_entity(m) for m in models], total
+        return [self._to_entity(r[0], r[1]) for r in rows], total
 
     def save(self, contest: ContestEntity) -> ContestEntity:
         model = self.db.get(ContestModel, contest.id)
