@@ -139,12 +139,10 @@ class ContestUseCase:
         entity = self._contest_repo.get_by_id(contest_id)
         if not entity:
             raise NotFoundError(f"Contest {contest_id} không tồn tại.")
-        self._contest_repo.delete(contest_id)
         
-        # Cascade soft-delete cho các challenge con
-        challenges = self._contest_repo.get_challenges(contest_id)
-        for c in challenges:
-            self._challenge_repo.soft_delete(c.id)
-            
+        # Cascade unlink cho các challenge con
+        self._contest_repo.unlink_challenges(contest_id)
+        
+        self._contest_repo.delete(contest_id)
         self._uow.commit()
-        logger.info("Contest soft-deleted with %d child challenges: id=%s", len(challenges), contest_id)
+        logger.info("Contest soft-deleted and challenges unlinked: id=%s", contest_id)
