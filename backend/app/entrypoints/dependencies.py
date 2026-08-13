@@ -34,7 +34,7 @@ from app.adapters.database.team_repository import SQLTeamRepository
 from app.adapters.database.tag_repository import SQLTagRepository
 from app.adapters.database.leaderboard_repository import SQLLeaderboardRepository
 from app.adapters.database.contest_repository import SQLContestRepository
-from app.core.database import SQLUnitOfWork
+from app.adapters.database.uow import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
 from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
