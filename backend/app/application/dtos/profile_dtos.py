@@ -24,8 +24,21 @@ class UserProfileDTO(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     """Body PATCH /users/me/profile."""
+    full_name: Optional[str] = None
     github_url: Optional[str] = None
     linkedin_url: Optional[str] = None
+
+    @field_validator('full_name', mode='before')
+    @classmethod
+    def validate_full_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None  # Cho phép omitted (để xử lý ở Use Case bằng model_fields_set)
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError('Họ và tên không được để trống')
+        if len(stripped) > 100:
+            raise ValueError('Họ và tên không được vượt quá 100 ký tự')
+        return stripped
 
     @field_validator("github_url", "linkedin_url", mode="before")
     @classmethod

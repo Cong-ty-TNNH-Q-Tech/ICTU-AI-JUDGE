@@ -40,6 +40,79 @@ paths:
         '401':
           description: Token không hợp lệ hoặc email không thuộc @ictu.edu.vn
 
+  /auth/login:
+    post:
+      summary: Đăng nhập bằng Email & Mật khẩu
+      tags:
+        - Auth
+      description: Gửi Email và Mật khẩu để đổi lấy JWT HttpOnly Cookie. Trả về thông tin User.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Đăng nhập thành công (Cookie được set ngầm).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Thông tin đăng nhập không hợp lệ
+
+  /auth/forgot-password:
+    post:
+      summary: Quên mật khẩu
+      tags:
+        - Auth
+      description: Gửi yêu cầu cấp lại mật khẩu. Hệ thống sẽ gửi email chứa link reset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Yêu cầu được chấp nhận. Hệ thống luôn trả về 200 để tránh rò rỉ email.
+        '429':
+          description: Quá nhiều yêu cầu, vui lòng thử lại sau.
+
+  /auth/reset-password:
+    post:
+      summary: Đặt lại mật khẩu
+      tags:
+        - Auth
+      description: Nhập token và mật khẩu mới để đặt lại mật khẩu.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công.
+        '400':
+          description: Token không hợp lệ hoặc đã hết hạn.
+
   /auth/logout:
     post:
       summary: Đăng xuất
@@ -62,6 +135,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Chưa đăng nhập.
+
+  /users/me/password:
+    patch:
+      summary: Đổi mật khẩu
+      tags:
+        - Users
+      description: Đổi mật khẩu của người dùng hiện tại. Yêu cầu mật khẩu cũ (nếu có).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                old_password:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công.
+        '400':
+          description: Mật khẩu cũ không chính xác.
         '401':
           description: Chưa đăng nhập.
 
@@ -343,6 +441,48 @@ paths:
   # ==========================================
   # TEAM ENDPOINTS
   # ==========================================
+  /teams/{id}:
+    patch:
+      summary: Cập nhật tên Đội (Trưởng nhóm)
+      tags:
+        - Teams
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  example: "Tên đội mới"
+      responses:
+        '200':
+          description: Đổi tên thành công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '403':
+          description: Bạn không phải trưởng nhóm.
+        '400':
+          description: Đã qua thời hạn chốt đội hoặc lỗi logic.
+        '404':
+          description: Không tìm thấy đội.
+
   /teams/{id}/invites:
     post:
       summary: Trưởng nhóm tạo mã mời
@@ -571,6 +711,34 @@ paths:
         '403':
           description: Private Leaderboard chưa được công bố.
 
+  /challenges/{id}/contest-leaderboard:
+    get:
+      summary: Lấy bảng xếp hạng tổng hợp của Contest
+      tags:
+        - Leaderboard
+      description: Lấy bảng xếp hạng tổng (cộng dồn điểm của các Challenge con) dành riêng cho các Contest (Parent Challenge).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [public, private]
+      responses:
+        '200':
+          description: Bảng xếp hạng Contest.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestLeaderboardResponse'
+        '403':
+          description: Private Leaderboard chưa được công bố hoặc không phải là Contest.
+
   # ==========================================
   # ADMIN ENDPOINTS
   # ==========================================
@@ -631,6 +799,10 @@ paths:
           description: Cập nhật trạng thái tài khoản thành công.
         '403':
           description: Không có quyền Admin.
+        '404':
+          description: Không tìm thấy user.
+
+  /admin/users/{id}/role:
 
   /admin/challenges/test-metric:
     post:
@@ -901,6 +1073,13 @@ paths:
             $ref: "#/components/schemas/Solution"
         total:
           type: integer
+        is_locked:
+          type: boolean
+          description: |
+            True nếu challenge vẫn đang trong thời gian thi (end_time chưa qua).
+            Khi is_locked = true, items sẽ là mảng rỗng (nội dung bị ẩn với sinh viên thường).
+            Admin luôn nhận is_locked = false và thấy đầy đủ danh sách.
+          example: false
         page:
           type: integer
           default: 1
@@ -1060,6 +1239,189 @@ paths:
       responses:
         '204':
           description: Đã xóa
+  # ==========================================
+  # CONTEST ENDPOINTS (Issue #123)
+  # ==========================================
+  /contests:
+    get:
+      summary: Danh sach cuoc thi
+      tags:
+        - Contests
+      description: >
+        Public endpoint. Anonymous/Student luon chi thay PUBLISHED contests bat ke ?status= truyen vao.
+        Chi Admin moi duoc loc theo status tuy y.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/ContestStatus'
+          description: "Admin only: loc theo status. Student/Anonymous luon nhan PUBLISHED."
+      responses:
+        '200':
+          description: Danh sach cuoc thi (co phan trang).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestListResponse'
+        '422':
+          description: "Gia tri status khong hop le (khong phai DRAFT|PUBLISHED|ARCHIVED)."
+    post:
+      summary: Tao cuoc thi moi
+      tags:
+        - Contests
+      description: Admin only. Tao mot Contest moi voi trang thai mac dinh DRAFT.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContestCreateRequest'
+      responses:
+        '201':
+          description: Cuoc thi duoc tao thanh cong.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestResponse'
+        '401':
+          description: Chua dang nhap.
+        '403':
+          description: Khong phai Admin.
+        '422':
+          description: "Du lieu khong hop le (vd: end_time <= start_time)."
+
+  /contests/{contest_id}:
+    get:
+      summary: Chi tiet cuoc thi
+      tags:
+        - Contests
+      description: >
+        Public endpoint voi conditional visibility.
+        Admin thay tat ca status. Student/Anonymous chi thay PUBLISHED (tra 404 cho DRAFT/ARCHIVED).
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Thong tin chi tiet cuoc thi.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestResponse'
+        '404':
+          description: Contest khong ton tai hoac khong co quyen xem.
+    patch:
+      summary: Cap nhat cuoc thi
+      tags:
+        - Contests
+      description: Admin only. Cap nhat mot phan thong tin contest (PATCH semantics). PATCH {end_time null} xoa deadline.
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContestUpdateRequest'
+      responses:
+        '200':
+          description: Contest sau khi cap nhat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestResponse'
+        '401':
+          description: Chua dang nhap.
+        '403':
+          description: Khong phai Admin.
+        '404':
+          description: Contest khong ton tai.
+        '422':
+          description: "Du lieu khong hop le (vd: end_time <= start_time)."
+    delete:
+      summary: Xoa contest (soft delete)
+      tags:
+        - Contests
+      description: Admin only. Soft delete - dat deleted_at, khong xoa du lieu khoi DB.
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Xoa thanh cong (no content).
+        '401':
+          description: Chua dang nhap.
+        '403':
+          description: Khong phai Admin.
+        '404':
+          description: Contest khong ton tai.
+
+  /contests/{contest_id}/challenges:
+    get:
+      summary: Danh sach challenges trong contest
+      tags:
+        - Contests
+      description: >
+        Public endpoint voi conditional visibility.
+        Chi tra challenges cua PUBLISHED contest cho Student/Anonymous.
+        Admin thay challenges cua moi contest bat ke status.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: contest_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Danh sach challenges con cua contest.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContestChallengesResponse'
+        '404':
+          description: Contest khong ton tai hoac khong co quyen xem.
 components:
   securitySchemes:
     cookieAuth:
@@ -1142,6 +1504,15 @@ components:
         id:
           type: string
           format: uuid
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "UUID của Contest nếu challenge thuộc về một cuộc thi (Issue #123)"
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
         title:
           type: string
         status:
@@ -1164,6 +1535,12 @@ components:
         dataset_url:
           type: string
           format: uri
+        environment_image:
+          type: string
+          example: "ictu-ai-judge-sandbox-cv:latest"
+        require_gpu:
+          type: boolean
+          default: false
 
     ChallengeCreate:
       type: object
@@ -1174,6 +1551,16 @@ components:
         - metric_name
         - metric_direction
       properties:
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID của cuộc thi (nếu thuộc cuộc thi)
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID của bài thi cha (nếu là bài thi con)
         title:
           type: string
           example: "Phân loại ảnh CIFAR-10"
@@ -1221,11 +1608,27 @@ components:
           type: string
           format: uri
           description: Link Google Drive chứa dataset cho sinh viên tải về
+        environment_image:
+          type: string
+          example: "ictu-ai-judge-sandbox-cv:latest"
+          description: Tên Docker image của môi trường Sandbox
+        require_gpu:
+          type: boolean
+          default: false
+          description: Cờ cho biết có yêu cầu GPU chạy metric hay không
 
     ChallengeUpdate:
       type: object
       description: Tất cả trường đều là tùy chọn (Partial Update). Bị khóa nếu có Submission.
       properties:
+        contest_id:
+          type: string
+          format: uuid
+          nullable: true
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
         title:
           type: string
         description:
@@ -1247,6 +1650,11 @@ components:
         dataset_url:
           type: string
           format: uri
+        environment_image:
+          type: string
+          example: "ictu-ai-judge-sandbox-cv:latest"
+        require_gpu:
+          type: boolean
         status:
           type: string
           enum: [DRAFT, PUBLISHED, ARCHIVED]
@@ -1372,6 +1780,9 @@ components:
     UpdateProfileRequest:
       type: object
       properties:
+        full_name:
+          type: string
+          example: "Nguyen Van A"
         github_url:
           type: string
           nullable: true
@@ -1380,3 +1791,146 @@ components:
           type: string
           nullable: true
           example: "https://linkedin.com/in/username"
+
+    ContestLeaderboardResponse:
+      type: object
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        rankings:
+          type: array
+          items:
+            type: object
+            properties:
+              team_id:
+                type: string
+                format: uuid
+              team_name:
+                type: string
+              total_score:
+                type: number
+              rank:
+                type: integer
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    child_challenge_id:
+                      type: string
+                      format: uuid
+                    score:
+                      type: number
+
+
+    ContestStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+
+    ContestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/ContestStatus'
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+
+    ContestListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContestResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+        total_pages:
+          type: integer
+
+    ContestCreateRequest:
+      type: object
+      required:
+        - title
+        - start_time
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+          default: ""
+        status:
+          $ref: '#/components/schemas/ContestStatus'
+          default: DRAFT
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+
+    ContestUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+          nullable: true
+        description:
+          type: string
+          maxLength: 10000
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ContestStatus'
+          nullable: true
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Truyen null de xoa deadline (PATCH semantics)."
+
+    ContestChallengesResponse:
+      type: object
+      properties:
+        contest_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChallengeResponse'
+        total:
+          type: integer
+
+    InviteStatus:
+      type: string
+      enum: [PENDING, ACCEPTED, DECLINED, EXPIRED]

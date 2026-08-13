@@ -105,6 +105,20 @@ export function useTeamVM(teamId: string | undefined) {
   // Optional: check against challenge deadline. Hardcoded as false for now until challenge fetch.
   const isDeadlinePassed = false; 
 
+  const updateTeamName = useCallback(async (newName: string) => {
+    if (!teamId || !newName.trim()) return;
+    try {
+      await teamService.updateTeam(teamId, { name: newName });
+      await fetchTeam(); // refetch after update
+      useToastStore.getState().showToast('Đổi tên đội thành công', 'success');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
+      const detail = errorObj.response?.data?.detail || 'Lỗi khi đổi tên đội';
+      useToastStore.getState().showToast(detail, 'error');
+      throw err;
+    }
+  }, [teamId, fetchTeam]);
+
   return {
     team,
     loading,
@@ -115,6 +129,7 @@ export function useTeamVM(teamId: string | undefined) {
     canInvite: isLeader && !isDeadlinePassed,
     createInvite,
     kickMember,
+    updateTeamName,
   };
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store';
+import Footer from '../components/Footer';
 import ictuLogo from '../../assets/ictu-logo.png';
 
 const LandingPage: React.FC = () => {
@@ -162,10 +163,7 @@ const LandingPage: React.FC = () => {
       </section>
       
       {/* Footer */}
-      <footer className="py-10 text-center bg-white dark:bg-surface-dark text-content-tertiary dark:text-content-dark-secondary border-t border-surface-200 dark:border-gray-800">
-        <p className="text-base font-semibold">© {new Date().getFullYear()} Nền tảng ICTU AI JUDGE.</p>
-        <p className="text-sm mt-2 font-light">Thiết kế bởi Đội ngũ Q-Tech dành riêng cho sinh viên ICTU.</p>
-      </footer>
+      <Footer containerClassName="max-w-7xl" />
     </div>
   );
 };

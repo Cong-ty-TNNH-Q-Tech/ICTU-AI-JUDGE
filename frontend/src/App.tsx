@@ -10,8 +10,12 @@ import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
 import LandingPage from './views/pages/LandingPage';
 import LoginPage from './views/pages/LoginPage';
+import ForgotPasswordPage from './views/pages/ForgotPasswordPage';
+import ResetPasswordPage from './views/pages/ResetPasswordPage';
 import ChallengesPage from './views/pages/ChallengesPage';
 import ChallengeDetailPage from './views/pages/ChallengeDetailPage';
+import ContestListPage from './views/pages/ContestListPage';
+import ContestDetailPage from './views/pages/ContestDetailPage';
 import AdminPage from './views/pages/AdminPage';
 // Issue #30 — Profile
 import ProfilePage from './views/pages/ProfilePage';
@@ -84,6 +88,18 @@ function App() {
           </AuthLayout>
         } />
 
+        <Route path="/forgot-password" element={
+          <AuthLayout>
+            <ForgotPasswordPage />
+          </AuthLayout>
+        } />
+
+        <Route path="/reset-password" element={
+          <AuthLayout>
+            <ResetPasswordPage />
+          </AuthLayout>
+        } />
+
         <Route path="/challenges" element={
           <ProtectedRoute>
             <MainLayout>
@@ -98,6 +114,19 @@ function App() {
               <ChallengeDetailPage />
             </MainLayout>
           </ProtectedRoute>
+        } />
+
+        {/* Contests: public endpoints — anonymous co the xem PUBLISHED contests */}
+        <Route path="/contests" element={
+          <MainLayout>
+            <ContestListPage />
+          </MainLayout>
+        } />
+
+        <Route path="/contests/:id" element={
+          <MainLayout>
+            <ContestDetailPage />
+          </MainLayout>
         } />
 
         <Route path="/admin" element={
