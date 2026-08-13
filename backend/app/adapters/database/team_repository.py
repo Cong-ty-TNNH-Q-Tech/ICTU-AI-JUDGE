@@ -53,15 +53,31 @@ class SQLTeamRepository(ITeamRepository):
     ) -> TeamEntity | None:
         """
         Lấy Team của User trong một Challenge.
-        Dùng để xác định team_id khi user nộp bài.
+        Hỗ trợ Contest (Parent-Child): Nếu user nộp bài cho Challenge con,
+        Team có thể được tạo ở Challenge con HOẶC Challenge cha.
         """
+        from sqlalchemy import or_
+        from app.adapters.database.models import ChallengeModel
+        
+        # Lấy Challenge hiện tại để biết parent_id
+        challenge = self.db.execute(
+            select(ChallengeModel).where(ChallengeModel.id == challenge_id)
+        ).scalar_one_or_none()
+        
+        if not challenge:
+            return None
+
+        valid_challenge_ids = [challenge_id]
+        if challenge.parent_id:
+            valid_challenge_ids.append(challenge.parent_id)
+
         model = (
             self.db.execute(
                 select(TeamModel)
                 .options(joinedload(TeamModel.members))
                 .join(TeamMemberModel, TeamModel.id == TeamMemberModel.team_id)
                 .where(
-                    TeamModel.challenge_id == challenge_id,
+                    TeamModel.challenge_id.in_(valid_challenge_ids),
                     TeamMemberModel.user_id == user_id,
                     TeamModel.deleted_at == None,  # noqa: E711
                 )
@@ -84,6 +100,28 @@ class SQLTeamRepository(ITeamRepository):
         self.db.add(model)
         self.db.flush()
         self.db.refresh(model)
+        return self._to_entity(model)
+
+    def update_name(self, team_id: uuid.UUID, new_name: str) -> TeamEntity | None:
+        model = (
+            self.db.execute(
+                select(TeamModel)
+                .where(TeamModel.id == team_id, TeamModel.deleted_at.is_(None))
+                .with_for_update()
+            )
+            .scalar_one_or_none()
+        )
+        if not model:
+            return None
+            
+        model.name = new_name
+        self.db.flush()
+        self.db.refresh(model)
+        
+        # Load members for entity representation if missing
+        # To populate members correctly after refresh, we either load it via joinedload in initial query,
+        # or we just let _to_entity use whatever lazy-loaded state it has. 
+        # But wait, if _to_entity accesses `model.members`, it will trigger a lazy load which is fine in a session.
         return self._to_entity(model)
 
     def has_submissions(self, team_id: uuid.UUID) -> bool:
@@ -230,3 +268,19 @@ class SQLTeamRepository(ITeamRepository):
         models = self.db.execute(paginated_stmt).unique().scalars().all()
         
         return [self._to_entity(m) for m in models], total
+
+    def get_teams_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[TeamEntity]:
+        models = (
+            self.db.execute(
+                select(TeamModel)
+                .options(joinedload(TeamModel.members))
+                .where(
+                    TeamModel.challenge_id.in_(challenge_ids),
+                    TeamModel.deleted_at == None  # noqa: E711
+                )
+            )
+            .unique()
+            .scalars()
+            .all()
+        )
+        return [self._to_entity(m) for m in models]

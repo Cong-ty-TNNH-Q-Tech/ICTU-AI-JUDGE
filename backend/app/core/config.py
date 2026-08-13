@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # ---- Authorization ----
     ROOT_ADMIN_EMAIL: str | None = None
     # Email duy nhất được tự động gán quyền ADMIN khi đăng nhập lần đầu qua Google OAuth.
+
+    # ---- SMTP / Mailer ----
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM_EMAIL: str | None = None
     # Để trống hoặc không set để tắt tính năng Root Admin tự động.
 
     # ---- Submission Defaults ----
@@ -69,6 +76,11 @@ class Settings(BaseSettings):
     SANDBOX_MEMORY_LIMIT: str = "512m"
     SANDBOX_CPU_PERIOD: int = 100000
     SANDBOX_CPU_QUOTA: int = 50000  # 50% CPU
+    # Sandbox timeout cho các challenge cần giải nén zip (giây)
+    SANDBOX_ZIP_TIMEOUT: int = 120  # 2 phút — đủ cho giải nén + metric ảnh
+    # Giới hạn giải nén zip (chống zip bomb)
+    ZIP_MAX_UNCOMPRESSED_MB: int = 500
+    ZIP_MAX_FILE_COUNT: int = 10000
 
 
 @lru_cache

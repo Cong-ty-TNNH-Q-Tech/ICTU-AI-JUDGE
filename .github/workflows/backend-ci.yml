@@ -77,9 +77,7 @@ jobs:
 
     services:
       postgres:
-        # postgres:16 la Docker Official Image - khong bi rate limit, khong can DockerHub token
-        # pgvector se duoc cai them qua apt trong step 'Enable PostgreSQL extensions'
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: ictu_ai_judge_test
           POSTGRES_PASSWORD: ictu_ai_judge_test_password
@@ -114,11 +112,7 @@ jobs:
 
       - name: Enable PostgreSQL extensions
         run: |
-          # Cai pgvector tu apt (tuong thich voi postgres:16 official image)
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-16-pgvector
-          # Load extension vao DB
-          PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "CREATE EXTENSION IF NOT EXISTS vector;" \
-            || echo "::warning::pgvector extension not available - skipping"
+          PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
           PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "
             CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
             CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -168,7 +162,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: ictu_ai_judge_test
           POSTGRES_PASSWORD: ictu_ai_judge_test_password
@@ -213,9 +207,7 @@ jobs:
 
       - name: Enable PostgreSQL extensions
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-16-pgvector
-          PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "CREATE EXTENSION IF NOT EXISTS vector;" \
-            || echo "::warning::pgvector extension not available - skipping"
+          PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
           PGPASSWORD=ictu_ai_judge_test_password psql -h localhost -U ictu_ai_judge_test -d ictu_ai_judge_test -c "
             CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
             CREATE EXTENSION IF NOT EXISTS pgcrypto;

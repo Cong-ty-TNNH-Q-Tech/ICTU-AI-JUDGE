@@ -145,7 +145,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         stmt = (
             select(LeaderboardModel, TeamModel.name, rank_func, entries_sq)
             .join(TeamModel, LeaderboardModel.team_id == TeamModel.id)
-            .where(LeaderboardModel.challenge_id == challenge_id)
+            .where(LeaderboardModel.challenge_id == challenge_id, TeamModel.deleted_at.is_(None))
             .order_by(score_order, LeaderboardModel.last_submission_time.asc())
             .offset((page - 1) * size)
             .limit(size)
@@ -193,7 +193,7 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         stmt = (
             select(LeaderboardModel, TeamModel.name, rank_func, entries_sq)
             .join(TeamModel, LeaderboardModel.team_id == TeamModel.id)
-            .where(LeaderboardModel.challenge_id == challenge_id)
+            .where(LeaderboardModel.challenge_id == challenge_id, TeamModel.deleted_at.is_(None))
             .order_by(score_order, LeaderboardModel.last_submission_time.asc())
             .offset((page - 1) * size)
             .limit(size)
@@ -290,3 +290,13 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
             }
             for row in results
         ]
+
+    def get_by_challenges(self, challenge_ids: list[uuid.UUID]) -> list[LeaderboardEntryEntity]:
+        models = (
+            self.db.execute(
+                select(LeaderboardModel).where(LeaderboardModel.challenge_id.in_(challenge_ids))
+            )
+            .scalars()
+            .all()
+        )
+        return [self._to_entity(m, rank=0) for m in models]

@@ -10,12 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 class CeleryMessageBroker(IMessageBroker):
-    def enqueue_scoring_task(self, submission_id: str) -> None:
+    def enqueue_scoring_task(self, submission_id: str, require_gpu: bool = False) -> None:
         """
         Push submission_id vào Redis Queue để Celery Worker consume.
         """
         try:
-            score_submission.delay(submission_id)
+            queue_name = 'gpu_tasks' if require_gpu else 'cpu_tasks'
+            score_submission.apply_async(args=[submission_id], queue=queue_name)
             logger.info("Celery task dispatched: submission_id=%s", submission_id)
         except Exception as exc:
             # Nếu push Redis thất bại: log lỗi nhưng KHÔNG rollback DB.

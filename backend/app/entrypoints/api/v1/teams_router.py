@@ -6,13 +6,25 @@ import logging
 import uuid
 from fastapi import APIRouter, Depends, Request
 
-from app.application.dtos.team_dtos import CreateInviteResponseDTO, JoinTeamRequestDTO, TeamResponseDTO
+from app.application.dtos.team_dtos import CreateInviteResponseDTO, JoinTeamRequestDTO, TeamResponseDTO, TeamUpdateRequestDTO
 from app.application.use_cases.team_use_case import TeamUseCase
 from app.entrypoints.dependencies import get_current_user_id, get_team_use_case
 from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+@router.patch("/{team_id}", response_model=TeamResponseDTO)
+async def update_team_name(
+    team_id: uuid.UUID,
+    body: TeamUpdateRequestDTO,
+    use_case: TeamUseCase = Depends(get_team_use_case),
+    user_id: uuid.UUID = Depends(get_current_user_id)
+):
+    """
+    UC02 — Cập nhật thông tin đội (chỉ dành cho trưởng nhóm).
+    """
+    return use_case.update_team_name(team_id, user_id, body.name)
 
 @router.post("/{team_id}/invites", response_model=CreateInviteResponseDTO)
 async def create_invite(

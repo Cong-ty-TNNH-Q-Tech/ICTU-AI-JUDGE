@@ -2,9 +2,11 @@
 Scoring Task — Celery Worker chấm điểm qua Docker Sandbox.
 [SECURITY] Không bao giờ import metric.py trực tiếp — luôn dùng Docker Container.
 """
+import io
 import logging
-import time
 import math
+import tarfile
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -86,12 +88,25 @@ def score_submission(self, submission_id: str) -> dict:
             submission_csv = storage.download(submission.file_url)
             ground_truth_csv = storage.download(challenge.ground_truth_url)
 
-            # 3. Gọi Docker Sandbox
+            # 3. Determine resource limits
+            env_img = challenge.environment_image
+            if "cv" in env_img or "nlp" in env_img:
+                memory_limit = "8g"
+                time_limit_seconds = 600
+            else:
+                memory_limit = "1g"
+                time_limit_seconds = 120
+
+            # 4. Gọi Docker Sandbox
             score = _run_sandbox(
                 submission_csv=submission_csv,
                 ground_truth_csv=ground_truth_csv,
                 metric_script=storage.download(challenge.custom_metric_url) if challenge.custom_metric_url else None,
                 metric_name=challenge.metric_name,
+                environment_image=challenge.environment_image,
+                memory_limit=memory_limit,
+                time_limit_seconds=time_limit_seconds,
+                require_gpu=challenge.require_gpu,
             )
 
             elapsed_ms = int(time.monotonic() * 1000) - start_ms
@@ -140,36 +155,53 @@ def _run_sandbox(
     ground_truth_csv: bytes,
     metric_script: bytes | None,
     metric_name: str,
+    environment_image: str,
+    memory_limit: str,
+    time_limit_seconds: int,
+    require_gpu: bool,
 ) -> float:
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
+    Tự động phát hiện zip (magic bytes) → giải nén thành thư mục riêng.
     """
-    import tarfile
-    import io
-
     client = docker.from_env()
 
-    # Create tar stream in memory
-    tar_stream = io.BytesIO()
-    with tarfile.open(fileobj=tar_stream, mode='w') as tar:
-        # Add submission.csv
-        sub_info = tarfile.TarInfo(name='submission.csv')
-        sub_info.size = len(submission_csv)
-        tar.addfile(sub_info, io.BytesIO(submission_csv))
+    # ---- Phát hiện ZIP mode qua magic bytes ----
+    is_gt_zip = ground_truth_csv[:4] == b'PK\x03\x04'
+    is_sub_zip = submission_csv[:4] == b'PK\x03\x04'
+    is_zip = is_gt_zip or is_sub_zip
 
-        # Add ground_truth.csv
-        gt_info = tarfile.TarInfo(name='ground_truth.csv')
-        gt_info.size = len(ground_truth_csv)
-        tar.addfile(gt_info, io.BytesIO(ground_truth_csv))
+    if is_zip:
+        tar_stream, cmd = _prepare_sandbox_files_zip(
+            submission_data=submission_csv,
+            ground_truth_data=ground_truth_csv,
+            is_gt_zip=is_gt_zip,
+            is_sub_zip=is_sub_zip,
+            metric_script=metric_script,
+            metric_name=metric_name,
+        )
+    else:
+        # === CSV mode: giữ nguyên logic hiện tại ===
+        tar_stream = io.BytesIO()
+        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+            # Add submission.csv
+            sub_info = tarfile.TarInfo(name='submission.csv')
+            sub_info.size = len(submission_csv)
+            tar.addfile(sub_info, io.BytesIO(submission_csv))
 
-        if metric_script:
-            script_info = tarfile.TarInfo(name='metric.py')
-            script_info.size = len(metric_script)
-            tar.addfile(script_info, io.BytesIO(metric_script))
-            
-            # Wrapper script để gọi hàm calculate_score từ metric.py
-            wrapper_script = """
+            # Add ground_truth.csv
+            gt_info = tarfile.TarInfo(name='ground_truth.csv')
+            gt_info.size = len(ground_truth_csv)
+            tar.addfile(gt_info, io.BytesIO(ground_truth_csv))
+
+            if metric_script:
+                script_info = tarfile.TarInfo(name='metric.py')
+                script_info.size = len(metric_script)
+                tar.addfile(script_info, io.BytesIO(metric_script))
+
+                # Wrapper script để gọi hàm calculate_score từ metric.py
+                wrapper_script = """
 import sys
 try:
     sys.path.append('/tmp')
@@ -181,18 +213,18 @@ except Exception as e:
     sys.exit(1)
 """.strip().encode('utf-8')
 
-            wrapper_info = tarfile.TarInfo(name='runner.py')
-            wrapper_info.size = len(wrapper_script)
-            tar.addfile(wrapper_info, io.BytesIO(wrapper_script))
-            
-            cmd = "python /tmp/runner.py"
-        else:
-            # Strategy Pattern cho Built-in metrics
-            built_in_script = f"""
+                wrapper_info = tarfile.TarInfo(name='runner.py')
+                wrapper_info.size = len(wrapper_script)
+                tar.addfile(wrapper_info, io.BytesIO(wrapper_script))
+
+                cmd = "python /tmp/runner.py"
+            else:
+                # Strategy Pattern cho Built-in metrics
+                built_in_script = f"""
 import pandas as pd
 import sys
 import math
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, log_loss
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score, log_loss
 
 try:
     gt = pd.read_csv('/tmp/ground_truth.csv')
@@ -200,7 +232,7 @@ try:
 
     if 'Usage' in gt.columns:
         gt = gt.drop(columns=['Usage'])
-        
+
     if len(gt.columns) == 0:
         print('Không tìm thấy cột mục tiêu trong Ground Truth.')
         sys.exit(1)
@@ -215,19 +247,73 @@ try:
         print(f'Số lượng dòng không khớp. Kì vọng {{len(gt)}} dòng, nhưng nhận được {{len(sub)}} dòng.')
         sys.exit(1)
 
-    y_true = gt[target_col]
-    y_pred = sub[target_col]
+    y_true = gt[target_col].astype(str).tolist()
+    y_pred = sub[target_col].astype(str).tolist()
 
     metric_name = '{metric_name}'
-    
+
     if metric_name == 'ACCURACY':
+        from sklearn.metrics import accuracy_score
         score = accuracy_score(y_true, y_pred)
     elif metric_name == 'F1_SCORE':
+        from sklearn.metrics import f1_score
         score = f1_score(y_true, y_pred, average='macro')
     elif metric_name == 'RMSE':
+<<<<<<< HEAD
         score = math.sqrt(mean_squared_error(y_true, y_pred))
     elif metric_name == 'LOG_LOSS':
         score = log_loss(y_true, y_pred)
+=======
+        from sklearn.metrics import mean_squared_error
+        try:
+            y_t = [float(x) for x in y_true]
+            y_p = [float(x) for x in y_pred]
+        except ValueError as e:
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính RMSE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
+            sys.exit(1)
+        score = math.sqrt(mean_squared_error(y_t, y_p))
+    elif metric_name == 'RECALL':
+        from sklearn.metrics import recall_score
+        score = recall_score(y_true, y_pred, average='macro', zero_division=0)
+    # ---- NLP Metrics ----
+    elif metric_name == 'BLEU':
+        import sacrebleu
+        refs = [[r] for r in y_true]  # sacrebleu expects list-of-lists
+        score = sacrebleu.corpus_bleu(y_pred, list(zip(*refs))).score / 100.0
+    elif metric_name == 'ROUGE_L':
+        from rouge_score import rouge_scorer
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
+        scores = [scorer.score(ref, hyp)['rougeL'].fmeasure
+                  for ref, hyp in zip(y_true, y_pred)]
+        score = sum(scores) / len(scores)
+    elif metric_name == 'WER':
+        from jiwer import wer
+        score = 1.0 - wer(y_true, y_pred)  # convert to higher-is-better
+    # ---- CV Metrics (CSV cột path ảnh) ----
+    elif metric_name in ('PSNR', 'SSIM', 'MEAN_IOU'):
+        import numpy as np
+        import os
+        from PIL import Image
+        psnr_list, ssim_list, iou_list = [], [], []
+        for ref_path, pred_path in zip(y_true, y_pred):
+            ref_img  = np.array(Image.open(ref_path.strip()).convert('RGB'), dtype=np.float32)
+            pred_img = np.array(Image.open(pred_path.strip()).convert('RGB'), dtype=np.float32)
+            if metric_name == 'PSNR':
+                mse = np.mean((ref_img - pred_img) ** 2)
+                psnr_list.append(20 * math.log10(255.0 / math.sqrt(mse)) if mse > 0 else 100.0)
+            elif metric_name == 'SSIM':
+                from skimage.metrics import structural_similarity as ssim
+                score_val = ssim(ref_img, pred_img, channel_axis=2, data_range=255.0)
+                ssim_list.append(score_val)
+            elif metric_name == 'MEAN_IOU':
+                ref_mask  = np.array(Image.open(ref_path.strip()).convert('L')) > 127
+                pred_mask = np.array(Image.open(pred_path.strip()).convert('L')) > 127
+                intersection = (ref_mask & pred_mask).sum()
+                union = (ref_mask | pred_mask).sum()
+                iou_list.append(intersection / union if union > 0 else 1.0)
+        if metric_name == 'PSNR': score = sum(psnr_list) / len(psnr_list)
+        elif metric_name == 'SSIM': score = sum(ssim_list) / len(ssim_list)
+        else: score = sum(iou_list) / len(iou_list)
     else:
         print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
         sys.exit(1)
@@ -237,35 +323,49 @@ except Exception as e:
     print(f"Lỗi khi chấm điểm: {{str(e)}}")
     sys.exit(1)
 """.encode('utf-8')
-            
-            script_info = tarfile.TarInfo(name='built_in_metric.py')
-            script_info.size = len(built_in_script)
-            tar.addfile(script_info, io.BytesIO(built_in_script))
-            cmd = "python /tmp/built_in_metric.py"
+
+                script_info = tarfile.TarInfo(name='built_in_metric.py')
+                script_info.size = len(built_in_script)
+                tar.addfile(script_info, io.BytesIO(built_in_script))
+                cmd = "python /tmp/built_in_metric.py"
 
     tar_stream.seek(0)
 
+    timeout = time_limit_seconds
+    device_requests = []
+    if require_gpu:
+        device_requests = [docker.types.DeviceRequest(count=-1, capabilities=[['gpu']])]
+
+    import os
+    # Default to a generic host path if not set, but in production this should be in .env
+    host_weights_path = os.getenv('HOST_PRETRAINED_WEIGHTS_PATH', '/app/backend/pretrained_weights')
+    volumes_config = {
+        host_weights_path: {'bind': '/weights/shared', 'mode': 'ro'}
+    }
+
     # 1. Create the container (do not start yet)
     container = client.containers.create(
-        image="ictu-ai-judge-sandbox:latest",
+        image=environment_image,
         command=f"bash -c '{cmd}'",
-        mem_limit=settings.SANDBOX_MEMORY_LIMIT,
+        mem_limit=memory_limit,
         cpu_period=settings.SANDBOX_CPU_PERIOD,
         cpu_quota=settings.SANDBOX_CPU_QUOTA,
         network_disabled=True,          # [SECURITY] Chặn network
         detach=True,
+        device_requests=device_requests,
+        volumes=volumes_config,
     )
 
     try:
-        # 2. Inject files via put_archive (Docker automatically creates /tmp if it doesn't exist)
+        # 2. Inject files via put_archive
         container.put_archive("/tmp", tar_stream)
 
         # 3. Start container and wait for it to finish
         container.start()
-        result = container.wait(timeout=30)
-        
+        result = container.wait(timeout=timeout)
+
         output = container.logs(stdout=True, stderr=False).decode("utf-8").strip()
-        
+
         if result['StatusCode'] != 0:
             error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
             raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
@@ -273,11 +373,190 @@ except Exception as e:
         score = float(output)
         if math.isnan(score) or math.isinf(score):
             raise ValueError(f"Invalid score value returned by metric script: {output}")
-            
+
         return score
+    except docker.errors.APIError as exc:
+        if "Read timed out" in str(exc) or "timed out" in str(exc).lower():
+            raise Exception(
+                "Sandbox execution timed out. "
+                "Metric script may contain an infinite loop or process too large files."
+            ) from exc
+        raise
     finally:
         # Ensure container is destroyed even on error
         container.remove(force=True)
+
+
+def _prepare_sandbox_files_zip(
+    submission_data: bytes,
+    ground_truth_data: bytes,
+    is_gt_zip: bool,
+    is_sub_zip: bool,
+    metric_script: bytes | None,
+    metric_name: str,
+) -> tuple[io.BytesIO, str]:
+    """
+    Chuẩn bị tar stream cho Docker Sandbox trong ZIP mode.
+    Giải nén zip → thư mục riêng biệt trong container.
+    Trả về (tar_stream, cmd).
+    """
+    import zipfile
+
+    tar_stream = io.BytesIO()
+    with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+        # --- Ground Truth ---
+        if is_gt_zip:
+            with zipfile.ZipFile(io.BytesIO(ground_truth_data)) as zf:
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    # [SECURITY] Path Traversal (double-check)
+                    if '..' in info.filename or info.filename.startswith('/'):
+                        raise ValueError(f"Unsafe filename in GT zip: {info.filename}")
+                    file_data = zf.read(info)
+                    tarinfo = tarfile.TarInfo(name=f'ground_truth/{info.filename}')
+                    tarinfo.size = len(file_data)
+                    tar.addfile(tarinfo, io.BytesIO(file_data))
+        else:
+            gt_info = tarfile.TarInfo(name='ground_truth/ground_truth.csv')
+            gt_info.size = len(ground_truth_data)
+            tar.addfile(gt_info, io.BytesIO(ground_truth_data))
+
+        # --- Submission ---
+        if is_sub_zip:
+            with zipfile.ZipFile(io.BytesIO(submission_data)) as zf:
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    if '..' in info.filename or info.filename.startswith('/'):
+                        raise ValueError(f"Unsafe filename in submission zip: {info.filename}")
+                    file_data = zf.read(info)
+                    tarinfo = tarfile.TarInfo(name=f'submission/{info.filename}')
+                    tarinfo.size = len(file_data)
+                    tar.addfile(tarinfo, io.BytesIO(file_data))
+        else:
+            sub_info = tarfile.TarInfo(name='submission/submission.csv')
+            sub_info.size = len(submission_data)
+            tar.addfile(sub_info, io.BytesIO(submission_data))
+
+        # --- Metric script ---
+        if metric_script:
+            script_info = tarfile.TarInfo(name='metric.py')
+            script_info.size = len(metric_script)
+            tar.addfile(script_info, io.BytesIO(metric_script))
+
+        # --- Wrapper script ---
+        wrapper = _generate_zip_wrapper(
+            has_custom_metric=metric_script is not None,
+            metric_name=metric_name,
+        )
+        wrapper_bytes = wrapper.encode('utf-8')
+        wrapper_info = tarfile.TarInfo(name='runner.py')
+        wrapper_info.size = len(wrapper_bytes)
+        tar.addfile(wrapper_info, io.BytesIO(wrapper_bytes))
+
+    tar_stream.seek(0)
+    return tar_stream, "python /tmp/runner.py"
+
+
+def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str) -> str:
+    """Tạo wrapper script cho ZIP mode (thư mục giải nén)."""
+    if has_custom_metric:
+        return """
+import sys
+sys.path.append('/tmp')
+from metric import calculate_score
+score = calculate_score('/tmp/ground_truth', '/tmp/submission')
+print(score)
+""".strip()
+    else:
+        return f"""
+import pandas as pd
+import sys
+import math
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
+
+gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
+sub_csv_path = '/tmp/submission/submission.csv'
+
+try:
+    gt = pd.read_csv(gt_csv_path)
+    sub = pd.read_csv(sub_csv_path)
+
+    if 'Usage' in gt.columns:
+        gt_scoring = gt.drop(columns=['Usage'])
+    else:
+        gt_scoring = gt
+
+    label_col = gt_scoring.columns[-1]
+    if label_col not in sub.columns:
+        print(f'Thiếu cột {{label_col}} trong bài nộp.')
+        sys.exit(1)
+
+    y_true = gt_scoring[label_col].astype(str).tolist()
+    y_pred = sub[label_col].astype(str).tolist()
+
+    metric_name = '{metric_name}'
+    if metric_name == 'ACCURACY':
+        score = accuracy_score(y_true, y_pred)
+    elif metric_name == 'F1_SCORE':
+        score = f1_score(y_true, y_pred, average='macro')
+    elif metric_name == 'RMSE':
+        score = math.sqrt(mean_squared_error(
+            [float(x) for x in y_true], [float(x) for x in y_pred]
+        ))
+    elif metric_name == 'LOG_LOSS':
+        from sklearn.metrics import log_loss
+        score = log_loss(y_true, y_pred)
+    elif metric_name == 'RECALL':
+        score = recall_score(y_true, y_pred, average='macro', zero_division=0)
+    # ---- NLP Metrics ----
+    elif metric_name == 'BLEU':
+        import sacrebleu
+        score = sacrebleu.corpus_bleu(y_pred, [y_true]).score / 100.0
+    elif metric_name == 'ROUGE_L':
+        from rouge_score import rouge_scorer
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
+        scores = [scorer.score(ref, hyp)['rougeL'].fmeasure
+                  for ref, hyp in zip(y_true, y_pred)]
+        score = sum(scores) / len(scores)
+    elif metric_name == 'WER':
+        from jiwer import wer
+        score = 1.0 - wer(y_true, y_pred)
+    # ---- CV Metrics (path ảnh trong ZIP) ----
+    elif metric_name in ('PSNR', 'SSIM', 'MEAN_IOU'):
+        import numpy as np
+        from PIL import Image
+        psnr_list, ssim_list, iou_list = [], [], []
+        for ref_path, pred_path in zip(y_true, y_pred):
+            ref_full  = f'/tmp/ground_truth/{{ref_path.strip()}}'
+            pred_full = f'/tmp/submission/{{pred_path.strip()}}'
+            ref_img   = np.array(Image.open(ref_full).convert('RGB'), dtype=np.float32)
+            pred_img  = np.array(Image.open(pred_full).convert('RGB'), dtype=np.float32)
+            if metric_name == 'PSNR':
+                mse = np.mean((ref_img - pred_img) ** 2)
+                psnr_list.append(20 * math.log10(255.0 / math.sqrt(mse)) if mse > 0 else 100.0)
+            elif metric_name == 'SSIM':
+                from skimage.metrics import structural_similarity as ssim
+                ssim_list.append(ssim(ref_img, pred_img, channel_axis=2, data_range=255.0))
+            elif metric_name == 'MEAN_IOU':
+                ref_mask  = np.array(Image.open(ref_full).convert('L')) > 127
+                pred_mask = np.array(Image.open(pred_full).convert('L')) > 127
+                inter = (ref_mask & pred_mask).sum()
+                union = (ref_mask | pred_mask).sum()
+                iou_list.append(inter / union if union > 0 else 1.0)
+        if metric_name == 'PSNR': score = sum(psnr_list) / len(psnr_list)
+        elif metric_name == 'SSIM': score = sum(ssim_list) / len(ssim_list)
+        else: score = sum(iou_list) / len(iou_list)
+    else:
+        print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
+        sys.exit(1)
+
+    print(score)
+except Exception as e:
+    print(f'Lỗi khi chấm điểm: {{str(e)}}')
+    sys.exit(1)
+""".strip()
 
 
 

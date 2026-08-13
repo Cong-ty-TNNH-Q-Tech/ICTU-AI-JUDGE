@@ -169,9 +169,15 @@ def test_submit_prediction_file_too_large(use_case, mock_repos, mock_challenge, 
         )
 
 def test_trigger_scoring(use_case, mock_repos):
-    submission_id = "test-123"
+    submission_id = str(uuid.uuid4())
+    mock_sub = MagicMock()
+    mock_sub.challenge_id = uuid.uuid4()
+    mock_repos["submission_repo"].get_by_id.return_value = mock_sub
+    mock_challenge = MagicMock()
+    mock_challenge.require_gpu = True
+    mock_repos["challenge_repo"].get_by_id.return_value = mock_challenge
     use_case.trigger_scoring(submission_id)
-    mock_repos["message_broker"].enqueue_scoring_task.assert_called_once_with(submission_id)
+    mock_repos["message_broker"].enqueue_scoring_task.assert_called_once_with(submission_id, require_gpu=True)
 
 def test_submit_prediction_no_team(use_case, mock_repos, mock_challenge):
     mock_repos["team_repo"].get_by_challenge_and_user.return_value = None
@@ -322,14 +328,14 @@ def test_list_team_submissions_no_team(use_case, mock_repos):
         use_case.list_team_submissions(uuid.uuid4(), uuid.uuid4(), 1, 10)
 
 def test_validate_csv_format_invalid_extension():
-    from app.application.use_cases.submission_use_case import _validate_csv_format
+    from app.application.utils.file_validation import validate_csv_format
     with pytest.raises(ValueError, match="Chỉ chấp nhận file định dạng .csv"):
-        _validate_csv_format(b'a,b\n1,2', 'test.txt')
+        validate_csv_format(b'a,b\n1,2', 'test.txt')
 
 def test_validate_csv_format_not_enough_rows():
-    from app.application.use_cases.submission_use_case import _validate_csv_format
+    from app.application.utils.file_validation import validate_csv_format
     with pytest.raises(ValueError, match="File CSV cần có ít nhất 1 dòng"):
-        _validate_csv_format(b'header', 'test.csv')
+        validate_csv_format(b'header', 'test.csv')
 
 def test_select_for_private_unlimited_time(use_case, mock_repos, mock_team, mock_challenge):
     import uuid
