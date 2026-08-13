@@ -72,7 +72,6 @@ async def list_challenges(
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_challenge(
     request: dict,
-    db: Session = Depends(get_db),
     admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
@@ -82,7 +81,6 @@ async def create_challenge(
     dto = ChallengeCreateRequestDTO(**request)
     
     result = use_case.create_challenge(admin_id=admin.id, data=dto)
-    db.commit()
     return result.dict()
 
 
@@ -112,7 +110,6 @@ async def get_challenge(
 async def update_challenge(
     challenge_id: uuid.UUID,
     request: dict,
-    db: Session = Depends(get_db),
     admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
@@ -123,7 +120,6 @@ async def update_challenge(
     
     try:
         result = use_case.update_challenge(challenge_id=challenge_id, data=dto)
-        db.commit()
         return result.dict()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -132,13 +128,11 @@ async def update_challenge(
 @router.delete("/{challenge_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_challenge(
     challenge_id: uuid.UUID,
-    db: Session = Depends(get_db),
     admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
     """UC09 — Soft delete bài thi (Admin only)."""
     use_case.delete_challenge(challenge_id)
-    db.commit()
     return None
 
 
@@ -148,7 +142,6 @@ async def upload_secrets(
     ground_truth_csv: UploadFile = File(...),
     metric_script_py: UploadFile | None = File(None),
     public_test_split_ratio: int = Form(30, ge=0, le=100, description="Tỉ lệ % tập Public"),
-    db: Session = Depends(get_db),
     admin: UserEntity = Depends(require_admin),
     use_case: ChallengeUseCase = Depends(get_challenge_use_case)
 ):
@@ -165,7 +158,6 @@ async def upload_secrets(
             metric_script_bytes=metric_bytes,
             public_test_split_ratio=public_test_split_ratio
         )
-        db.commit()
         return result.dict()
     except ValueError as e:
         if "Usage" in str(e):
@@ -346,7 +338,6 @@ async def publish_solution(
     file: UploadFile = File(...),
     user: UserEntity = Depends(get_current_user),
     use_case: SolutionUseCase = Depends(get_solution_use_case),
-    db: Session = Depends(get_db),
 ):
 
     """Chia sẻ file notebook (Upload lên S3/MinIO và tạo bản ghi vào DB)."""
@@ -365,7 +356,6 @@ async def publish_solution(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
-    db.commit()
     return result
 
 
@@ -378,7 +368,6 @@ async def upvote_solution(
     solution_id: uuid.UUID,
     user: UserEntity = Depends(get_current_user),
     use_case: SolutionUseCase = Depends(get_solution_use_case),
-    db: Session = Depends(get_db),
 ):
     """Upvote một solution (+1). Yêu cầu đăng nhập. Mỗi user chỉ vote được 1 lần."""
     try:
@@ -388,5 +377,4 @@ async def upvote_solution(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
-    db.commit()
     return result
