@@ -31,21 +31,35 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onConfirm, 
 // ===================== Form Modal =====================
 interface ContestFormProps { initial?: Contest | null; onSave: (data: ContestCreateRequest | ContestUpdateRequest) => Promise<void>; onCancel: () => void; isSaving: boolean; }
 const ContestFormModal: React.FC<ContestFormProps> = ({ initial, onSave, onCancel, isSaving }) => {
+  const toLocalDT = (iso: string | null | undefined) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [status, setStatus] = useState<ContestStatus>(initial?.status ?? 'DRAFT');
-  const [startTime, setStartTime] = useState(initial ? initial.start_time.slice(0, 16) : '');
-  const [endTime, setEndTime] = useState(initial?.end_time ? initial.end_time.slice(0, 16) : '');
+  const [startTime, setStartTime] = useState(toLocalDT(initial?.start_time));
+  const [endTime, setEndTime] = useState(toLocalDT(initial?.end_time));
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(null);
-    if (!title.trim()) { setError('Ten cuoc thi khong duoc de trong.'); return; }
-    if (!startTime) { setError('Vui long chon thoi gian bat dau.'); return; }
+    if (!title.trim()) { setError('Tên cuộc thi không được để trống.'); return; }
+    if (!startTime) { setError('Vui lòng chọn thời gian bắt đầu.'); return; }
+    
+    if (endTime && new Date(endTime) <= new Date(startTime)) {
+      setError('Thời gian kết thúc phải sau thời gian bắt đầu.');
+      return;
+    }
+
     try {
       await onSave({ title: title.trim(), description: description.trim(), status, start_time: new Date(startTime).toISOString(), end_time: endTime ? new Date(endTime).toISOString() : null });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Da xay ra loi, vui long thu lai.';
+      const msg = err instanceof Error ? err.message : 'Đã xảy ra lỗi, vui lòng thử lại.';
       setError(msg);
     }
   };
