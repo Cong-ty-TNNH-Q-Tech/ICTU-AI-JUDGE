@@ -15,6 +15,7 @@ const TeamMemberList: React.FC<Props> = ({ team, onKick }) => {
       {team.members.map((member) => {
         const isLeader = member.user_id === team.leader_id;
         const isMe = user?.id === member.user_id;
+        const amLeader = user?.id === team.leader_id;
 
         // Get initials
         const initials = member.full_name
@@ -59,7 +60,7 @@ const TeamMemberList: React.FC<Props> = ({ team, onKick }) => {
             </div>
 
             {/* Nút kick member */}
-            {isLeader && !isMe && !team.has_submissions && onKick && (
+            {amLeader && !isMe && !team.has_submissions && onKick && (
                <button 
                  onClick={() => onKick(member.user_id, member.full_name)}
                 className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors border border-red-100 dark:border-red-900/30"

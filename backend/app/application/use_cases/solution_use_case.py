@@ -71,14 +71,22 @@ class SolutionUseCase:
     # Public Use Case methods
     # ------------------------------------------------------------------
 
-    def list_solutions(self, challenge_id: uuid.UUID) -> SolutionListResponseDTO:
+    def list_solutions(self, challenge_id: uuid.UUID, user: UserEntity | None = None) -> SolutionListResponseDTO:
         """Lấy danh sách solutions của một challenge, kèm author_name và presigned URL."""
         challenge = self._challenge_repo.get_by_id(challenge_id)
         if not challenge:
             raise ValueError(f"Challenge {challenge_id} không tồn tại.")
+        
+        now = datetime.datetime.now(datetime.timezone.utc)
+        is_admin = user is not None and user.is_admin()
+        is_locked = False if is_admin else bool(challenge.end_time and now < challenge.end_time)
+
+        if is_locked:
+            return SolutionListResponseDTO(items=[], total=0, is_locked=True)
+
         entities = self._solution_repo.list_by_challenge(challenge_id)
         items = [self._to_dto(e) for e in entities]
-        return SolutionListResponseDTO(items=items, total=len(items))
+        return SolutionListResponseDTO(items=items, total=len(items), is_locked=False)
 
     def publish_solution(
         self,
@@ -96,6 +104,12 @@ class SolutionUseCase:
             raise ValueError(f"Challenge {challenge_id} không tồn tại.")
         if challenge.status != ChallengeStatus.PUBLISHED:
             raise ValueError("Chỉ có thể chia sẻ giải pháp trên các bài thi đang PUBLISHED.")
+            
+        now = datetime.datetime.now(datetime.timezone.utc)
+        is_admin = user.is_admin()
+        is_locked = False if is_admin else bool(challenge.end_time and now < challenge.end_time)
+        if is_locked:
+            raise ValueError("Mục giải pháp đang bị khóa trong thời gian diễn ra cuộc thi. Vui lòng quay lại sau khi kết thúc deadline.")
 
         # 2. Validate file .ipynb
         if not filename.endswith(".ipynb"):

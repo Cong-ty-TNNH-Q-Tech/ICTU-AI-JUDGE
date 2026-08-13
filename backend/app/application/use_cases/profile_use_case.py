@@ -93,22 +93,37 @@ class ProfileUseCase:
         payload: UpdateProfileRequest,
     ) -> UserProfileDTO:
         """
-        Cập nhật Github URL và LinkedIn URL của user hiện tại.
+        Cập nhật Github URL, LinkedIn URL và full_name của user hiện tại.
+        Dùng model_fields_set để phân biệt field bị omit (không gửi lên) vs field gửi tường minh.
         [ARCH] Gọi self._uow.commit() để hoàn tất transaction — Router không được commit.
+        [SAFETY] full_name là NOT NULL trong DB, nên chỉ truyền xuống repo khi client gửi giá trị hợp lệ.
         """
+        # Resolve full_name: chỉ gửi xuống repo khi field này có trong payload (model_fields_set)
+        # Nếu client omit full_name, giữ giá trị hiện tại trong DB (_SENTINEL).
+        from app.adapters.database.user_repository import _SENTINEL  # type: ignore[import]
+        if "full_name" in payload.model_fields_set:
+            if payload.full_name is None:
+                raise ValueError("Họ và tên không được để null")
+            full_name_val = payload.full_name
+        else:
+            full_name_val = _SENTINEL  # type: ignore[assignment]
+
         updated = self._user_repo.update_profile(
             user_id=current_user.id,
             github_url=payload.github_url,
             linkedin_url=payload.linkedin_url,
+            full_name=full_name_val,
         )
         if not updated:
             raise LookupError("Không tìm thấy user để cập nhật.")
         self._uow.commit()
         logger.info(
-            "Profile updated: user=%s github=%s linkedin=%s",
+            "Profile updated: user=%s github=%s linkedin=%s full_name_changed=%s",
             current_user.id, payload.github_url, payload.linkedin_url,
+            "full_name" in payload.model_fields_set,
         )
         return self._build_profile_dto(updated)
+
 
     def upload_avatar(
         self,

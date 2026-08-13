@@ -19,8 +19,12 @@ class ChallengeCreateRequestDTO(BaseModel):
     metric_direction: MetricDirection
     dataset_url: Optional[str] = None
     team_lock_deadline: Optional[AwareDatetime] = None
+    environment_image: str = Field(default="ictu-ai-judge-sandbox:latest")
+    require_gpu: bool = Field(default=False)
     max_team_size: int = Field(default=5, ge=1)
     tag_ids: Optional[list[uuid.UUID]] = None
+    parent_id: Optional[uuid.UUID] = None
+    contest_id: Optional[uuid.UUID] = None
 
 class ChallengeUpdateRequestDTO(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
@@ -34,8 +38,12 @@ class ChallengeUpdateRequestDTO(BaseModel):
     metric_direction: Optional[MetricDirection] = None
     dataset_url: Optional[str] = None
     team_lock_deadline: Optional[AwareDatetime] = None
+    environment_image: Optional[str] = None
+    require_gpu: Optional[bool] = None
     max_team_size: Optional[int] = Field(None, ge=1)
     tag_ids: Optional[list[uuid.UUID]] = None
+    parent_id: Optional[uuid.UUID] = None
+    contest_id: Optional[uuid.UUID] = None
 
 class ChallengeResponseDTO(BaseModel):
     id: uuid.UUID
@@ -56,10 +64,15 @@ class ChallengeResponseDTO(BaseModel):
     ground_truth_url: Optional[str] = None
     custom_metric_url: Optional[str] = None
     team_lock_deadline: Optional[AwareDatetime] = None
+    environment_image: str
+    require_gpu: bool
     max_team_size: int
-    tags: list[TagResponseDTO] = []
+    parent_id: Optional[uuid.UUID] = None
+    contest_id: Optional[uuid.UUID] = None
+    tags: list[TagResponseDTO] = Field(default_factory=list)
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ChallengeListResponseDTO(BaseModel):
@@ -67,3 +80,18 @@ class ChallengeListResponseDTO(BaseModel):
     total: int
     page: int
     size: int
+
+
+class ContestLeaderboardEntryDTO(BaseModel):
+    team_id: uuid.UUID
+    team_name: str
+    total_score: float
+    scores: dict[uuid.UUID, float]  # challenge_id -> score
+    rank: int
+
+
+class ContestLeaderboardResponseDTO(BaseModel):
+    contest_id: uuid.UUID
+    child_challenges: list[ChallengeResponseDTO]
+    leaderboard: list[ContestLeaderboardEntryDTO]
+

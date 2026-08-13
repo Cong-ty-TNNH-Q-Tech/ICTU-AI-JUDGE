@@ -70,6 +70,7 @@ export function useProfileVM(userId: string) {
   const openEdit = useCallback(() => {
     if (!profile) return;
     setEditForm({
+      full_name: profile.full_name ?? '',
       github_url: profile.github_url ?? '',
       linkedin_url: profile.linkedin_url ?? '',
     });

@@ -12,6 +12,7 @@ export function useSolutionsVM(challengeId: string) {
   // Data state
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   // Publish modal state
   const [showModal, setShowModal] = useState(false);
@@ -30,6 +31,7 @@ export function useSolutionsVM(challengeId: string) {
       setLoading(true);
       const res = await challengeService.listSolutions(challengeId);
       setSolutions(res.items);
+      setIsLocked(res.is_locked);
     } catch {
       useToastStore.getState().showToast('Không thể tải giải pháp.', 'error');
     } finally {
@@ -106,6 +108,7 @@ export function useSolutionsVM(challengeId: string) {
     // Data
     solutions,
     loading,
+    isLocked,
     // Publish modal
     showModal,
     openModal,

@@ -3,7 +3,6 @@ Submission Use Case — UC04 (Submit), UC05 (Select Private), UC06 (Source Code)
 [CRITICAL] Thứ tự: validate → S3 upload → LƯU DB TRƯỚC → push Redis SAU.
 Đảo ngược thứ tự sẽ gây Race Condition (Worker consume trước khi có record).
 """
-import csv
 import hashlib
 import io
 import logging
@@ -27,6 +26,12 @@ from app.application.interfaces.repositories import (
     ILeaderboardRepository,
 )
 from app.application.interfaces.message_broker import IMessageBroker
+from app.application.utils.file_validation import (
+    build_s3_key,
+    get_effective_content_type,
+    validate_csv_format,
+    validate_zip_format,
+)
 from app.domain.entities.entities import SubmissionEntity, SubmissionStatus
 from app.domain.exceptions.exceptions import (
     DuplicateSubmissionError,
@@ -137,20 +142,18 @@ class SubmissionUseCase:
         if file_size_bytes > max_bytes:
             raise FileSizeExceededError(max_mb=challenge.max_file_size_mb)
 
-        # ---- Step 6: Validate CSV format ----
-        _validate_csv_format(file_bytes, filename)
+        # ---- Step 6: Validate format ----
+        if filename.lower().endswith(".zip"):
+            validate_zip_format(file_bytes, filename)
+        else:
+            validate_csv_format(file_bytes, filename)
 
         # ---- Step 7: Upload S3 ----
-        s3_key = _build_s3_key(
-            challenge_id=challenge_id,
-            team_id=team.id,
-            submission_id=uuid.uuid4(),  # tạm dùng để build key; ID thật ở step 8
-            filename=filename,
-        )
         # Tạo submission_id thực sự để dùng nhất quán
         submission_id = uuid.uuid4()
         s3_key = f"submissions/{challenge_id}/{team.id}/{submission_id}/{filename}"
-        self.storage_repo.upload(s3_key, file_bytes, content_type=content_type or "text/csv")
+        effective_content_type = get_effective_content_type(filename, content_type or "text/csv")
+        self.storage_repo.upload(s3_key, file_bytes, content_type=effective_content_type)
         logger.info("UC04 — S3 upload OK: key=%s", s3_key)
 
         # ---- Step 8: LƯU DB TRƯỚC (BẮTBUỘC trước push Redis) ----
@@ -186,7 +189,13 @@ class SubmissionUseCase:
         SAU KHI db.commit() đã thành công ở Controller.
         """
         if self.message_broker:
-            self.message_broker.enqueue_scoring_task(submission_id)
+            submission = self.submission_repo.get_by_id(uuid.UUID(submission_id))
+            require_gpu = False
+            if submission:
+                challenge = self.challenge_repo.get_by_id(submission.challenge_id)
+                if challenge:
+                    require_gpu = challenge.require_gpu
+            self.message_broker.enqueue_scoring_task(submission_id, require_gpu=require_gpu)
         else:
             logger.warning("No message_broker injected, scoring task not enqueued.")
     # ==========================================
@@ -388,54 +397,6 @@ class SubmissionUseCase:
             items=data,
         )
 
-
-# ==========================================
-# Private helper functions
-# ==========================================
-
-def _validate_csv_format(file_bytes: bytes, filename: str) -> None:
-    """
-    Validate cơ bản định dạng CSV:
-    - File không rỗng
-    - Có thể parse được bằng csv.reader
-    - Có ít nhất 1 header row và 1 data row
-    Raises ValueError nếu không hợp lệ.
-    [NOTE] Lỗi format sâu hơn (sai cột/dòng so với Ground Truth)
-    được Worker phát hiện và set status=FAILED (E2 trong UC04).
-    """
-    if not file_bytes:
-        raise ValueError("File CSV rỗng, vui lòng kiểm tra lại.")
-
-    # Kiểm tra extension
-    if not filename.lower().endswith(".csv"):
-        raise ValueError("Chỉ chấp nhận file định dạng .csv")
-
-    try:
-        text_stream = io.TextIOWrapper(io.BytesIO(file_bytes), encoding="utf-8", errors="replace")
-        reader = csv.reader(text_stream)
-        
-        row1 = next(reader, None)
-        row2 = next(reader, None)
-        
-        if not row1:
-            raise ValueError("File CSV rỗng, không có dòng nào.")
-        if not row2:
-            raise ValueError("File CSV cần có ít nhất 1 dòng header và 1 dòng dữ liệu.")
-            
-    except Exception as exc:
-        if isinstance(exc, ValueError):
-            raise
-        raise ValueError(f"Không thể đọc file CSV: {exc}") from exc
-
-
-def _build_s3_key(
-    challenge_id: uuid.UUID,
-    team_id: uuid.UUID,
-    submission_id: uuid.UUID,
-    filename: str,
-) -> str:
-    """Tạo S3 object key theo cấu trúc chuẩn."""
-    return f"submissions/{challenge_id}/{team_id}/{submission_id}/{filename}"
 
 
 

@@ -12,15 +12,18 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.application.dtos.auth_dtos import ChangePasswordRequestDTO
 from app.application.dtos.profile_dtos import (
     AvatarUploadResponseDTO,
     UpdateProfileRequest,
     UserProfileDTO,
     UserSolutionDTO,
 )
+from app.application.use_cases.auth_use_case import AuthUseCase
 from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
+    get_auth_use_case,
     get_current_user,
     get_db,
     get_profile_use_case,
@@ -59,6 +62,21 @@ async def get_me(user: UserEntity = Depends(get_current_user)):
         avatar_url=user.avatar_url,
     )
 
+# ==========================================
+# PATCH /me/password — Đổi mật khẩu
+# ==========================================
+
+@router.patch("/me/password")
+def change_password(
+    request: ChangePasswordRequestDTO,
+    user: UserEntity = Depends(get_current_user),
+    auth_use_case: AuthUseCase = Depends(get_auth_use_case),
+):
+    """
+    Cập nhật mật khẩu cho user hiện tại.
+    """
+    auth_use_case.change_password(user.id, request.old_password, request.new_password)
+    return {"message": "Đổi mật khẩu thành công."}
 
 # ==========================================
 # GET /me/teams — Danh sách đội thi

@@ -1,7 +1,20 @@
 FROM python:3.12-slim
 
-# Install data science dependencies
-RUN pip install --no-cache-dir pandas scikit-learn numpy
+# Install system tools and clear apt cache
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies in a single layer to minimize image size
+RUN pip install --no-cache-dir \
+    pandas \
+    scikit-learn \
+    numpy \
+    opencv-python-headless \
+    Pillow \
+    nltk \
+    sacrebleu \
+    scikit-image
 
 # Create a non-root user for extra security
 RUN useradd -m -s /bin/bash sandboxuser

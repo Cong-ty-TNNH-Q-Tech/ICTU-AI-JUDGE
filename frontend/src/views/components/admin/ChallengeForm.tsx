@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { Challenge, ChallengeCreateRequest } from '../../../models/api.types';
+import type { Challenge, ChallengeCreateRequest, Contest } from '../../../models/api.types';
 import { adminService } from '../../../services/adminService';
+import { ContestService } from '../../../services/contestService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -81,13 +82,16 @@ const toLocalDatetimeString = (iso?: string | null) => {
 const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => {
   const isEdit = !!initialData;
   const isLocked = initialData?.status === 'PUBLISHED';
-  const [activeTab, setActiveTab] = useState<'general' | 'timeline' | 'evaluation'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'timeline' | 'evaluation' | 'sandbox'>('general');
 
   const [form, setForm] = useState<ChallengeCreateRequest>({
     title: '', description: '', start_time: '', end_time: '',
     type: 'PUBLIC', status: 'DRAFT', dataset_url: '',
     metric_name: 'ACCURACY', metric_direction: 'HIGHER_IS_BETTER',
     max_file_size_mb: 50, rate_limit_minutes: 10, max_team_size: 1,
+    contest_id: null,
+    environment_image: 'ictu-ai-judge-sandbox:latest',
+    require_gpu: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +106,12 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   const [previewMarkdown, setPreviewMarkdown] = useState(false);
   const [publicTestSplitRatio, setPublicTestSplitRatio] = useState(30);
 
+  const [contests, setContests] = useState<Contest[]>([]);
+
+  useEffect(() => {
+    ContestService.getContests(1, 100).then(res => setContests(res.items)).catch(console.error);
+  }, []);
+
   useEffect(() => {
     if (initialData) {
       setForm({
@@ -111,6 +121,9 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
         metric_name: initialData.metric_name, metric_direction: initialData.metric_direction,
         max_file_size_mb: initialData.max_file_size_mb, rate_limit_minutes: initialData.rate_limit_minutes,
         max_team_size: initialData.max_team_size,
+        environment_image: initialData.environment_image || 'ictu-ai-judge-sandbox:latest',
+        require_gpu: initialData.require_gpu || false,
+        contest_id: initialData.contest_id || null,
       });
       setIsUnlimitedTime(initialData.end_time === null);
     }
@@ -118,7 +131,8 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
 
   const set = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setForm(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : value }));
+    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : (type === 'number' ? parseInt(value) || 0 : (value === '' && name === 'contest_id' ? null : value));
+    setForm(prev => ({ ...prev, [name]: val }));
   };
 
   const handleTestMetric = async () => {
@@ -191,6 +205,10 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
               <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
               Evaluation
             </button>
+            <button type="button" onClick={() => setActiveTab('sandbox')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap md:whitespace-normal ${activeTab === 'sandbox' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'text-content-secondary dark:text-content-dark-secondary hover:bg-surface-100 dark:hover:bg-gray-800'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>
+              Sandbox Settings
+            </button>
           </div>
 
           {/* Form Content */}
@@ -225,6 +243,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                   ) : (
                     <textarea name="description" value={form.description} onChange={set} rows={8} className="input-field resize-none font-mono text-[13px] shadow-sm leading-relaxed" placeholder="# Introduction&#10;Describe your challenge here..."></textarea>
                   )}
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Contest Assignment</label>
+                  <select name="contest_id" value={form.contest_id || ''} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark">
+                    <option value="">-- No Contest (Standalone Challenge) --</option>
+                    {contests.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Dataset URL</label>
@@ -295,24 +322,39 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 <div>
                   <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Evaluation Metric</label>
                   <select name="metric_name" value={form.metric_name} onChange={set} disabled={isLocked} className="input-field shadow-sm disabled:opacity-50 disabled:bg-surface-50 dark:disabled:bg-gray-900 text-sm py-2.5">
-                    <option value="ACCURACY">Accuracy (Higher is better)</option>
-                    <option value="F1_SCORE">F1 Score (Higher is better)</option>
-                    <option value="RMSE">RMSE - Root Mean Squared Error (Lower is better)</option>
-                    <option value="PRECISION">Precision (Higher is better)</option>
-                    <option value="CUSTOM">Custom Script</option>
+                    <optgroup label="Tabular">
+                      <option value="ACCURACY">Accuracy (Hố trợ cao hơn)</option>
+                      <option value="F1_SCORE">F1 Score — Macro (Hố trợ cao hơn)</option>
+                      <option value="RMSE">RMSE — Root Mean Squared Error (Thấp hơn)</option>
+                      <option value="PRECISION">Precision (Hố trợ cao hơn)</option>
+                      <option value="RECALL">Recall — Macro (Hố trợ cao hơn)</option>
+                    </optgroup>
+                    <optgroup label="NLP">
+                      <option value="BLEU">BLEU Score — dịch máy, sinh văn bản (Cao hơn)</option>
+                      <option value="ROUGE_L">ROUGE-L — tóm tắt văn bản (Cao hơn)</option>
+                      <option value="WER">1 − WER — nhận dạng giọng nói (Cao hơn)</option>
+                    </optgroup>
+                    <optgroup label="Computer Vision">
+                      <option value="PSNR">PSNR — khôi phục ảnh (Cao hơn)</option>
+                      <option value="SSIM">SSIM — phục hồi cấu trúc ảnh (Cao hơn)</option>
+                      <option value="MEAN_IOU">Mean IoU — phân vùng ảnh (Cao hơn)</option>
+                    </optgroup>
+                    <optgroup label="Tùy chỉnh">
+                      <option value="CUSTOM">Custom Script</option>
+                    </optgroup>
                   </select>
                 </div>
 
                 <div className="pt-2">
-                  <FileUploadZone 
-                    label="Ground Truth File" 
-                    accept=".csv" 
-                    required={!isEdit} 
-                    disabled={isLocked}
-                    file={groundTruthFile} 
-                    onChange={setGroundTruthFile}
-                    hint={isEdit && !isLocked ? "Upload a new CSV to replace the existing ground truth file." : "Contains the actual labels/values used for scoring submissions."}
-                  />
+                    <FileUploadZone 
+                      label="Ground Truth File" 
+                      accept=".csv,.zip"
+                      required={!isEdit} 
+                      disabled={isLocked}
+                      file={groundTruthFile} 
+                      onChange={setGroundTruthFile}
+                      hint={isEdit && !isLocked ? "Upload a new CSV/ZIP to replace the existing ground truth file." : "CSV hoặc ZIP chứa ground truth data. ZIP bắt buộc có file ground_truth.csv bên trong."}
+                    />
                   {groundTruthFile && (
                     <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-2">
@@ -357,7 +399,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                     <h3 className="text-sm font-semibold text-content-primary dark:text-content-dark-primary mb-4">Test Evaluation Script</h3>
                     <FileUploadZone 
                       label="Sample Submission File" 
-                      accept=".csv" 
+                      accept=".csv,.zip" 
                       file={sampleSubmissionFile} 
                       onChange={setSampleSubmissionFile}
                       hint="Upload a sample submission CSV to test against the ground truth."
@@ -398,17 +440,49 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 )}
               </div>
             </div>
+
+            <div className={activeTab === 'sandbox' ? 'block animate-fade-in' : 'hidden'}>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-[13px] font-medium text-content-secondary dark:text-content-dark-secondary mb-1.5">Environment Image</label>
+                  <select name="environment_image" value={form.environment_image} onChange={set} className="input-field shadow-sm bg-white dark:bg-surface-dark">
+                    <option value="ictu-ai-judge-sandbox:latest">Tabular / Standard (pandas, sklearn)</option>
+                    <option value="ictu-ai-judge-sandbox-cv:latest">Computer Vision (PyTorch, OpenCV)</option>
+                    <option value="ictu-ai-judge-sandbox-nlp:latest">NLP (Transformers, spaCy)</option>
+                  </select>
+                  <p className="text-[11px] text-content-tertiary mt-1.5">Docker image for the sandbox worker.</p>
+                </div>
+                
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 text-blue-700 dark:text-blue-400 rounded-xl text-sm flex items-start gap-3">
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div>
+                    <strong>Lưu ý:</strong> Cấu hình RAM và Timeout sẽ được tự động thiết lập dựa trên loại Môi trường (Environment) mà bạn chọn để đảm bảo an toàn cho máy chủ.
+                  </div>
+                </div>
+
+                <div className="p-4 bg-surface-50 dark:bg-gray-900/50 rounded-xl border border-surface-200 dark:border-gray-800 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-content-primary dark:text-content-dark-primary">Require GPU</h4>
+                    <p className="text-[11px] text-content-tertiary mt-1">Passthrough GPU to the container (requires NVIDIA drivers on worker).</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="require_gpu" checked={form.require_gpu} onChange={set} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
 
         <div className="px-6 py-4 border-t border-surface-200 dark:border-gray-800 flex justify-between items-center bg-surface-50 dark:bg-gray-900 rounded-b-2xl flex-shrink-0">
           <div className="text-sm text-content-secondary dark:text-content-dark-secondary">
-            {activeTab !== 'general' && <button type="button" onClick={() => setActiveTab(activeTab === 'evaluation' ? 'timeline' : 'general')} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">&larr; Previous step</button>}
+            {activeTab !== 'general' && <button type="button" onClick={() => setActiveTab(activeTab === 'sandbox' ? 'evaluation' : (activeTab === 'evaluation' ? 'timeline' : 'general'))} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">&larr; Previous step</button>}
           </div>
           <div className="flex gap-3">
             <button type="button" onClick={onCancel} className="btn-ghost border border-surface-200 dark:border-gray-700 bg-white dark:bg-surface-dark shadow-sm">Cancel</button>
-            {activeTab !== 'evaluation' ? (
-              <button type="button" onClick={() => setActiveTab(activeTab === 'general' ? 'timeline' : 'evaluation')} className="btn-primary shadow-sm shadow-primary-500/20">Next step &rarr;</button>
+            {activeTab !== 'sandbox' ? (
+              <button type="button" onClick={() => setActiveTab(activeTab === 'general' ? 'timeline' : (activeTab === 'timeline' ? 'evaluation' : 'sandbox'))} className="btn-primary shadow-sm shadow-primary-500/20">Next step &rarr;</button>
             ) : (
               <button type="submit" form="challenge-form" disabled={loading} className="btn-primary shadow-sm shadow-primary-500/20 min-w-[120px] justify-center">
                 {loading ? (
