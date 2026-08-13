@@ -90,7 +90,7 @@ services:
     env_file:
       - .env
     environment:
-      - HOST_PRETRAINED_WEIGHTS_PATH=pretrained_weights_data
+      - HOST_PRETRAINED_WEIGHTS_PATH=ictu_ai_judge_pretrained_weights
     volumes:
       - ./backend:/app
       # [CRITICAL] DooD (Docker-out-of-Docker) for Sandbox execution
@@ -116,7 +116,7 @@ services:
     env_file:
       - .env
     environment:
-      - HOST_PRETRAINED_WEIGHTS_PATH=pretrained_weights_data
+      - HOST_PRETRAINED_WEIGHTS_PATH=ictu_ai_judge_pretrained_weights
     volumes:
       - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
@@ -173,3 +173,4 @@ volumes:
   pgdata:
   minio_data:
   pretrained_weights_data:
+    name: ictu_ai_judge_pretrained_weights
