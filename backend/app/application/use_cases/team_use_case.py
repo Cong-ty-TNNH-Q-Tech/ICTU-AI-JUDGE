@@ -34,7 +34,7 @@ class TeamUseCase:
         return datetime.now(timezone.utc)
 
     def create_invite(self, team_id: uuid.UUID, leader_id: uuid.UUID, base_url: str) -> CreateInviteResponseDTO:
-        logger.info(f"Leader {leader_id} is creating an invite for team {team_id}")
+        logger.info("Leader %s is creating an invite for team %s", leader_id, team_id)
         team = self.team_repo.get_by_id(team_id)
         if not team:
             raise NotFoundError("Không tìm thấy đội")
@@ -67,7 +67,7 @@ class TeamUseCase:
         )
         self.uow.commit()
         
-        logger.info(f"Invite token generated successfully for team {team_id}")
+        logger.info("Invite token generated successfully for team %s", team_id)
 
         invite_url = f"{base_url}/join?token={token}"
         return CreateInviteResponseDTO(
@@ -77,7 +77,7 @@ class TeamUseCase:
         )
 
     def join_team(self, user_id: uuid.UUID, token: str) -> TeamResponseDTO:
-        logger.info(f"User {user_id} is attempting to join a team using token")
+        logger.info("User %s is attempting to join a team using token", user_id)
         now = self._now()
         invite = self.team_repo.get_invite_by_token(token)
         if not invite or not invite.is_valid(now):
@@ -111,7 +111,7 @@ class TeamUseCase:
                 raise UserAlreadyInTeamError("Đội hiện tại của bạn đã nộp bài, không thể gia nhập đội khác")
             
             # Delete the default 1-person team
-            logger.info(f"Deleting default 1-person team {existing_team.id} for user {user_id}")
+            logger.info("Deleting default 1-person team %s for user %s", existing_team.id, user_id)
             self.team_repo.delete(existing_team.id)
 
         # Add user vào team
@@ -119,7 +119,7 @@ class TeamUseCase:
         self.team_repo.update_invite_status(token, InviteStatus.ACCEPTED)
         self.uow.commit()
 
-        logger.info(f"User {user_id} joined team {team.id} successfully")
+        logger.info("User %s joined team %s successfully", user_id, team.id)
 
         # Lấy lại team để trả về DTO
         team = self.team_repo.get_by_id(invite.team_id)
@@ -171,7 +171,7 @@ class TeamUseCase:
         self.team_repo.add_member(team_id, user_id)
         self.uow.commit()
 
-        logger.info(f"Auto-created 1-person team {team_id} for user {user_id}")
+        logger.info("Auto-created 1-person team %s for user %s", team_id, user_id)
 
         team = self.team_repo.get_by_id(team_id)
         return TeamResponseDTO(
@@ -199,7 +199,7 @@ class TeamUseCase:
             
         self.team_repo.remove_member(team_id, user_id)
         self.uow.commit()
-        logger.info(f"User {requester_id} kicked user {user_id} from team {team_id}")
+        logger.info("User %s kicked user %s from team %s", requester_id, user_id, team_id)
 
     def get_user_teams(self, user_id: uuid.UUID, page: int, size: int) -> dict:
         teams, total = self.team_repo.get_user_teams(user_id, page, size)

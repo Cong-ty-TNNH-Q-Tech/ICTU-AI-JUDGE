@@ -16,6 +16,20 @@ const RegisterPage = () => {
   
   const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
 
+  const handleResendOTP = async () => {
+    try {
+      await register({
+        email,
+        password,
+        full_name: fullName,
+        student_id: studentId,
+      });
+      useToastStore.getState().showToast("Đã gửi lại mã OTP.", "success");
+    } catch {
+      // Lỗi đã được xử lý hiển thị toast trong VM
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -121,6 +135,7 @@ const RegisterPage = () => {
         email={email} 
         isOpen={isOTPModalOpen} 
         onClose={() => setIsOTPModalOpen(false)} 
+        onResend={handleResendOTP}
       />
     </div>
   );

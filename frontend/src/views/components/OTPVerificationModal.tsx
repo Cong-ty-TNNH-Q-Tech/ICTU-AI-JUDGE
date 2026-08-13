@@ -7,9 +7,10 @@ interface OTPVerificationModalProps {
   email: string;
   isOpen: boolean;
   onClose: () => void;
+  onResend?: () => void;
 }
 
-const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({ email, isOpen, onClose }) => {
+const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({ email, isOpen, onClose, onResend }) => {
   const [otp, setOtp] = useState('');
   const { verifyOtp, loading } = useAuthVM();
   const navigate = useNavigate();
@@ -76,6 +77,21 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({ email, isOp
               </button>
             </div>
           </form>
+          {onResend && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Không nhận được mã?{' '}
+                <button
+                  type="button"
+                  onClick={onResend}
+                  disabled={loading}
+                  className="font-medium text-primary hover:text-primary-dark focus:outline-none focus:underline transition-colors disabled:opacity-50"
+                >
+                  Gửi lại mã
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

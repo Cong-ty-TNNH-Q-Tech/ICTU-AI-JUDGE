@@ -78,6 +78,10 @@ class AuthUseCase:
                 user = self._user_repo.save(user)
             return user
 
+        # Check student_id uniqueness before creating
+        if self._user_repo.get_by_student_id(student_id):
+            raise ValueError(f"Mã sinh viên {student_id} đã được liên kết với một tài khoản khác.")
+
         role = UserRole.ADMIN if is_root else UserRole.STUDENT
         new_user = UserEntity(
             id=uuid.uuid4(),
@@ -167,6 +171,9 @@ class AuthUseCase:
         return user.email, user.full_name, reset_link
 
     def reset_password(self, token: str, new_password: str) -> None:
+        if len(new_password) < 8:
+            raise ValueError("Mật khẩu mới phải có ít nhất 8 ký tự.")
+            
         reset_entity = self._password_reset_repo.get_by_token(token)
         if not reset_entity:
             raise InvalidTokenError("Đường dẫn đặt lại mật khẩu không hợp lệ.")
@@ -188,12 +195,22 @@ class AuthUseCase:
         logger.info("Password reset successfully for user %s", user.id)
 
     def request_registration(self, email: str, password: str, full_name: str, student_id: str) -> None:
+        if len(password) < 8:
+            raise ValueError("Mật khẩu phải có ít nhất 8 ký tự.")
+            
         if not email.endswith("@ictu.edu.vn"):
             raise ValueError("Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn.")
             
+        import re
+        if not re.match(r"^[A-Za-z0-9]{5,20}$", student_id):
+            raise ValueError("Mã sinh viên không hợp lệ (chỉ gồm 5-20 ký tự chữ và số).")
+
         user = self._user_repo.get_by_email(email)
         if user:
             raise ValueError("Email này đã được đăng ký.")
+            
+        if self._user_repo.get_by_student_id(student_id):
+            raise ValueError("Mã sinh viên này đã được đăng ký.")
             
         # Generate 6-digit OTP
         otp = f"{random.randint(0, 999999):06d}"
