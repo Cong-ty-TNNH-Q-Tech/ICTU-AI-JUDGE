@@ -158,7 +158,7 @@ export function useSubmissionVM(challengeId: string) {
     } catch (err) {
       if (err instanceof AppError && err.status) {
         if (err.status === 429) {
-          const waitMinutes = err.data?.wait_minutes || 1;
+          const waitMinutes = (err.data as { wait_minutes?: number })?.wait_minutes || 1;
           setRateLimitCountdown(waitMinutes * 60);
           setSubmitError(`Vi phạm Rate Limit. Vui lòng thử lại sau.`);
         } else if (err.status === 409) {
