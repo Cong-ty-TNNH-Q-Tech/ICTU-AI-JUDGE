@@ -5,13 +5,14 @@ import uuid
 import random
 from datetime import datetime, timezone
 
+from app.application.utils.mappers import challenge_to_dto
 from app.application.dtos.challenge_dtos import (
     ChallengeCreateRequestDTO,
     ChallengeListResponseDTO,
     ChallengeResponseDTO,
     ChallengeUpdateRequestDTO,
 )
-from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository
+from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository, IUnitOfWork
 from app.application.utils.file_validation import validate_zip_format, validate_zip_contains_ground_truth_csv
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
 from app.application.dtos.tag_dtos import TagResponseDTO
@@ -25,6 +26,7 @@ class ChallengeUseCase:
         challenge_repo: IChallengeRepository,
         storage_repo: IStorageRepository,
         tag_repo: ITagRepository,
+        uow: IUnitOfWork,
         zip_max_uncompressed_mb: int = 500,
         zip_max_file_count: int = 10000,
     ):
@@ -33,32 +35,7 @@ class ChallengeUseCase:
         self.tag_repo = tag_repo
         self.zip_max_uncompressed_mb = zip_max_uncompressed_mb
         self.zip_max_file_count = zip_max_file_count
-
-    def _to_dto(
-        self, entity: ChallengeEntity, is_admin: bool = False
-    ) -> ChallengeResponseDTO:
-        dto = ChallengeResponseDTO(
-            id=entity.id,
-            title=entity.title,
-            description=entity.description,
-            type=entity.type,
-            status=entity.status,
-            start_time=entity.start_time,
-            end_time=entity.end_time,
-            rate_limit_minutes=entity.rate_limit_minutes,
-            max_file_size_mb=entity.max_file_size_mb,
-            metric_name=entity.metric_name,
-            metric_direction=entity.metric_direction,
-            created_by=entity.created_by,
-            created_at=entity.created_at,
-            dataset_url=entity.dataset_url,
-            team_lock_deadline=entity.team_lock_deadline,
-            max_team_size=entity.max_team_size,
-            ground_truth_url=entity.ground_truth_url if is_admin else None,
-            custom_metric_url=entity.custom_metric_url if is_admin else None,
-            tags=[TagResponseDTO.model_validate(t) for t in entity.tags]
-        )
-        return dto
+        self.uow = uow
 
     def create_challenge(
         self, admin_id: uuid.UUID, data: ChallengeCreateRequestDTO
@@ -82,6 +59,10 @@ class ChallengeUseCase:
             team_lock_deadline=data.team_lock_deadline,
             max_team_size=data.max_team_size,
             created_at=datetime.now(timezone.utc),
+            contest_id=data.contest_id,
+            parent_id=data.parent_id,
+            environment_image=data.environment_image,
+            require_gpu=data.require_gpu,
             tags=[]
         )
         
@@ -92,7 +73,8 @@ class ChallengeUseCase:
             new_entity.tags = tags
 
         saved = self.challenge_repo.save(new_entity)
-        return self._to_dto(saved, is_admin=True)
+        self.uow.commit()
+        return challenge_to_dto(saved, is_admin=True)
 
     def update_challenge(
         self, challenge_id: uuid.UUID, data: ChallengeUpdateRequestDTO
@@ -120,7 +102,8 @@ class ChallengeUseCase:
                 challenge.tags = tags
 
         updated = self.challenge_repo.update(challenge)
-        return self._to_dto(updated, is_admin=True)
+        self.uow.commit()
+        return challenge_to_dto(updated, is_admin=True)
 
     def get_challenge(
         self, challenge_id: uuid.UUID, is_admin: bool = False
@@ -132,7 +115,7 @@ class ChallengeUseCase:
         if not is_admin and challenge.status != ChallengeStatus.PUBLISHED:
             raise ValueError("Bài thi không tồn tại.")
 
-        return self._to_dto(challenge, is_admin=is_admin)
+        return challenge_to_dto(challenge, is_admin=is_admin)
 
     def list_challenges(
         self, page: int, size: int, status_filter: str | None = None, is_admin: bool = False, tag_id: uuid.UUID | None = None
@@ -143,7 +126,7 @@ class ChallengeUseCase:
         entities, total = self.challenge_repo.list_all(
             page=page, size=size, status_filter=status_filter, tag_id=tag_id
         )
-        dtos = [self._to_dto(c, is_admin=is_admin) for c in entities]
+        dtos = [challenge_to_dto(c, is_admin=is_admin) for c in entities]
         return ChallengeListResponseDTO(items=dtos, total=total, page=page, size=size)
 
     def delete_challenge(self, challenge_id: uuid.UUID) -> None:
@@ -234,4 +217,5 @@ class ChallengeUseCase:
             challenge.custom_metric_url = metric_key
 
         updated = self.challenge_repo.update(challenge)
-        return self._to_dto(updated, is_admin=True)
+        self.uow.commit()
+        return challenge_to_dto(updated, is_admin=True)

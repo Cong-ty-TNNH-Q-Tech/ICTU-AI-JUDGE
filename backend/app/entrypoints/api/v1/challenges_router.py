@@ -27,6 +27,7 @@ from app.entrypoints.dependencies import (
     get_current_user_id,
     get_optional_current_user_id,
     get_current_user,
+    get_optional_current_user,
     get_db,
     get_solution_use_case,
     get_challenge_use_case,
@@ -323,10 +324,11 @@ async def submit(
 async def list_solutions(
     challenge_id: uuid.UUID,
     use_case: SolutionUseCase = Depends(get_solution_use_case),
+    current_user: UserEntity | None = Depends(get_optional_current_user),
 ):
     """Lấy danh sách Solutions của một bài thi."""
     try:
-        return use_case.list_solutions(challenge_id)
+        return use_case.list_solutions(challenge_id, current_user)
     except ValueError:
         # Challenge không tồn tại — trả về danh sách rỗng thay vì 404
         return SolutionListResponseDTO(items=[], total=0)

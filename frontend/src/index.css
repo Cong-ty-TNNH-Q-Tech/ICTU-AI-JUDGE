@@ -127,6 +127,13 @@
   html.dark .tab-btn-inactive {
     @apply hover:text-content-dark-secondary;
   }
+
+  .glass-panel {
+    @apply bg-white/60 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg rounded-2xl;
+  }
+  .glass-btn {
+    @apply bg-white/40 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/10 shadow-sm rounded-lg hover:bg-white/60 dark:hover:bg-white/20 transition-all duration-200 text-content-primary dark:text-content-dark-primary;
+  }
 }
 
 @layer utilities {

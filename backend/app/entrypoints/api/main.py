@@ -23,6 +23,8 @@ from app.domain.exceptions.exceptions import (
     TeamFullError,
     TeamHasSubmissionsError,
     UserAlreadyInTeamError,
+    InvalidTokenError,
+    InvalidPasswordError,
 )
 
 # ---- Routers (sẽ được implement bởi từng thành viên) ----
@@ -36,6 +38,7 @@ from app.entrypoints.api.v1 import (
     admin_router,
     tags_router,
     storage_router,
+    contests_router,
 )
 
 logging.basicConfig(
@@ -105,6 +108,16 @@ async def file_size_handler(request: Request, exc: FileSizeExceededError):
     )
 
 
+@app.exception_handler(InvalidTokenError)
+async def invalid_token_handler(request: Request, exc: InvalidTokenError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidPasswordError)
+async def invalid_password_handler(request: Request, exc: InvalidPasswordError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
 @app.exception_handler(SubmissionDeadlinePassedError)
 async def deadline_handler(request: Request, exc: SubmissionDeadlinePassedError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
@@ -140,6 +153,7 @@ async def generic_domain_handler(request: Request, exc: DomainException):
 # ==========================================
 app.include_router(auth_router.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Auth"])
 app.include_router(users_router.router, prefix=f"{settings.API_V1_PREFIX}/users", tags=["Users"])
+app.include_router(contests_router.router, prefix=f"{settings.API_V1_PREFIX}/contests", tags=["Contests"])
 app.include_router(challenges_router.router, prefix=f"{settings.API_V1_PREFIX}/challenges", tags=["Challenges"])
 app.include_router(teams_router.router, prefix=f"{settings.API_V1_PREFIX}/teams", tags=["Teams"])
 app.include_router(submissions_router.router, prefix=f"{settings.API_V1_PREFIX}/submissions", tags=["Submissions"])

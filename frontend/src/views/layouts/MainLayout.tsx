@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store';
 import { useAuthVM } from '../../viewmodels/useAuthVM';
 import IctuLogo from '../../assets/ictu-logo.png';
 import ErrorBoundary from '../components/ErrorBoundary';
+import Footer from '../components/Footer';
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useAuthStore();
@@ -29,8 +30,9 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const navLinks = [
-    { name: 'Competitions', path: '/challenges' },
-    ...(user?.role === 'ADMIN' ? [{ name: 'Admin', path: '/admin' }] : []),
+    { name: 'Cuộc thi', path: '/contests' },
+    { name: 'Thử thách', path: '/challenges' },
+    ...(user?.role === 'ADMIN' ? [{ name: 'Quản trị', path: '/admin' }] : []),
   ];
 
   return (
@@ -72,7 +74,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search competitions..."
+                  placeholder="Tìm kiếm cuộc thi..."
                   className="w-48 focus:w-64 pl-8 pr-3 py-[7px] text-[13px] rounded-lg bg-surface-50 dark:bg-gray-800/60 border border-surface-200 dark:border-gray-700/60 text-content-primary dark:text-content-dark-primary placeholder:text-content-tertiary/60 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800/40 transition-all duration-300"
                 />
               </div>
@@ -114,14 +116,14 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                         </button>
                         <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-[13px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-2">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
-                          Sign out
+                          Đăng xuất
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <Link to="/login" className="btn-primary text-[13px] py-2 px-4">Sign in</Link>
+                <Link to="/login" className="btn-primary text-[13px] py-2 px-4">Đăng nhập</Link>
               )}
             </div>
 
@@ -145,7 +147,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                 </NavLink>
               ))}
               {isAuthenticated && (
-                <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-2">Sign out</button>
+                <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-2">Đăng xuất</button>
               )}
             </div>
           </div>
@@ -158,12 +160,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
         </ErrorBoundary>
       </main>
 
-      <footer className="border-t border-surface-200/60 dark:border-gray-800/60 mt-auto">
-        <div className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-between">
-          <span className="text-[12px] text-content-tertiary">&copy; 2026 ICTU AI Club</span>
-          <span className="text-[12px] text-content-tertiary">v1.0.0</span>
-        </div>
-      </footer>
+      <Footer containerClassName="max-w-[1400px]" />
     </div>
   );
 };

@@ -98,6 +98,38 @@ class UserRepository(IUserRepository):
         models = self._session.execute(stmt).scalars().all()
         return [self._to_entity(m) for m in models], total
 
+    def get_by_id_admin(self, user_id: uuid.UUID) -> Optional[UserEntity]:
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        result = self._session.execute(stmt).scalar_one_or_none()
+        return self._to_entity(result) if result else None
+
+    def list_all_admin(self, page: int, size: int, query: str = "") -> tuple[list[UserEntity], int]:
+        stmt = select(UserModel)
+        if query:
+            stmt = stmt.where(
+                (UserModel.email.ilike(f"%{query}%"))
+                | (UserModel.full_name.ilike(f"%{query}%"))
+                | (UserModel.student_id.ilike(f"%{query}%"))
+            )
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = self._session.execute(count_stmt).scalar() or 0
+        # Sort active first (deleted_at IS NULL = 0, deleted_at IS NOT NULL = 1), then created_at DESC
+        stmt = stmt.order_by(
+            UserModel.deleted_at.isnot(None), 
+            UserModel.created_at.desc()
+        ).offset((page - 1) * size).limit(size)
+        models = self._session.execute(stmt).scalars().all()
+        return [self._to_entity(m) for m in models], total
+
+
+    def update_password(self, user_id: uuid.UUID, password_hash: str) -> None:
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(password_hash=password_hash)
+        )
+        self._session.execute(stmt)
+
     def soft_delete(self, user_id: uuid.UUID) -> None:
         stmt = (
             update(UserModel)
@@ -106,6 +138,18 @@ class UserRepository(IUserRepository):
         )
         self._session.execute(stmt)
         self._session.commit()
+
+    def update_password(self, user_id: uuid.UUID, new_password_hash: str) -> None:
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(
+                password_hash=new_password_hash,
+                updated_at=func.now()
+            )
+        )
+        self._session.execute(stmt)
+        self._session.flush()
 
     def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
         """Kích hoạt / vô hiệu hóa tài khoản (Admin feature)."""
@@ -201,10 +245,11 @@ class UserRepository(IUserRepository):
         github_url: str | None,
         linkedin_url: str | None,
         avatar_url: str | None = _SENTINEL,  # type: ignore[assignment]
+        full_name: str | None = _SENTINEL,  # type: ignore[assignment]
     ) -> UserEntity | None:
         """
         Atomic profile update — chỉ cập nhật các trường được truyền vào.
-        avatar_url dùng sentinel pattern để phân biệt "không truyền" vs "xóa URL".
+        avatar_url và full_name dùng sentinel pattern để phân biệt "không truyền" vs "xóa URL/giá trị".
         """
         values: dict = {
             "github_url": github_url,
@@ -213,6 +258,8 @@ class UserRepository(IUserRepository):
         }
         if avatar_url is not _SENTINEL:
             values["avatar_url"] = avatar_url
+        if full_name is not _SENTINEL:
+            values["full_name"] = full_name
 
         stmt = (
             update(UserModel)

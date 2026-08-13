@@ -27,6 +27,7 @@ class SQLChallengeRepository(IChallengeRepository):
     def _to_entity(model: ChallengeModel) -> ChallengeEntity:
         return ChallengeEntity(
             id=model.id,
+            contest_id=model.contest_id,
             title=model.title,
             description=model.description,
             type=ChallengeType(model.type),
@@ -46,6 +47,8 @@ class SQLChallengeRepository(IChallengeRepository):
             max_team_size=model.max_team_size,
             deleted_at=model.deleted_at,
             parent_id=model.parent_id,
+            environment_image=model.environment_image,
+            require_gpu=model.require_gpu,
             tags=[TagEntity(
                 id=t.id,
                 name=t.name,
@@ -91,6 +94,9 @@ class SQLChallengeRepository(IChallengeRepository):
             team_lock_deadline=challenge.team_lock_deadline,
             max_team_size=challenge.max_team_size,
             parent_id=challenge.parent_id,
+            contest_id=challenge.contest_id,
+            environment_image=challenge.environment_image,
+            require_gpu=challenge.require_gpu,
         )
         self.db.add(model)
         self.db.flush()
@@ -125,6 +131,9 @@ class SQLChallengeRepository(IChallengeRepository):
         model.team_lock_deadline = challenge.team_lock_deadline
         model.max_team_size = challenge.max_team_size
         model.parent_id = challenge.parent_id
+        model.contest_id = challenge.contest_id
+        model.environment_image = challenge.environment_image
+        model.require_gpu = challenge.require_gpu
         self.db.flush()
         return self._to_entity(model)
 
