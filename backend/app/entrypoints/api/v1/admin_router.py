@@ -56,12 +56,10 @@ async def list_users(
 async def update_user_status(
     user_id: uuid.UUID,
     request: UserStatusUpdateRequestDTO,
-    use_case: AdminUseCase = Depends(get_admin_use_case),
-    db: Session = Depends(get_db)
+    use_case: AdminUseCase = Depends(get_admin_use_case)
 ):
     """UC12 — Khóa/Mở khóa tài khoản sinh viên (Admin only)."""
     result = use_case.update_user_status(user_id=user_id, is_active=request.is_active)
-    db.commit()
     return result
 
 
@@ -69,12 +67,10 @@ async def update_user_status(
 async def update_user_role(
     user_id: uuid.UUID,
     request: UserRoleUpdateRequestDTO,
-    use_case: AdminUseCase = Depends(get_admin_use_case),
-    db: Session = Depends(get_db)
+    use_case: AdminUseCase = Depends(get_admin_use_case)
 ):
     """Cấp/Đổi quyền cho người dùng (Admin only)."""
     result = use_case.update_user_role(user_id=user_id, role=request.role)
-    db.commit()
     return result
 
 
