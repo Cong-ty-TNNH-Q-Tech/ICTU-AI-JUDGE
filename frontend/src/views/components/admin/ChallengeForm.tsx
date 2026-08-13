@@ -109,8 +109,11 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
   const [contests, setContests] = useState<Contest[]>([]);
 
   useEffect(() => {
-    ContestService.getContests(1, 100).then(res => setContests(res.items)).catch(console.error);
-  }, []);
+    ContestService.getContests(1, 500).then(res => {
+      const activeContests = res.items.filter(c => c.status !== 'ARCHIVED' || c.id === initialData?.contest_id);
+      setContests(activeContests);
+    }).catch(console.error);
+  }, [initialData?.contest_id]);
 
   useEffect(() => {
     if (initialData) {
