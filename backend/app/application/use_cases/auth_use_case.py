@@ -53,8 +53,12 @@ class AuthUseCase:
         if data.get("email_verified") not in (True, "true"):
             raise AuthenticationError("Email Google chưa được xác thực (email_verified=false).")
 
-
         is_root = self._is_root_admin(email)
+        
+        # Issue 188: Block non @ictu.edu.vn emails unless root admin
+        if not email.endswith("@ictu.edu.vn") and not is_root:
+            raise ValueError("Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn.")
+            
         student_id = email.split("@")[0]
         full_name = data.get("name", "Student")
 
