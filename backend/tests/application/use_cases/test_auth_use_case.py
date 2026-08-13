@@ -25,6 +25,7 @@ def test_login_with_google_success_new_user(auth_use_case):
         "name": "Test User"
     }
     auth_use_case._user_repo.get_by_email.return_value = None
+    auth_use_case._user_repo.get_by_student_id.return_value = None
     
     def mock_save(u):
         return u
@@ -191,18 +192,19 @@ def test_reset_password(auth_use_case):
 
 def test_request_registration_success(auth_use_case):
     auth_use_case._user_repo.get_by_email.return_value = None
-    auth_use_case.request_registration("test@ictu.edu.vn", "password", "Test Name", "123")
+    auth_use_case._user_repo.get_by_student_id.return_value = None
+    auth_use_case.request_registration("test@ictu.edu.vn", "password", "Test Name", "DTC12345")
     auth_use_case._cache_client.set.assert_called_once()
     auth_use_case._mail_client.send_email.assert_called_once()
 
 def test_request_registration_invalid_email(auth_use_case):
-    with pytest.raises(AuthenticationError, match="Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn."):
-        auth_use_case.request_registration("test@gmail.com", "password", "Test Name", "123")
+    with pytest.raises(ValueError, match="Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn."):
+        auth_use_case.request_registration("test@gmail.com", "password", "Test Name", "DTC12345")
 
 def test_request_registration_existing_email(auth_use_case):
     auth_use_case._user_repo.get_by_email.return_value = MagicMock()
-    with pytest.raises(AuthenticationError, match="Email này đã được đăng ký."):
-        auth_use_case.request_registration("test@ictu.edu.vn", "password", "Test Name", "123")
+    with pytest.raises(ValueError, match="Email này đã được đăng ký."):
+        auth_use_case.request_registration("test@ictu.edu.vn", "password", "Test Name", "DTC12345")
 
 def test_verify_registration_otp_success(auth_use_case):
     import json
