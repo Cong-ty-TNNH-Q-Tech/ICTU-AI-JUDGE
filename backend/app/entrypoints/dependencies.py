@@ -335,7 +335,8 @@ def get_leaderboard_use_case(
 
 def get_contest_use_case(
     contest_repo: IContestRepository = Depends(get_contest_repository),
+    challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> ContestUseCase:
-    return ContestUseCase(contest_repo, uow)
+    return ContestUseCase(contest_repo, challenge_repo, uow)
 

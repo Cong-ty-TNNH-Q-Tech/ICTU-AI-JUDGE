@@ -14,7 +14,7 @@ from app.application.dtos.contest_dtos import (
     ContestResponseDTO,
     ContestUpdateDTO,
 )
-from app.application.interfaces.repositories import IContestRepository, IUnitOfWork
+from app.application.interfaces.repositories import IContestRepository, IChallengeRepository, IUnitOfWork
 from app.domain.entities.entities import ChallengeEntity, ContestEntity, ContestStatus
 from app.domain.exceptions.exceptions import NotFoundError
 
@@ -22,8 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class ContestUseCase:
-    def __init__(self, contest_repo: IContestRepository, uow: IUnitOfWork):
+    def __init__(self, contest_repo: IContestRepository, challenge_repo: IChallengeRepository, uow: IUnitOfWork):
         self._contest_repo = contest_repo
+        self._challenge_repo = challenge_repo
         self._uow = uow
 
     # ------------------------------------------------------------------
@@ -131,5 +132,11 @@ class ContestUseCase:
         if not entity:
             raise NotFoundError(f"Contest {contest_id} không tồn tại.")
         self._contest_repo.delete(contest_id)
+        
+        # Cascade soft-delete cho các challenge con
+        challenges = self._contest_repo.get_challenges(contest_id)
+        for c in challenges:
+            self._challenge_repo.soft_delete(c.id)
+            
         self._uow.commit()
-        logger.info("Contest soft-deleted: id=%s", contest_id)
+        logger.info("Contest soft-deleted with %d child challenges: id=%s", len(challenges), contest_id)
