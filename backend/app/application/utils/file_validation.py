@@ -4,10 +4,9 @@ Shared file validation utilities for Use Cases.
 """
 import csv
 import io
+import posixpath
 import uuid
 import zipfile
-
-from app.core.config import get_settings
 
 
 def validate_csv_format(file_bytes: bytes, filename: str) -> None:
@@ -44,17 +43,20 @@ def validate_csv_format(file_bytes: bytes, filename: str) -> None:
         raise ValueError(f"Không thể đọc file CSV: {exc}") from exc
 
 
-def validate_zip_format(file_bytes: bytes, filename: str) -> None:
+def validate_zip_format(
+    file_bytes: bytes,
+    filename: str,
+    max_uncompressed_mb: int = 500,
+    max_file_count: int = 10000,
+) -> None:
     """
     Validate file .zip:
     - Không corrupt
     - Chống Path Traversal (tên file không được chứa '..' hoặc bắt đầu bằng '/')
-    - Chống Zip Bomb (tổng size giải nén ≤ ZIP_MAX_UNCOMPRESSED_MB, số file ≤ ZIP_MAX_FILE_COUNT)
+    - Chống Zip Bomb (dùng heuristic tỷ lệ nén và giới hạn cứng)
     - Phải có ít nhất 1 file bên trong
     Raises ValueError nếu không hợp lệ.
     """
-    settings = get_settings()
-
     if not file_bytes:
         raise ValueError("File ZIP rỗng, vui lòng kiểm tra lại.")
 
@@ -69,28 +71,37 @@ def validate_zip_format(file_bytes: bytes, filename: str) -> None:
                 raise ValueError("File ZIP rỗng, không chứa file nào.")
 
             total_uncompressed = 0
+            total_compressed = 0
             for info in infolist:
                 name = info.filename
                 # [SECURITY] Path Traversal
-                if '..' in name or name.startswith('/'):
+                normalized = posixpath.normpath(name)
+                if normalized.startswith('..') or posixpath.isabs(normalized) or '..' in normalized.split('/'):
                     raise ValueError(
                         f"Tên file không hợp lệ trong ZIP: '{name}'. "
                         "Không được chứa '..' hoặc đường dẫn tuyệt đối."
                     )
                 total_uncompressed += info.file_size
+                total_compressed += info.compress_size
 
-            # [SECURITY] Zip Bomb
-            max_bytes = settings.ZIP_MAX_UNCOMPRESSED_MB * 1024 * 1024
+            # [SECURITY] Zip Bomb (Compression Ratio Heuristic)
+            if total_compressed > 0 and (total_uncompressed / total_compressed) > 100:
+                raise ValueError(
+                    f"Tỷ lệ nén đáng ngờ ({total_uncompressed / total_compressed:.0f}x). "
+                    "File ZIP có dấu hiệu là Zip Bomb."
+                )
+
+            max_bytes = max_uncompressed_mb * 1024 * 1024
             if total_uncompressed > max_bytes:
                 raise ValueError(
                     f"Tổng dung lượng giải nén ({total_uncompressed / 1024 / 1024:.1f}MB) "
-                    f"vượt quá giới hạn {settings.ZIP_MAX_UNCOMPRESSED_MB}MB."
+                    f"vượt quá giới hạn {max_uncompressed_mb}MB."
                 )
 
-            if len(infolist) > settings.ZIP_MAX_FILE_COUNT:
+            if len(infolist) > max_file_count:
                 raise ValueError(
                     f"Số lượng file trong ZIP ({len(infolist)}) "
-                    f"vượt quá giới hạn {settings.ZIP_MAX_FILE_COUNT} file."
+                    f"vượt quá giới hạn {max_file_count} file."
                 )
     except zipfile.BadZipFile as exc:
         raise ValueError(f"File ZIP bị hỏng hoặc không đúng định dạng: {exc}") from exc
@@ -115,22 +126,22 @@ def validate_zip_contains_ground_truth_csv(file_bytes: bytes) -> None:
                     "để hệ thống phân định Public/Private và chấm điểm. "
                     f"Các file tìm thấy: {names[:10]}..."
                 )
+            
+            with zf.open("ground_truth.csv") as f:
+                text_stream = io.TextIOWrapper(f, encoding="utf-8", errors="replace")
+                reader = csv.reader(text_stream)
+                header = next(reader, None)
+                if not header or "Usage" not in header:
+                    raise ValueError(
+                        "File 'ground_truth.csv' bên trong ZIP bị thiếu cột 'Usage'. "
+                        "Hệ thống yêu cầu cột này để phân định Public/Private test."
+                    )
     except zipfile.BadZipFile as exc:
         raise ValueError(f"File ZIP bị hỏng hoặc không đúng định dạng: {exc}") from exc
     except ValueError:
         raise
     except Exception as exc:
         raise ValueError(f"Không thể đọc file ZIP: {exc}") from exc
-
-
-def build_s3_key(
-    challenge_id: uuid.UUID,
-    team_id: uuid.UUID,
-    submission_id: uuid.UUID,
-    filename: str,
-) -> str:
-    """Tạo S3 object key theo cấu trúc chuẩn."""
-    return f"submissions/{challenge_id}/{team_id}/{submission_id}/{filename}"
 
 
 def get_effective_content_type(filename: str, fallback: str = "text/csv") -> str:

@@ -60,6 +60,9 @@ Admin upload `.zip` chứa dữ liệu chấm điểm (ảnh, text, audio...). F
 
 1. **`ground_truth.csv`**: CSV 3 cột — `filename`, `label`, `Usage`
 
+> [!IMPORTANT]
+> Với Ground Truth ZIP, file `ground_truth.csv` bên trong **bắt buộc** phải có cột `Usage` (giá trị `Public`/`Private`) vì hệ thống không tự generate như ở chế độ CSV Mode.
+
 | filename | label | Usage |
 |----------|-------|-------|
 | img_001.png | cat | Public |
@@ -88,22 +91,22 @@ img_003.png,cat
 ### 3.3. Custom Metric cho ZIP
 
 ```python
-def calculate_score(ground_truth_dir: str, submission_dir: str) -> float:
+def calculate_score(ground_truth_path: str, submission_path: str) -> float:
     """
-    ground_truth_dir: thư mục chứa ground_truth.csv + các file dữ liệu
-    submission_dir: thư mục chứa file kết quả của thí sinh
+    ground_truth_path: thư mục chứa ground_truth.csv + các file dữ liệu (đã giải nén)
+    submission_path: thư mục chứa file kết quả của thí sinh (đã giải nén)
     """
     import os
     import pandas as pd
 
-    gt_csv = pd.read_csv(os.path.join(ground_truth_dir, 'ground_truth.csv'))
+    gt_csv = pd.read_csv(os.path.join(ground_truth_path, 'ground_truth.csv'))
 
     total_score = 0.0
     count = 0
     for _, row in gt_csv.iterrows():
         filename = row['filename']
-        gt_file = os.path.join(ground_truth_dir, filename)
-        sub_file = os.path.join(submission_dir, filename)
+        gt_file = os.path.join(ground_truth_path, filename)
+        sub_file = os.path.join(submission_path, filename)
         # ... xử lý file, tính điểm từng file ...
         total_score += score
         count += 1

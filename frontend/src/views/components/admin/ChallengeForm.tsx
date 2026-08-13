@@ -345,15 +345,15 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
                 </div>
 
                 <div className="pt-2">
-                    <FileUploadZone 
-                      label="Ground Truth File" 
-                      accept=".csv,.zip"
-                      required={!isEdit} 
-                      disabled={isLocked}
-                      file={groundTruthFile} 
-                      onChange={setGroundTruthFile}
-                      hint={isEdit && !isLocked ? "Upload a new CSV/ZIP to replace the existing ground truth file." : "CSV hoặc ZIP chứa ground truth data. ZIP bắt buộc có file ground_truth.csv bên trong."}
-                    />
+                  <FileUploadZone 
+                    label="Ground Truth File" 
+                    accept=".csv,.zip"
+                    required={!isEdit} 
+                    disabled={isLocked}
+                    file={groundTruthFile} 
+                    onChange={setGroundTruthFile}
+                    hint={isEdit && !isLocked ? "Upload a new CSV/ZIP to replace the existing ground truth file." : "CSV hoặc ZIP chứa ground truth data. ZIP bắt buộc có file ground_truth.csv bên trong."}
+                  />
                   {groundTruthFile && (
                     <div className="mt-4 p-4 bg-surface-50 dark:bg-gray-900/50 border border-surface-200 dark:border-gray-800 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-2">

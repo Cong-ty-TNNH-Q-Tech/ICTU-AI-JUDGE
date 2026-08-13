@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir \
     sacrebleu \
     scikit-image
 
+# Download NLTK data required for text metrics
+RUN python -m nltk.downloader punkt punkt_tab averaged_perceptron_tagger
+
 # Create a non-root user for extra security
 RUN useradd -m -s /bin/bash sandboxuser
 USER sandboxuser

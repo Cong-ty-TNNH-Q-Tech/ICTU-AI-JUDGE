@@ -223,10 +223,15 @@ except Exception as e:
                 built_in_script = f"""
 import pandas as pd
 import sys
+import os
 import math
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
 
 try:
+    if not os.path.exists('/tmp/submission.csv'):
+        print('Thiếu file submission.csv trong ZIP. Vui lòng đặt file kết quả tại submission.csv.')
+        sys.exit(1)
+        
     gt = pd.read_csv('/tmp/ground_truth.csv')
     sub = pd.read_csv('/tmp/submission.csv')
 
@@ -392,47 +397,22 @@ def _prepare_sandbox_files_zip(
 ) -> tuple[io.BytesIO, str]:
     """
     Chuẩn bị tar stream cho Docker Sandbox trong ZIP mode.
-    Giải nén zip → thư mục riêng biệt trong container.
+    Truyền thẳng file .zip vào Sandbox để giải nén bên trong (Tránh ZIP Bomb gây OOM cho Celery Worker).
     Trả về (tar_stream, cmd).
     """
-    import zipfile
-
     tar_stream = io.BytesIO()
     with tarfile.open(fileobj=tar_stream, mode='w') as tar:
         # --- Ground Truth ---
-        if is_gt_zip:
-            with zipfile.ZipFile(io.BytesIO(ground_truth_data)) as zf:
-                for info in zf.infolist():
-                    if info.is_dir():
-                        continue
-                    # [SECURITY] Path Traversal (double-check)
-                    if '..' in info.filename or info.filename.startswith('/'):
-                        raise ValueError(f"Unsafe filename in GT zip: {info.filename}")
-                    file_data = zf.read(info)
-                    tarinfo = tarfile.TarInfo(name=f'ground_truth/{info.filename}')
-                    tarinfo.size = len(file_data)
-                    tar.addfile(tarinfo, io.BytesIO(file_data))
-        else:
-            gt_info = tarfile.TarInfo(name='ground_truth/ground_truth.csv')
-            gt_info.size = len(ground_truth_data)
-            tar.addfile(gt_info, io.BytesIO(ground_truth_data))
+        gt_filename = 'ground_truth.zip' if is_gt_zip else 'ground_truth.csv'
+        gt_info = tarfile.TarInfo(name=gt_filename)
+        gt_info.size = len(ground_truth_data)
+        tar.addfile(gt_info, io.BytesIO(ground_truth_data))
 
         # --- Submission ---
-        if is_sub_zip:
-            with zipfile.ZipFile(io.BytesIO(submission_data)) as zf:
-                for info in zf.infolist():
-                    if info.is_dir():
-                        continue
-                    if '..' in info.filename or info.filename.startswith('/'):
-                        raise ValueError(f"Unsafe filename in submission zip: {info.filename}")
-                    file_data = zf.read(info)
-                    tarinfo = tarfile.TarInfo(name=f'submission/{info.filename}')
-                    tarinfo.size = len(file_data)
-                    tar.addfile(tarinfo, io.BytesIO(file_data))
-        else:
-            sub_info = tarfile.TarInfo(name='submission/submission.csv')
-            sub_info.size = len(submission_data)
-            tar.addfile(sub_info, io.BytesIO(submission_data))
+        sub_filename = 'submission.zip' if is_sub_zip else 'submission.csv'
+        sub_info = tarfile.TarInfo(name=sub_filename)
+        sub_info.size = len(submission_data)
+        tar.addfile(sub_info, io.BytesIO(submission_data))
 
         # --- Metric script ---
         if metric_script:
@@ -444,6 +424,8 @@ def _prepare_sandbox_files_zip(
         wrapper = _generate_zip_wrapper(
             has_custom_metric=metric_script is not None,
             metric_name=metric_name,
+            is_gt_zip=is_gt_zip,
+            is_sub_zip=is_sub_zip,
         )
         wrapper_bytes = wrapper.encode('utf-8')
         wrapper_info = tarfile.TarInfo(name='runner.py')
@@ -454,40 +436,75 @@ def _prepare_sandbox_files_zip(
     return tar_stream, "python /tmp/runner.py"
 
 
-def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str) -> str:
+def _generate_zip_wrapper(has_custom_metric: bool, metric_name: str, is_gt_zip: bool, is_sub_zip: bool) -> str:
     """Tạo wrapper script cho ZIP mode (thư mục giải nén)."""
+    
+    gt_logic = """
+extract_safe('/tmp/ground_truth.zip', '/tmp/ground_truth')
+""" if is_gt_zip else """
+os.makedirs('/tmp/ground_truth', exist_ok=True)
+os.rename('/tmp/ground_truth.csv', '/tmp/ground_truth/ground_truth.csv')
+"""
+    
+    sub_logic = """
+extract_safe('/tmp/submission.zip', '/tmp/submission')
+""" if is_sub_zip else """
+os.makedirs('/tmp/submission', exist_ok=True)
+os.rename('/tmp/submission.csv', '/tmp/submission/submission.csv')
+"""
+
+    # Python script logic để giải nén bên trong sandbox
+    unzip_logic = f"""
+import os
+import zipfile
+
+def extract_safe(zip_path, extract_to):
+    if os.path.exists(zip_path):
+        abs_extract_to = os.path.realpath(os.path.abspath(extract_to))
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                target_path = os.path.realpath(os.path.join(abs_extract_to, info.filename))
+                if not target_path.startswith(abs_extract_to + os.sep):
+                    continue
+                zf.extract(info, extract_to)
+{gt_logic}
+{sub_logic}
+"""
+
     if has_custom_metric:
-        return """
+        return unzip_logic + """
 import sys
 sys.path.append('/tmp')
 from metric import calculate_score
 score = calculate_score('/tmp/ground_truth', '/tmp/submission')
 print(score)
-""".strip()
+"""
     else:
-        return f"""
+        return unzip_logic + f"""
 import pandas as pd
 import sys
 import math
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
 
-gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
-sub_csv_path = '/tmp/submission/submission.csv'
-
 try:
+    gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
+    sub_csv_path = '/tmp/submission/submission.csv'
+    
     gt = pd.read_csv(gt_csv_path)
     sub = pd.read_csv(sub_csv_path)
-
+    
     if 'Usage' in gt.columns:
         gt_scoring = gt.drop(columns=['Usage'])
     else:
         gt_scoring = gt
 
+
     label_col = gt_scoring.columns[-1]
     if label_col not in sub.columns:
         print(f'Thiếu cột {{label_col}} trong bài nộp.')
         sys.exit(1)
-
     y_true = gt_scoring[label_col].astype(str).tolist()
     y_pred = sub[label_col].astype(str).tolist()
 
@@ -549,6 +566,7 @@ except Exception as e:
     print(f'Lỗi khi chấm điểm: {{str(e)}}')
     sys.exit(1)
 """.strip()
+
 
 
 
