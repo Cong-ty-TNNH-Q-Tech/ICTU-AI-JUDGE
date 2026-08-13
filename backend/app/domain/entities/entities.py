@@ -109,6 +109,7 @@ class ContestEntity:
     end_time: datetime | None  # Must be timezone-aware if set
     created_by: uuid.UUID
     created_at: datetime  # Must be timezone-aware
+    updated_at: datetime | None = None
     deleted_at: datetime | None = None
 
     def __post_init__(self) -> None:
