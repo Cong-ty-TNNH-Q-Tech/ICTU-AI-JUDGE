@@ -75,7 +75,9 @@ class AuthUseCase:
                 needs_save = True
                 logger.info("Root admin role promoted for existing user: %s", email)
             if needs_save:
-                user = self._user_repo.save(user)
+                with self._uow:
+                    user = self._user_repo.save(user)
+                    self._uow.commit()
             return user
 
         # Check student_id uniqueness before creating
@@ -98,7 +100,10 @@ class AuthUseCase:
             logger.info("Root admin account created via Google OAuth: %s", email)
         else:
             logger.info("Created new user via Google OAuth: %s", email)
-        return self._user_repo.save(new_user)
+        with self._uow:
+            saved_user = self._user_repo.save(new_user)
+            self._uow.commit()
+            return saved_user
 
     def login_with_password(self, email: str, password: str) -> UserEntity:
         """
