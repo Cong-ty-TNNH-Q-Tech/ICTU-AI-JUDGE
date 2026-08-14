@@ -8,10 +8,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.adapters.database.submission_repository import SQLSubmissionRepository
-from app.adapters.database.team_repository import SQLTeamRepository
-from app.adapters.database.challenge_repository import SQLChallengeRepository
-from app.adapters.storage.s3_repository import S3StorageRepository
+
 from app.application.dtos.submission_dtos import (
     SubmissionListResponseDTO,
     SubmitResponseDTO,
@@ -66,7 +63,7 @@ async def list_challenges(
             is_admin = True
 
     result = use_case.list_challenges(page=page, size=size, status_filter=status_filter, is_admin=is_admin, tag_id=tag_id)
-    return result.dict()
+    return result.model_dump()
 
 
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
@@ -81,7 +78,7 @@ async def create_challenge(
     dto = ChallengeCreateRequestDTO(**request)
     
     result = use_case.create_challenge(admin_id=admin.id, data=dto)
-    return result.dict()
+    return result.model_dump()
 
 
 @router.get("/{challenge_id}", response_model=dict)
@@ -101,7 +98,7 @@ async def get_challenge(
             
     try:
         result = use_case.get_challenge(challenge_id=challenge_id, is_admin=is_admin)
-        return result.dict()
+        return result.model_dump()
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -120,7 +117,7 @@ async def update_challenge(
     
     try:
         result = use_case.update_challenge(challenge_id=challenge_id, data=dto)
-        return result.dict()
+        return result.model_dump()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -158,7 +155,7 @@ async def upload_secrets(
             metric_script_bytes=metric_bytes,
             public_test_split_ratio=public_test_split_ratio
         )
-        return result.dict()
+        return result.model_dump()
     except ValueError as e:
         if "Usage" in str(e):
             raise HTTPException(status_code=422, detail=str(e))
