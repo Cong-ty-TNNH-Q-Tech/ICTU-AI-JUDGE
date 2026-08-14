@@ -44,7 +44,7 @@ export const submissionService = {
         }
       );
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response) {
         if (err.response.status === 429) {
           const waitMinutes = err.response.data?.wait_minutes || 1;

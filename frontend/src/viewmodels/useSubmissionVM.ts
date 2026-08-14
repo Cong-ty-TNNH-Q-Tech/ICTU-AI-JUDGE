@@ -154,7 +154,7 @@ export function useSubmissionVM(challengeId: string) {
       
       setSubmitSuccess('Nộp bài thành công! Đang chờ chấm điểm...');
       await fetchSubmissions(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof SubmissionError) {
         if (err.isRateLimit) {
           setRateLimitCountdown((err.waitMinutes || 1) * 60);
