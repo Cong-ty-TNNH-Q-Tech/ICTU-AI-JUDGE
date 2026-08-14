@@ -209,12 +209,13 @@ def get_message_broker() -> IMessageBroker:
 
 
 def get_solution_use_case(
+    uow: IUnitOfWork = Depends(get_uow),
     solution_repo: ISolutionRepository = Depends(get_solution_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> SolutionUseCase:
-    return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
+    return SolutionUseCase(uow, solution_repo, storage_repo, challenge_repo, user_repo)
 
 
 def get_profile_use_case(
