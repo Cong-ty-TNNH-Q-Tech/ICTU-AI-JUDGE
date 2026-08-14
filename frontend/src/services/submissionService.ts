@@ -1,6 +1,20 @@
 import { apiClient } from '../core/apiClient';
 import type { Submission, SelectForPrivateRequest } from '../models/api.types';
 import type { AxiosProgressEvent } from 'axios';
+import axios from 'axios';
+
+export class SubmissionError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public waitMinutes?: number,
+    public isRateLimit?: boolean,
+    public isDuplicate?: boolean,
+  ) {
+    super(message);
+    this.name = 'SubmissionError';
+  }
+}
 
 export const submissionService = {
   /** UC05 — Chọn/bỏ chọn submission cho Private Leaderboard */
@@ -19,14 +33,29 @@ export const submissionService = {
     const formData = new FormData();
     formData.append('file', file);
     
-    const { data } = await apiClient.post<Submission>(
-      `/challenges/${challengeId}/submissions`,
-      formData,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: onProgress,
+    
+    try {
+      const { data } = await apiClient.post<Submission>(
+        `/challenges/${challengeId}/submissions`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: onProgress,
+        }
+      );
+      return data;
+    } catch (err: any) {
+      if (axios.isAxiosError(err) && err.response) {
+        if (err.response.status === 429) {
+          const waitMinutes = err.response.data?.wait_minutes || 1;
+          throw new SubmissionError(`Vi phạm Rate Limit. Vui lòng thử lại sau.`, 429, waitMinutes, true, false);
+        } else if (err.response.status === 409) {
+          throw new SubmissionError('File này đã được nộp trước đó. Vui lòng không nộp trùng lặp.', 409, 0, false, true);
+        } else {
+          throw new SubmissionError(err.response.data?.detail || err.message || 'Lỗi nộp bài', err.response.status);
+        }
       }
-    );
-    return data;
+      throw err;
+    }
   }
 };
