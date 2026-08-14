@@ -1,6 +1,6 @@
 """
-Scoring Task — Celery Worker chấm điểm qua Docker Sandbox.
-[SECURITY] Không bao giờ import metric.py trực tiếp — luôn dùng Docker Container.
+Scoring Task - Celery Worker chấm điểm qua Docker Sandbox.
+[SECURITY] Không bao giờ import metric.py trực tiếp - luôn dùng Docker Container.
 """
 import io
 import logging
@@ -25,7 +25,7 @@ settings = get_settings()
 
 
 class ScoringTask(Task):
-    """Base Task với error handling chuẩn — tự động cập nhật status FAILED."""
+    """Base Task với error handling chuẩn - tự động cập nhật status FAILED."""
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         submission_id = kwargs.get("submission_id") or (args[0] if args else None)
@@ -73,7 +73,7 @@ def score_submission(self, submission_id: str) -> dict:
         # 1. Load entities
         submission = sub_repo.get_by_id(sub_uuid)
         if not submission:
-            logger.error("Submission %s not found in DB — possibly deleted", submission_id)
+            logger.error("Submission %s not found in DB - possibly deleted", submission_id)
             return {"status": "skipped"}
 
         challenge = challenge_repo.get_by_id(submission.challenge_id)
@@ -100,7 +100,7 @@ def score_submission(self, submission_id: str) -> dict:
                 time_limit_seconds = 120
 
             # 4. Gọi Docker Sandbox
-            score = _run_sandbox(
+            public_score, private_score = _run_sandbox(
                 submission_csv=submission_csv,
                 ground_truth_csv=ground_truth_csv,
                 metric_script=storage.download(challenge.custom_metric_url) if challenge.custom_metric_url else None,
@@ -117,7 +117,8 @@ def score_submission(self, submission_id: str) -> dict:
             sub_repo.update_status(
                 sub_uuid,
                 SubmissionStatus.SUCCESS,
-                public_score=score,
+                public_score=public_score,
+                private_score=private_score,
                 execution_time_ms=elapsed_ms,
             )
 
@@ -127,8 +128,8 @@ def score_submission(self, submission_id: str) -> dict:
                 id=uuid.uuid4(),
                 challenge_id=submission.challenge_id,
                 team_id=submission.team_id,
-                best_public_score=score,
-                best_private_score=None,
+                best_public_score=public_score,
+                best_private_score=private_score,
                 best_public_submission_id=sub_uuid,
                 best_private_submission_id=None,
                 last_submission_time=submission.submitted_at,
@@ -141,10 +142,10 @@ def score_submission(self, submission_id: str) -> dict:
             db.commit()
 
             logger.info(
-                "Scored submission=%s score=%.6f elapsed_ms=%d",
-                submission_id, score, elapsed_ms
+                "Scored submission=%s public_score=%.6f private_score=%s elapsed_ms=%d",
+                submission_id, public_score, private_score, elapsed_ms
             )
-            return {"submission_id": submission_id, "score": score}
+            return {"submission_id": submission_id, "public_score": public_score, "private_score": private_score}
 
         except Exception as exc:
             logger.exception("Scoring failed for submission %s", submission_id)
@@ -161,7 +162,7 @@ def _run_sandbox(
     memory_limit: str,
     time_limit_seconds: int,
     require_gpu: bool,
-) -> float:
+) -> tuple[float, float | None]:
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
@@ -205,11 +206,17 @@ def _run_sandbox(
                 # Wrapper script để gọi hàm calculate_score từ metric.py
                 wrapper_script = """
 import sys
+import json
 try:
     sys.path.append('/tmp')
     from metric import calculate_score
     score = calculate_score('/tmp/ground_truth.csv', '/tmp/submission.csv')
-    print(score)
+    if isinstance(score, tuple) or isinstance(score, list):
+        print(json.dumps({'public_score': score[0], 'private_score': score[1]}))
+    elif isinstance(score, dict):
+        print(json.dumps(score))
+    else:
+        print(json.dumps({'public_score': score, 'private_score': None}))
 except Exception as e:
     print(f"Lỗi khi chạy Custom Metric: {str(e)}")
     sys.exit(1)
@@ -274,11 +281,22 @@ except Exception as e:
             error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
             raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
 
-        score = float(output)
-        if math.isnan(score) or math.isinf(score):
-            raise ValueError(f"Invalid score value returned by metric script: {output}")
+        import json
+        try:
+            scores = json.loads(output.splitlines()[-1])
+            public_score = float(scores.get("public_score"))
+            private_score = float(scores["private_score"]) if scores.get("private_score") is not None else None
+        except Exception:
+            try:
+                public_score = float(output.splitlines()[-1])
+                private_score = None
+            except Exception:
+                raise ValueError(f"Invalid score value returned by metric script: {output}")
 
-        return score
+        if math.isnan(public_score) or math.isinf(public_score):
+            raise ValueError(f"Invalid public_score value returned by metric script: {public_score}")
+
+        return public_score, private_score
     except docker.errors.APIError as exc:
         if "Read timed out" in str(exc) or "timed out" in str(exc).lower():
             raise Exception(
@@ -380,13 +398,19 @@ def extract_safe(zip_path, extract_to):
     if has_custom_metric:
         return unzip_logic + """
 import sys
+import json
 sys.path.append('/tmp')
 from metric import calculate_score
 score = calculate_score('/tmp/ground_truth', '/tmp/submission')
-print(score)
+if isinstance(score, tuple) or isinstance(score, list):
+    print(json.dumps({'public_score': score[0], 'private_score': score[1]}))
+elif isinstance(score, dict):
+    print(json.dumps(score))
+else:
+    print(json.dumps({'public_score': score, 'private_score': None}))
 """
     else:
-""".strip()
+        return unzip_logic.strip()
 
 
 
@@ -398,7 +422,7 @@ def _mark_submission_failed(
     error_message: str,
     sub_repo=None,
 ) -> None:
-    """Helper — cập nhật status FAILED khi Worker gặp lỗi."""
+    """Helper - cập nhật status FAILED khi Worker gặp lỗi."""
     try:
         if sub_repo:
             sub_repo.update_status(
