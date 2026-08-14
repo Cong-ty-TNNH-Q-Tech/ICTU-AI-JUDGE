@@ -8,11 +8,12 @@ from app.domain.entities.entities import ChallengeStatus, SolutionEntity, UserEn
 
 @pytest.fixture
 def solution_use_case():
+    uow = MagicMock()
     solution_repo = MagicMock()
     storage_repo = MagicMock()
     challenge_repo = MagicMock()
     user_repo = MagicMock()
-    return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
+    return SolutionUseCase(uow, solution_repo, storage_repo, challenge_repo, user_repo)
 
 def test_list_solutions_success(solution_use_case):
     challenge = MagicMock()

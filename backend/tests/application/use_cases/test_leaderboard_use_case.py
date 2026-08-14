@@ -11,8 +11,9 @@ from app.domain.entities.entities import MetricDirection, LeaderboardEntryEntity
 def leaderboard_use_case():
     lb_repo = MagicMock()
     ch_repo = MagicMock()
+    contest_repo = MagicMock()
     team_repo = MagicMock()
-    return LeaderboardUseCase(lb_repo, ch_repo, team_repo)
+    return LeaderboardUseCase(lb_repo, ch_repo, contest_repo, team_repo)
 
 def test_get_leaderboard_public(leaderboard_use_case):
     challenge = MagicMock()
@@ -94,7 +95,7 @@ def test_get_private_leaderboard_unlimited_time_raises_error(leaderboard_use_cas
 def test_get_contest_leaderboard_success(leaderboard_use_case):
     contest = MagicMock()
     contest.metric_direction = MetricDirection.HIGHER_IS_BETTER
-    leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
+    leaderboard_use_case.contest_repo.get_by_id.return_value = contest
     
     child1 = MagicMock()
     child1.id = uuid.uuid4()
@@ -143,7 +144,7 @@ def test_get_contest_leaderboard_success(leaderboard_use_case):
 
 
 def test_get_contest_leaderboard_not_found(leaderboard_use_case):
-    leaderboard_use_case.challenge_repo.get_by_id.return_value = None
+    leaderboard_use_case.contest_repo.get_by_id.return_value = None
     with pytest.raises(ValueError, match="not found"):
         leaderboard_use_case.get_contest_leaderboard(
             uuid.uuid4(), LeaderboardType.PUBLIC, datetime.now(timezone.utc)
@@ -154,7 +155,7 @@ def test_get_contest_leaderboard_private_not_ended(leaderboard_use_case):
     contest = MagicMock()
     now = datetime.now(tz=timezone.utc)
     contest.end_time = now + timedelta(days=1)
-    leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
+    leaderboard_use_case.contest_repo.get_by_id.return_value = contest
     
     with pytest.raises(PermissionError, match="only available after contest ends"):
         leaderboard_use_case.get_contest_leaderboard(
@@ -164,7 +165,7 @@ def test_get_contest_leaderboard_private_not_ended(leaderboard_use_case):
 def test_get_contest_leaderboard_private_unlimited_time(leaderboard_use_case):
     contest = MagicMock()
     contest.end_time = None
-    leaderboard_use_case.challenge_repo.get_by_id.return_value = contest
+    leaderboard_use_case.contest_repo.get_by_id.return_value = contest
     with pytest.raises(PermissionError, match="không giới hạn thời gian"):
         leaderboard_use_case.get_contest_leaderboard(
             uuid.uuid4(), LeaderboardType.PRIVATE, datetime.now(timezone.utc)
