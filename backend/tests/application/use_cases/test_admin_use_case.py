@@ -249,13 +249,17 @@ def test_add_whitelist_by_identifiers_with_uuid(admin_use_case):
     assert result["added"] == 1
     assert result["resolved"] == 1
 
-def test_test_metric(admin_use_case, mocker):
-    mocker.patch("app.application.use_cases.admin_use_case._run_sandbox", return_value=0.95)
+from unittest.mock import patch
+
+@patch("app.application.use_cases.admin_use_case._run_sandbox")
+def test_test_metric(mock_run, admin_use_case):
+    mock_run.return_value = 0.95
     score = admin_use_case.test_metric(b"gt", b"sub", b"script", "accuracy")
     assert score == 0.95
 
-def test_test_metric_failure(admin_use_case, mocker):
-    mocker.patch("app.application.use_cases.admin_use_case._run_sandbox", side_effect=Exception("Error"))
+@patch("app.application.use_cases.admin_use_case._run_sandbox")
+def test_test_metric_failure(mock_run, admin_use_case):
+    mock_run.side_effect = Exception("Error")
     with pytest.raises(ValueError):
         admin_use_case.test_metric(b"gt", b"sub", b"script", "accuracy")
 
