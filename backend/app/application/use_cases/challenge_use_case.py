@@ -163,6 +163,7 @@ class ChallengeUseCase:
 
     def delete_challenge(self, challenge_id: uuid.UUID) -> None:
         self.challenge_repo.soft_delete(challenge_id)
+        self.uow.commit()
 
     def upload_secrets(
         self,
