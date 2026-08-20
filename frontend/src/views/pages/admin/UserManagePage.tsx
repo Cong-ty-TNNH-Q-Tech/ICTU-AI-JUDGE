@@ -250,7 +250,7 @@ const UserManagePage = () => {
           if (formModal.data) {
             await updateUser(formModal.data.id, data);
           } else {
-            await createUser(data as any);
+            await createUser(data as import('../../../models/api.types').UserCreateRequest);
           }
         }}
       />

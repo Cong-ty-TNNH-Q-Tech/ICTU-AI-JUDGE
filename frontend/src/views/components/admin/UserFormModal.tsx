@@ -38,14 +38,14 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ isOpen, onClose, onSubmit
     e.preventDefault();
     setLoading(true);
     try {
-      const data: any = {
+      const payload: Partial<UserCreateRequest & UserUpdateRequest> = {
         student_id: studentId,
         email,
         full_name: fullName,
         role,
       };
-      if (password) data.password = password;
-      await onSubmit(data);
+      if (password) payload.password = password;
+      await onSubmit(payload as UserCreateRequest | UserUpdateRequest);
       onClose();
     } finally {
       setLoading(false);
