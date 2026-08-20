@@ -5,7 +5,7 @@ Implements IContestRepository.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session
 
 from app.adapters.database.models import ContestModel, ChallengeModel
@@ -133,6 +133,17 @@ class SQLContestRepository(IContestRepository):
         if model and model.deleted_at is None:
             model.deleted_at = datetime.now(timezone.utc)
             self.db.flush()
+
+    def unlink_challenges(self, contest_id: uuid.UUID) -> int:
+        """Set contest_id = NULL cho tất cả challenges thuộc contest này."""
+        result = self.db.execute(
+            update(ChallengeModel)
+            .where(ChallengeModel.contest_id == contest_id)
+            .where(ChallengeModel.deleted_at.is_(None))
+            .values(contest_id=None)
+        )
+        self.db.flush()
+        return result.rowcount
 
     def get_challenges(self, contest_id: uuid.UUID) -> list[ChallengeEntity]:
         """Lấy tất cả challenges thuộc contest, chưa bị soft delete, sắp theo start_time."""

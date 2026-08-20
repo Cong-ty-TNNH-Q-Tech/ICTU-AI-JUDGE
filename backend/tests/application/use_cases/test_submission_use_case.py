@@ -33,6 +33,7 @@ def mock_repos():
         "storage_repo": MagicMock(),
         "message_broker": MagicMock(),
         "uow": MagicMock(),
+        "leaderboard_repo": MagicMock(),
     }
 
 @pytest.fixture
