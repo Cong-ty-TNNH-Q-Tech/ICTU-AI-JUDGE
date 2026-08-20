@@ -35,19 +35,32 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
     def get_by_team_and_challenge(
         self, team_id: uuid.UUID, challenge_id: uuid.UUID
     ) -> LeaderboardEntryEntity | None:
-        model = (
+        from app.adapters.database.models import SubmissionModel
+        
+        entries_sq = (
+            select(func.count(SubmissionModel.id))
+            .where(
+                SubmissionModel.team_id == LeaderboardModel.team_id,
+                SubmissionModel.challenge_id == LeaderboardModel.challenge_id
+            )
+            .correlate(LeaderboardModel)
+            .scalar_subquery()
+            .label("entries_count")
+        )
+
+        row = (
             self.db.execute(
-                select(LeaderboardModel).where(
+                select(LeaderboardModel, entries_sq).where(
                     LeaderboardModel.team_id == team_id,
                     LeaderboardModel.challenge_id == challenge_id,
                 )
             )
-            .scalars()
             .first()
         )
-        if not model:
+        if not row:
             return None
-        return self._to_entity(model, rank=model.rank)
+        model, entries_count = row
+        return self._to_entity(model, rank=model.rank, entries=entries_count)
 
     def upsert_with_lock(self, entry: LeaderboardEntryEntity, direction: MetricDirection = MetricDirection.HIGHER_IS_BETTER) -> LeaderboardEntryEntity:
         """
