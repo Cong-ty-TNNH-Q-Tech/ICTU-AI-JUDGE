@@ -59,8 +59,10 @@ class AuthUseCase:
         if data.get("email_verified") not in (True, "true"):
             raise AuthenticationError("Email Google chưa được xác thực (email_verified=false).")
 
-
         is_root = self._is_root_admin(email)
+        
+        if not is_root and not email.endswith("@ictu.edu.vn"):
+            raise AuthenticationError("Chỉ cho phép đăng nhập bằng tài khoản email trường (@ictu.edu.vn).")
         student_id = email.split("@")[0]
         full_name = data.get("name", "Student")
 
