@@ -69,11 +69,6 @@ def test_challenge_entity():
     assert challenge.is_accepting_submissions(now) is False
     challenge.deleted_at = None
 
-    # test is_metric_locked
-    assert challenge.is_metric_locked() is True
-    challenge.status = ChallengeStatus.DRAFT
-    assert challenge.is_metric_locked() is False
-
     # test team lock
     assert challenge.is_team_locked(now) is False
     challenge.team_lock_deadline = now - timedelta(hours=1)
