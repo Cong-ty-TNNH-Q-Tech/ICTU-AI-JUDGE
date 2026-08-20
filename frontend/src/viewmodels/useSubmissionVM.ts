@@ -17,6 +17,12 @@ export function useSubmissionVM(challengeId: string) {
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number | null>(null);
   const [togglingPrivateId, setTogglingPrivateId] = useState<string | null>(null);
   
+  // Source code state
+  const [sourceCodeUploading, setSourceCodeUploading] = useState(false);
+  const [sourceCodeError, setSourceCodeError] = useState<string | null>(null);
+  const [sourceCodeSuccess, setSourceCodeSuccess] = useState<string | null>(null);
+  const [sourceCodeProgress, setSourceCodeProgress] = useState(0);
+
   // Expose polling status
   const [isPolling, setIsPolling] = useState(false);
 
@@ -197,6 +203,49 @@ export function useSubmissionVM(challengeId: string) {
     setSubmitSuccess(null);
   }, []);
 
+  const uploadSourceCode = useCallback(async (submissionId: string, file: File, maxFileSizeMb: number) => {
+    // Basic validation
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith('.zip') && !ext.endsWith('.rar') && file.size > maxFileSizeMb * 1024 * 1024) {
+      return; 
+    }
+
+    setSourceCodeUploading(true);
+    setSourceCodeError(null);
+    setSourceCodeSuccess(null);
+    setSourceCodeProgress(0);
+
+    try {
+      await submissionService.uploadSourceCodeWithProgress(
+        submissionId,
+        file,
+        (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setSourceCodeProgress(percentCompleted);
+          }
+        }
+      );
+      
+      setSourceCodeSuccess('Nộp Source Code thành công! Bạn đã hoàn thành bài thi.');
+      await fetchSubmissions(false);
+    } catch (err: unknown) {
+      if (err instanceof SubmissionError) {
+        setSourceCodeError(err.message);
+      } else {
+        setSourceCodeError(err instanceof Error ? err.message : 'Lỗi nộp source code');
+      }
+    } finally {
+      setSourceCodeUploading(false);
+      setTimeout(() => setSourceCodeProgress(0), 1000);
+    }
+  }, [fetchSubmissions]);
+
+  const clearSourceCodeMessages = useCallback(() => {
+    setSourceCodeError(null);
+    setSourceCodeSuccess(null);
+  }, []);
+
   return { 
     submissions, 
     loading, 
@@ -208,9 +257,15 @@ export function useSubmissionVM(challengeId: string) {
     rateLimitCountdown,
     togglingPrivateId,
     isPolling,
+    sourceCodeUploading,
+    sourceCodeError,
+    sourceCodeSuccess,
+    sourceCodeProgress,
     submitFile, 
     toggleSelectForPrivate,
     clearSubmitMessages,
+    uploadSourceCode,
+    clearSourceCodeMessages,
     refetch: fetchSubmissions 
   };
 }
