@@ -31,6 +31,7 @@ class ContestUseCase:
     # ------------------------------------------------------------------
 
     def _to_dto(self, entity: ContestEntity) -> ContestResponseDTO:
+        challenges = self._contest_repo.get_challenges(entity.id)
         return ContestResponseDTO(
             id=entity.id,
             title=entity.title,
@@ -41,6 +42,7 @@ class ContestUseCase:
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             created_by=entity.created_by,
+            challenges_count=len(challenges),
         )
 
     # ------------------------------------------------------------------
