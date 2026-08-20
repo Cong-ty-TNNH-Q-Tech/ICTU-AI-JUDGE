@@ -11,13 +11,14 @@ import { useToastStore } from '../../store/toastStore';
 
 import ChallengeTimer from '../components/ChallengeTimer';
 import SubmitFileZone from '../components/SubmitFileZone';
+import SubmitSourceCodeZone from '../components/SubmitSourceCodeZone';
 import SubmissionHistoryTable from '../components/SubmissionHistoryTable';
 import { SolutionsTab } from '../components/Challenge/SolutionsTab';
 import { ContestLeaderboardTab } from '../components/Challenge/ContestLeaderboardTab';
 
 import RulesIllustration from '../../assets/competition-rules.png';
 
-type Tab = 'description' | 'leaderboard' | 'contest_leaderboard' | 'submit' | 'history' | 'solutions';
+type Tab = 'description' | 'leaderboard' | 'contest_leaderboard' | 'submit' | 'source_code' | 'history' | 'solutions';
 
 const ChallengeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,8 +39,14 @@ const ChallengeDetailPage = () => {
     rateLimitCountdown,
     togglingPrivateId,
     isPolling,
+    sourceCodeUploading,
+    sourceCodeError,
+    sourceCodeSuccess,
+    sourceCodeProgress,
     toggleSelectForPrivate,
-    clearSubmitMessages
+    clearSubmitMessages,
+    uploadSourceCode,
+    clearSourceCodeMessages
   } = useSubmissionVM(id || '');
 
   const [enrolling, setEnrolling] = useState(false);
@@ -64,6 +71,7 @@ const ChallengeDetailPage = () => {
     { id: 'leaderboard' as Tab, label: 'Bảng xếp hạng' },
     { id: 'contest_leaderboard' as Tab, label: 'BXH Tổng' },
     { id: 'submit' as Tab, label: 'Nộp bài' },
+    { id: 'source_code' as Tab, label: 'Nộp Source Code' },
     { id: 'history' as Tab, label: 'Lịch sử' },
     { id: 'solutions' as Tab, label: 'Giải pháp' },
   ];
@@ -381,6 +389,46 @@ const ChallengeDetailPage = () => {
             onSubmit={submitFile}
             onClearErrors={clearSubmitMessages}
           />
+        )}
+
+        {/* TAB 3.5: SUBMIT SOURCE CODE */}
+        {activeTab === 'source_code' && (
+          !challenge.end_time ? (
+            <div className="text-center py-16 px-6 bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-2xl shadow-sm">
+              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25m0 2.25h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">Không hỗ trợ nộp Source Code</h4>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                Cuộc thi này không giới hạn thời gian nên không yêu cầu nộp Source Code (Anti-Cheat).
+              </p>
+            </div>
+          ) : new Date() < new Date(challenge.end_time) ? (
+            <div className="text-center py-16 px-6 bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-2xl shadow-sm">
+              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">Chưa đến thời gian nộp Source Code</h4>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                Chức năng nộp Source Code chỉ được mở sau khi cuộc thi kết thúc vào lúc {new Date(challenge.end_time).toLocaleString('vi-VN')}.
+              </p>
+            </div>
+          ) : (
+            <SubmitSourceCodeZone
+              maxFileSizeMb={50}
+              submitting={sourceCodeUploading}
+              uploadProgress={sourceCodeProgress}
+              submitError={sourceCodeError}
+              submitSuccess={sourceCodeSuccess}
+              submissions={submissions}
+              onSubmit={uploadSourceCode}
+              onClearErrors={clearSourceCodeMessages}
+            />
+          )
         )}
 
         {/* TAB 4: HISTORY */}
