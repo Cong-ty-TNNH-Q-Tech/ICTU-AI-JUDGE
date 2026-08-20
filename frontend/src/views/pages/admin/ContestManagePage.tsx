@@ -142,15 +142,15 @@ const ContestManagePage: React.FC = () => {
     try {
       if (editTarget) {
         await updateContest(editTarget.id, data as ContestUpdateRequest);
-        showToast('Da cap nhat cuoc thi.');
+        showToast('Đã cập nhật cuộc thi.');
       } else {
         await createContest(data as ContestCreateRequest);
-        showToast('Da tao cuoc thi moi.');
+        showToast('Đã tạo cuộc thi mới.');
       }
       setShowForm(false);
       setEditTarget(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Da xay ra loi.';
+      const msg = err instanceof Error ? err.message : 'Đã xảy ra lỗi.';
       showToast(msg, 'error');
       throw err; // Re-throw de ContestFormModal hien thi loi trong form
     }
@@ -160,10 +160,10 @@ const ContestManagePage: React.FC = () => {
     if (!deleteTarget) return;
     try {
       await deleteContest(deleteTarget.id);
-      showToast('Da xoa cuoc thi.');
+      showToast('Đã xóa cuộc thi.');
       setDeleteTarget(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Khong the xoa cuoc thi nay.';
+      const msg = err instanceof Error ? err.message : 'Không thể xóa cuộc thi này.';
       showToast(msg, 'error');
     }
   };
