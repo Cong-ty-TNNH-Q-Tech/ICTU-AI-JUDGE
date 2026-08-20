@@ -270,7 +270,6 @@ class SubmissionUseCase:
                 private_score=None,
             )
             msg = "Đã bỏ chọn bài tính điểm chung cuộc."
-            
         if self.uow:
             self.uow.commit()
             
