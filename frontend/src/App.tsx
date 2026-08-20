@@ -10,6 +10,7 @@ import AuthLayout from './views/layouts/AuthLayout';
 import MainLayout from './views/layouts/MainLayout';
 import LandingPage from './views/pages/LandingPage';
 import LoginPage from './views/pages/LoginPage';
+import RegisterPage from './views/pages/RegisterPage';
 import ForgotPasswordPage from './views/pages/ForgotPasswordPage';
 import ResetPasswordPage from './views/pages/ResetPasswordPage';
 import ChallengesPage from './views/pages/ChallengesPage';
@@ -29,6 +30,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
+};
+
+const ProfileRedirect = () => {
+  const user = useAuthStore((state) => state.user);
+  return <Navigate to={`/profile/${user?.id ?? ''}`} replace />;
 };
 
 // ---- 401 Handler (module-level dedup) ----
@@ -88,6 +94,12 @@ function App() {
           </AuthLayout>
         } />
 
+        <Route path="/register" element={
+          <AuthLayout>
+            <RegisterPage />
+          </AuthLayout>
+        } />
+
         <Route path="/forgot-password" element={
           <AuthLayout>
             <ForgotPasswordPage />
@@ -140,7 +152,7 @@ function App() {
         {/* Issue #30 — Profile page */}
         <Route path="/profile/me" element={
           <ProtectedRoute>
-            <Navigate to={`/profile/${useAuthStore.getState().user?.id ?? ''}`} replace />
+            <ProfileRedirect />
           </ProtectedRoute>
         } />
         <Route path="/profile/:userId" element={

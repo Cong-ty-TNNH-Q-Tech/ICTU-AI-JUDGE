@@ -1,6 +1,6 @@
 """
-Scoring Task — Celery Worker chấm điểm qua Docker Sandbox.
-[SECURITY] Không bao giờ import metric.py trực tiếp — luôn dùng Docker Container.
+Scoring Task - Celery Worker chấm điểm qua Docker Sandbox.
+[SECURITY] Không bao giờ import metric.py trực tiếp - luôn dùng Docker Container.
 """
 import io
 import logging
@@ -12,8 +12,10 @@ from datetime import datetime, timezone
 
 import docker
 from celery import Task
+from celery.exceptions import SoftTimeLimitExceeded
 
 from app.adapters.worker.celery_app import celery_app
+from app.adapters.worker.metric_strategies import get_built_in_metric_script
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.domain.entities.entities import SubmissionStatus
@@ -23,7 +25,7 @@ settings = get_settings()
 
 
 class ScoringTask(Task):
-    """Base Task với error handling chuẩn — tự động cập nhật status FAILED."""
+    """Base Task với error handling chuẩn - tự động cập nhật status FAILED."""
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         submission_id = kwargs.get("submission_id") or (args[0] if args else None)
@@ -71,7 +73,7 @@ def score_submission(self, submission_id: str) -> dict:
         # 1. Load entities
         submission = sub_repo.get_by_id(sub_uuid)
         if not submission:
-            logger.error("Submission %s not found in DB — possibly deleted", submission_id)
+            logger.error("Submission %s not found in DB - possibly deleted", submission_id)
             return {"status": "skipped"}
 
         challenge = challenge_repo.get_by_id(submission.challenge_id)
@@ -98,7 +100,7 @@ def score_submission(self, submission_id: str) -> dict:
                 time_limit_seconds = 120
 
             # 4. Gọi Docker Sandbox
-            score = _run_sandbox(
+            public_score, private_score = _run_sandbox(
                 submission_csv=submission_csv,
                 ground_truth_csv=ground_truth_csv,
                 metric_script=storage.download(challenge.custom_metric_url) if challenge.custom_metric_url else None,
@@ -115,7 +117,8 @@ def score_submission(self, submission_id: str) -> dict:
             sub_repo.update_status(
                 sub_uuid,
                 SubmissionStatus.SUCCESS,
-                public_score=score,
+                public_score=public_score,
+                private_score=private_score,
                 execution_time_ms=elapsed_ms,
             )
 
@@ -125,8 +128,8 @@ def score_submission(self, submission_id: str) -> dict:
                 id=uuid.uuid4(),
                 challenge_id=submission.challenge_id,
                 team_id=submission.team_id,
-                best_public_score=score,
-                best_private_score=None,
+                best_public_score=public_score,
+                best_private_score=private_score,
                 best_public_submission_id=sub_uuid,
                 best_private_submission_id=None,
                 last_submission_time=submission.submitted_at,
@@ -139,10 +142,10 @@ def score_submission(self, submission_id: str) -> dict:
             db.commit()
 
             logger.info(
-                "Scored submission=%s score=%.6f elapsed_ms=%d",
-                submission_id, score, elapsed_ms
+                "Scored submission=%s public_score=%.6f private_score=%s elapsed_ms=%d",
+                submission_id, public_score, private_score, elapsed_ms
             )
-            return {"submission_id": submission_id, "score": score}
+            return {"submission_id": submission_id, "public_score": public_score, "private_score": private_score}
 
         except Exception as exc:
             logger.exception("Scoring failed for submission %s", submission_id)
@@ -159,7 +162,7 @@ def _run_sandbox(
     memory_limit: str,
     time_limit_seconds: int,
     require_gpu: bool,
-) -> float:
+) -> tuple[float, float | None]:
     """
     [SECURITY] Spin up Docker Container 1 lần, truyền file vào, đọc stdout.
     Container bị giới hạn RAM/CPU và chặn network.
@@ -203,11 +206,17 @@ def _run_sandbox(
                 # Wrapper script để gọi hàm calculate_score từ metric.py
                 wrapper_script = """
 import sys
+import json
 try:
     sys.path.append('/tmp')
     from metric import calculate_score
     score = calculate_score('/tmp/ground_truth.csv', '/tmp/submission.csv')
-    print(score)
+    if isinstance(score, tuple) or isinstance(score, list):
+        print(json.dumps({'public_score': score[0], 'private_score': score[1]}))
+    elif isinstance(score, dict):
+        print(json.dumps(score))
+    else:
+        print(json.dumps({'public_score': score, 'private_score': None}))
 except Exception as e:
     print(f"Lỗi khi chạy Custom Metric: {str(e)}")
     sys.exit(1)
@@ -220,114 +229,11 @@ except Exception as e:
                 cmd = "python /tmp/runner.py"
             else:
                 # Strategy Pattern cho Built-in metrics
-                built_in_script = f"""
-import pandas as pd
-import sys
-import os
-import math
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score, precision_score
-
-try:
-    if not os.path.exists('/tmp/submission.csv'):
-        print('Thiếu file submission.csv trong ZIP. Vui lòng đặt file kết quả tại submission.csv.')
-        sys.exit(1)
-        
-    gt = pd.read_csv('/tmp/ground_truth.csv')
-    sub = pd.read_csv('/tmp/submission.csv')
-
-    if 'Usage' in gt.columns:
-        gt = gt.drop(columns=['Usage'])
-
-    if len(gt.columns) == 0:
-        print('Không tìm thấy cột mục tiêu trong Ground Truth.')
-        sys.exit(1)
-
-    # Cột dự đoán (target) thường là cột cuối cùng sau khi bỏ 'Usage'
-    target_col = gt.columns[-1]
-    if target_col not in sub.columns:
-        print(f'Thiếu cột {{target_col}} trong bài nộp.')
-        sys.exit(1)
-
-    if len(gt) != len(sub):
-        print(f'Số lượng dòng không khớp. Kì vọng {{len(gt)}} dòng, nhưng nhận được {{len(sub)}} dòng.')
-        sys.exit(1)
-
-    y_true = gt[target_col].astype(str).tolist()
-    y_pred = sub[target_col].astype(str).tolist()
-
-    metric_name = '{metric_name}'
-
-    if metric_name == 'ACCURACY':
-        from sklearn.metrics import accuracy_score
-        score = accuracy_score(y_true, y_pred)
-    elif metric_name == 'F1_SCORE':
-        from sklearn.metrics import f1_score
-        score = f1_score(y_true, y_pred, average='macro')
-    elif metric_name == 'RMSE':
-<<<<<<< HEAD
-        score = math.sqrt(mean_squared_error(y_true, y_pred))
-    elif metric_name == 'PRECISION':
-        score = precision_score(y_true, y_pred, average='macro', zero_division=0)
-=======
-        from sklearn.metrics import mean_squared_error
-        try:
-            y_t = [float(x) for x in y_true]
-            y_p = [float(x) for x in y_pred]
-        except ValueError as e:
-            print(f"Lỗi ép kiểu dữ liệu sang float khi tính RMSE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
-            sys.exit(1)
-        score = math.sqrt(mean_squared_error(y_t, y_p))
-    elif metric_name == 'RECALL':
-        from sklearn.metrics import recall_score
-        score = recall_score(y_true, y_pred, average='macro', zero_division=0)
-    # ---- NLP Metrics ----
-    elif metric_name == 'BLEU':
-        import sacrebleu
-        refs = [[r] for r in y_true]  # sacrebleu expects list-of-lists
-        score = sacrebleu.corpus_bleu(y_pred, list(zip(*refs))).score / 100.0
-    elif metric_name == 'ROUGE_L':
-        from rouge_score import rouge_scorer
-        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
-        scores = [scorer.score(ref, hyp)['rougeL'].fmeasure
-                  for ref, hyp in zip(y_true, y_pred)]
-        score = sum(scores) / len(scores)
-    elif metric_name == 'WER':
-        from jiwer import wer
-        score = 1.0 - wer(y_true, y_pred)  # convert to higher-is-better
-    # ---- CV Metrics (CSV cột path ảnh) ----
-    elif metric_name in ('PSNR', 'SSIM', 'MEAN_IOU'):
-        import numpy as np
-        import os
-        from PIL import Image
-        psnr_list, ssim_list, iou_list = [], [], []
-        for ref_path, pred_path in zip(y_true, y_pred):
-            ref_img  = np.array(Image.open(ref_path.strip()).convert('RGB'), dtype=np.float32)
-            pred_img = np.array(Image.open(pred_path.strip()).convert('RGB'), dtype=np.float32)
-            if metric_name == 'PSNR':
-                mse = np.mean((ref_img - pred_img) ** 2)
-                psnr_list.append(20 * math.log10(255.0 / math.sqrt(mse)) if mse > 0 else 100.0)
-            elif metric_name == 'SSIM':
-                from skimage.metrics import structural_similarity as ssim
-                score_val = ssim(ref_img, pred_img, channel_axis=2, data_range=255.0)
-                ssim_list.append(score_val)
-            elif metric_name == 'MEAN_IOU':
-                ref_mask  = np.array(Image.open(ref_path.strip()).convert('L')) > 127
-                pred_mask = np.array(Image.open(pred_path.strip()).convert('L')) > 127
-                intersection = (ref_mask & pred_mask).sum()
-                union = (ref_mask | pred_mask).sum()
-                iou_list.append(intersection / union if union > 0 else 1.0)
-        if metric_name == 'PSNR': score = sum(psnr_list) / len(psnr_list)
-        elif metric_name == 'SSIM': score = sum(ssim_list) / len(ssim_list)
-        else: score = sum(iou_list) / len(iou_list)
-    else:
-        print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
-        sys.exit(1)
-
-    print(score)
-except Exception as e:
-    print(f"Lỗi khi chấm điểm: {{str(e)}}")
-    sys.exit(1)
-""".encode('utf-8')
+                built_in_script = get_built_in_metric_script(
+                    metric_name=metric_name,
+                    gt_path="/tmp/ground_truth.csv",
+                    sub_path="/tmp/submission.csv"
+                ).encode('utf-8')
 
                 script_info = tarfile.TarInfo(name='built_in_metric.py')
                 script_info.size = len(built_in_script)
@@ -375,11 +281,22 @@ except Exception as e:
             error_logs = container.logs(stdout=False, stderr=True).decode("utf-8").strip()
             raise Exception(f"Sandbox exited with code {result['StatusCode']}: {error_logs or output}")
 
-        score = float(output)
-        if math.isnan(score) or math.isinf(score):
-            raise ValueError(f"Invalid score value returned by metric script: {output}")
+        import json
+        try:
+            scores = json.loads(output.splitlines()[-1])
+            public_score = float(scores.get("public_score"))
+            private_score = float(scores["private_score"]) if scores.get("private_score") is not None else None
+        except Exception:
+            try:
+                public_score = float(output.splitlines()[-1])
+                private_score = None
+            except Exception:
+                raise ValueError(f"Invalid score value returned by metric script: {output}")
 
-        return score
+        if math.isnan(public_score) or math.isinf(public_score):
+            raise ValueError(f"Invalid public_score value returned by metric script: {public_score}")
+
+        return public_score, private_score
     except docker.errors.APIError as exc:
         if "Read timed out" in str(exc) or "timed out" in str(exc).lower():
             raise Exception(
@@ -481,99 +398,19 @@ def extract_safe(zip_path, extract_to):
     if has_custom_metric:
         return unzip_logic + """
 import sys
+import json
 sys.path.append('/tmp')
 from metric import calculate_score
 score = calculate_score('/tmp/ground_truth', '/tmp/submission')
-print(score)
+if isinstance(score, tuple) or isinstance(score, list):
+    print(json.dumps({'public_score': score[0], 'private_score': score[1]}))
+elif isinstance(score, dict):
+    print(json.dumps(score))
+else:
+    print(json.dumps({'public_score': score, 'private_score': None}))
 """
     else:
-        return unzip_logic + f"""
-import pandas as pd
-import sys
-import math
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score
-
-try:
-    gt_csv_path = '/tmp/ground_truth/ground_truth.csv'
-    sub_csv_path = '/tmp/submission/submission.csv'
-    
-    gt = pd.read_csv(gt_csv_path)
-    sub = pd.read_csv(sub_csv_path)
-    
-    if 'Usage' in gt.columns:
-        gt_scoring = gt.drop(columns=['Usage'])
-    else:
-        gt_scoring = gt
-
-
-    label_col = gt_scoring.columns[-1]
-    if label_col not in sub.columns:
-        print(f'Thiếu cột {{label_col}} trong bài nộp.')
-        sys.exit(1)
-    y_true = gt_scoring[label_col].astype(str).tolist()
-    y_pred = sub[label_col].astype(str).tolist()
-
-    metric_name = '{metric_name}'
-    if metric_name == 'ACCURACY':
-        score = accuracy_score(y_true, y_pred)
-    elif metric_name == 'F1_SCORE':
-        score = f1_score(y_true, y_pred, average='macro')
-    elif metric_name == 'RMSE':
-        score = math.sqrt(mean_squared_error(
-            [float(x) for x in y_true], [float(x) for x in y_pred]
-        ))
-    elif metric_name == 'PRECISION':
-        from sklearn.metrics import precision_score
-        score = precision_score(y_true, y_pred, average='macro', zero_division=0)
-    elif metric_name == 'RECALL':
-        score = recall_score(y_true, y_pred, average='macro', zero_division=0)
-    # ---- NLP Metrics ----
-    elif metric_name == 'BLEU':
-        import sacrebleu
-        score = sacrebleu.corpus_bleu(y_pred, [y_true]).score / 100.0
-    elif metric_name == 'ROUGE_L':
-        from rouge_score import rouge_scorer
-        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
-        scores = [scorer.score(ref, hyp)['rougeL'].fmeasure
-                  for ref, hyp in zip(y_true, y_pred)]
-        score = sum(scores) / len(scores)
-    elif metric_name == 'WER':
-        from jiwer import wer
-        score = 1.0 - wer(y_true, y_pred)
-    # ---- CV Metrics (path ảnh trong ZIP) ----
-    elif metric_name in ('PSNR', 'SSIM', 'MEAN_IOU'):
-        import numpy as np
-        from PIL import Image
-        psnr_list, ssim_list, iou_list = [], [], []
-        for ref_path, pred_path in zip(y_true, y_pred):
-            ref_full  = f'/tmp/ground_truth/{{ref_path.strip()}}'
-            pred_full = f'/tmp/submission/{{pred_path.strip()}}'
-            ref_img   = np.array(Image.open(ref_full).convert('RGB'), dtype=np.float32)
-            pred_img  = np.array(Image.open(pred_full).convert('RGB'), dtype=np.float32)
-            if metric_name == 'PSNR':
-                mse = np.mean((ref_img - pred_img) ** 2)
-                psnr_list.append(20 * math.log10(255.0 / math.sqrt(mse)) if mse > 0 else 100.0)
-            elif metric_name == 'SSIM':
-                from skimage.metrics import structural_similarity as ssim
-                ssim_list.append(ssim(ref_img, pred_img, channel_axis=2, data_range=255.0))
-            elif metric_name == 'MEAN_IOU':
-                ref_mask  = np.array(Image.open(ref_full).convert('L')) > 127
-                pred_mask = np.array(Image.open(pred_full).convert('L')) > 127
-                inter = (ref_mask & pred_mask).sum()
-                union = (ref_mask | pred_mask).sum()
-                iou_list.append(inter / union if union > 0 else 1.0)
-        if metric_name == 'PSNR': score = sum(psnr_list) / len(psnr_list)
-        elif metric_name == 'SSIM': score = sum(ssim_list) / len(ssim_list)
-        else: score = sum(iou_list) / len(iou_list)
-    else:
-        print(f'Built-in metric {{metric_name}} không được hỗ trợ.')
-        sys.exit(1)
-
-    print(score)
-except Exception as e:
-    print(f'Lỗi khi chấm điểm: {{str(e)}}')
-    sys.exit(1)
-""".strip()
+        return unzip_logic.strip()
 
 
 
@@ -585,7 +422,7 @@ def _mark_submission_failed(
     error_message: str,
     sub_repo=None,
 ) -> None:
-    """Helper — cập nhật status FAILED khi Worker gặp lỗi."""
+    """Helper - cập nhật status FAILED khi Worker gặp lỗi."""
     try:
         if sub_repo:
             sub_repo.update_status(

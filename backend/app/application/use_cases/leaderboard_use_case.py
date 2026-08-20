@@ -18,6 +18,7 @@ from app.application.dtos.leaderboard_dtos import (
 from app.application.dtos.tag_dtos import TagResponseDTO
 from app.application.interfaces.repositories import (
     IChallengeRepository,
+    IContestRepository,
     ILeaderboardRepository,
     ITeamRepository,
 )
@@ -29,10 +30,12 @@ class LeaderboardUseCase:
         self,
         leaderboard_repo: ILeaderboardRepository,
         challenge_repo: IChallengeRepository,
+        contest_repo: IContestRepository,
         team_repo: ITeamRepository,
     ):
         self.leaderboard_repo = leaderboard_repo
         self.challenge_repo = challenge_repo
+        self.contest_repo = contest_repo
         self.team_repo = team_repo
 
     def get_leaderboard(
@@ -95,7 +98,7 @@ class LeaderboardUseCase:
         lb_type: LeaderboardType,
         current_time: datetime,
     ) -> ContestLeaderboardResponseDTO:
-        contest = self.challenge_repo.get_by_id(contest_id)
+        contest = self.contest_repo.get_by_id(contest_id)
         if not contest:
             raise ValueError("Contest not found")
             
