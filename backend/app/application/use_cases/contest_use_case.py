@@ -41,6 +41,7 @@ class ContestUseCase:
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             created_by=entity.created_by,
+            challenge_count=entity.challenge_count,
         )
 
     # ------------------------------------------------------------------

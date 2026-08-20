@@ -111,6 +111,7 @@ class ContestEntity:
     created_at: datetime  # Must be timezone-aware
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
+    challenge_count: int = 0
 
     def __post_init__(self) -> None:
         """Ensure datetime fields la timezone-aware de tranh TypeError khi compare."""

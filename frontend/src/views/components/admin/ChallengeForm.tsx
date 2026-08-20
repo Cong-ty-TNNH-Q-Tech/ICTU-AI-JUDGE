@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css';
 
 interface Props {
   initialData?: Challenge | null;
+  defaultContestId?: string | null;
   onSubmit: (data: ChallengeCreateRequest, groundTruthFile?: File, metricScriptFile?: File, publicTestSplitRatio?: number) => Promise<void>;
   onCancel: () => void;
 }
@@ -79,7 +80,7 @@ const toLocalDatetimeString = (iso?: string | null) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => {
+const ChallengeForm: React.FC<Props> = ({ initialData, defaultContestId, onSubmit, onCancel }) => {
   const isEdit = !!initialData;
   const isLocked = initialData?.status === 'PUBLISHED';
   const [activeTab, setActiveTab] = useState<'general' | 'timeline' | 'evaluation' | 'sandbox'>('general');
@@ -89,7 +90,7 @@ const ChallengeForm: React.FC<Props> = ({ initialData, onSubmit, onCancel }) => 
     type: 'PUBLIC', status: 'DRAFT', dataset_url: '',
     metric_name: 'ACCURACY', metric_direction: 'HIGHER_IS_BETTER',
     max_file_size_mb: 50, rate_limit_minutes: 10, max_team_size: 1,
-    contest_id: null,
+    contest_id: defaultContestId || null,
     environment_image: 'ictu-ai-judge-sandbox:latest',
     require_gpu: false,
   });

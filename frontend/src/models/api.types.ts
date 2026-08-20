@@ -162,6 +162,7 @@ export interface Contest {
   end_time: string | null;
   created_at: string;
   created_by: string;
+  challenge_count: number;
 }
 
 export interface ContestCreateRequest {
