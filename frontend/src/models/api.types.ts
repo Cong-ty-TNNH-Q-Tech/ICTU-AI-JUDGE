@@ -200,6 +200,12 @@ export interface Challenge {
   environment_image: string;
   require_gpu: boolean;
   dataset_url: string;
+  ground_truth_url?: string;
+  custom_metric_url?: string;
+  tags?: string[];
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Submission {
