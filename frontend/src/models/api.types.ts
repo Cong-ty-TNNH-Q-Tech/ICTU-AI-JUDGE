@@ -255,6 +255,18 @@ export interface GoogleLoginRequest {
   google_token: string;
 }
 
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name: string;
+  student_id: string;
+}
+
+export interface VerifyOTPRequest {
+  email: string;
+  otp: string;
+}
+
 export interface ChallengeCreateRequest {
   contest_id?: string | null;
   title: string;

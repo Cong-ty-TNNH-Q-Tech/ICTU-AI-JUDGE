@@ -60,4 +60,14 @@ export const authService = {
     const { data } = await apiClient.patch<{ message: string }>('/users/me/password', payload);
     return data;
   },
+
+  async register(payload: import('../models/api.types').RegisterRequest): Promise<{ message: string }> {
+    const { data } = await apiClient.post<{ message: string }>('/auth/register', payload);
+    return data;
+  },
+
+  async verifyOtp(payload: import('../models/api.types').VerifyOTPRequest): Promise<UserResponse> {
+    const { data } = await apiClient.post<UserResponse>('/auth/verify-otp', payload);
+    return data;
+  },
 };
