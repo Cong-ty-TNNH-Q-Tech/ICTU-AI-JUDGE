@@ -236,20 +236,37 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
         self.db.execute(stmt)
 
     def update_private_selection(
-        self, team_id: uuid.UUID, challenge_id: uuid.UUID, submission_id: uuid.UUID, private_score: float | None
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID, submission_id: uuid.UUID | None, private_score: float | None
     ) -> None:
-        stmt = (
-            update(LeaderboardModel)
-            .where(
-                LeaderboardModel.team_id == team_id,
-                LeaderboardModel.challenge_id == challenge_id,
+        from app.adapters.database.models import SubmissionModel
+        if submission_id is None:
+            stmt = (
+                update(LeaderboardModel)
+                .where(
+                    LeaderboardModel.team_id == team_id,
+                    LeaderboardModel.challenge_id == challenge_id,
+                )
+                .values(
+                    best_private_submission_id=None,
+                    best_private_score=select(SubmissionModel.private_score)
+                                       .where(SubmissionModel.id == LeaderboardModel.best_public_submission_id)
+                                       .scalar_subquery(),
+                    updated_at=func.now()
+                )
             )
-            .values(
-                best_private_submission_id=submission_id,
-                best_private_score=private_score,
-                updated_at=func.now()
+        else:
+            stmt = (
+                update(LeaderboardModel)
+                .where(
+                    LeaderboardModel.team_id == team_id,
+                    LeaderboardModel.challenge_id == challenge_id,
+                )
+                .values(
+                    best_private_submission_id=submission_id,
+                    best_private_score=private_score,
+                    updated_at=func.now()
+                )
             )
-        )
         self.db.execute(stmt)
 
     def export_all(
