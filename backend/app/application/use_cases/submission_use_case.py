@@ -234,7 +234,7 @@ class SubmissionUseCase:
         # Kiểm tra challenge chưa kết thúc
         challenge = self.challenge_repo.get_by_id(submission.challenge_id)
         if not challenge:
-            raise NotFoundError(f"Challenge không tồn tại.")
+            raise NotFoundError("Challenge không tồn tại.")
 
         challenge_end = challenge.end_time
         if challenge_end is not None:

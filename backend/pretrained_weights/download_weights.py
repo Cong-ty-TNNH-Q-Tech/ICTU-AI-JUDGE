@@ -25,7 +25,7 @@ def download_inception_v3():
         save_path = os.path.join(save_dir, "inception_v3.pth")
 
         if os.path.exists(save_path):
-            print(f"   ✔️ Đã có sẵn → bỏ qua.")
+            print("   ✔️ Đã có sẵn → bỏ qua.")
             return
 
         url = "https://download.pytorch.org/models/inception_v3_google-0cc3c7bd.pth"
