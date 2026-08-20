@@ -75,9 +75,11 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
                 
             if should_update:
                 m.best_public_score = entry.best_public_score
-                m.best_private_score = entry.best_private_score if entry.best_private_score is not None else m.best_private_score
                 m.best_public_submission_id = entry.best_public_submission_id
-                m.best_private_submission_id = entry.best_private_submission_id if entry.best_private_submission_id is not None else m.best_private_submission_id
+                
+                # CHỈ cập nhật best_private_score dự phòng nếu sinh viên chưa chủ động chọn bài
+                if m.best_private_submission_id is None:
+                    m.best_private_score = entry.best_private_score
                 m.last_submission_time = entry.last_submission_time
                 m.updated_at = func.now()
 
@@ -217,6 +219,23 @@ class SQLLeaderboardRepository(ILeaderboardRepository):
                 LeaderboardModel.challenge_id == challenge_id,
             )
             .values(is_source_code_submitted=submitted)
+        )
+        self.db.execute(stmt)
+
+    def update_private_selection(
+        self, team_id: uuid.UUID, challenge_id: uuid.UUID, submission_id: uuid.UUID, private_score: float | None
+    ) -> None:
+        stmt = (
+            update(LeaderboardModel)
+            .where(
+                LeaderboardModel.team_id == team_id,
+                LeaderboardModel.challenge_id == challenge_id,
+            )
+            .values(
+                best_private_submission_id=submission_id,
+                best_private_score=private_score,
+                updated_at=func.now()
+            )
         )
         self.db.execute(stmt)
 

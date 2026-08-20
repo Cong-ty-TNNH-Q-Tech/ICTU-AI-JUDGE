@@ -253,6 +253,12 @@ class SubmissionUseCase:
 
         # Chọn submission mới
         self.submission_repo.set_selected_for_private(submission_id, True)
+        self.leaderboard_repo.update_private_selection(
+            team_id=submission.team_id,
+            challenge_id=submission.challenge_id,
+            submission_id=submission_id,
+            private_score=submission.private_score,
+        )
         if self.uow:
             self.uow.commit()
             
