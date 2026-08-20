@@ -5,13 +5,15 @@ import uuid
 from app.adapters.database.challenge_repository import SQLChallengeRepository
 from app.adapters.database.submission_repository import SQLSubmissionRepository
 from app.adapters.database.user_repository import UserRepository
-from app.application.dtos.admin_dtos import UserDTO, UserListResponseDTO
+from app.application.dtos.admin_dtos import UserDTO, UserListResponseDTO, UserCreateDTO, UserUpdateDTO, UserImportResultDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO, SubmissionResponseDTO
-from app.application.interfaces.repositories import ILeaderboardRepository
-from app.domain.entities.entities import ChallengeType
+from app.application.interfaces.repositories import ILeaderboardRepository, IUnitOfWork
+from app.domain.entities.entities import ChallengeType, UserEntity, UserRole
 
 from app.adapters.worker.scoring_tasks import _run_sandbox
 from app.domain.exceptions.exceptions import NotFoundError, PermissionDeniedError
+from app.core.security import hash_password
+from datetime import datetime, timezone
 
 class AdminUseCase:
     def test_metric(
@@ -38,12 +40,14 @@ class AdminUseCase:
         challenge_repo: SQLChallengeRepository,
         submission_repo: SQLSubmissionRepository,
         leaderboard_repo: ILeaderboardRepository,
+        uow: IUnitOfWork,
         root_admin_email: str | None = None,
     ):
         self.user_repo = user_repo
         self.challenge_repo = challenge_repo
         self.submission_repo = submission_repo
         self.leaderboard_repo = leaderboard_repo
+        self.uow = uow
         self.root_admin_email = root_admin_email
 
     def list_users(self, q: str, page: int, size: int) -> UserListResponseDTO:
@@ -80,6 +84,111 @@ class AdminUseCase:
         if not success:
             raise NotFoundError("Không tìm thấy user hoặc user đã bị khóa")
         return {"detail": "Cập nhật quyền thành công"}
+
+    def create_user(self, data: UserCreateDTO) -> UserDTO:
+        if self.user_repo.get_by_email(data.email):
+            raise ValueError(f"Email {data.email} đã tồn tại")
+        if self.user_repo.get_by_student_id(data.student_id):
+            raise ValueError(f"Mã sinh viên {data.student_id} đã tồn tại")
+
+        user_password = data.password if data.password else data.student_id
+        hashed_password = hash_password(user_password)
+
+        new_user = UserEntity(
+            id=uuid.uuid4(),
+            email=data.email,
+            student_id=data.student_id,
+            full_name=data.full_name,
+            role=data.role,
+            password_hash=hashed_password,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        saved = self.user_repo.save(new_user)
+        self.uow.commit()
+        return UserDTO.model_validate(saved)
+
+    def update_user(self, user_id: uuid.UUID, data: UserUpdateDTO) -> UserDTO:
+        user = self.user_repo.get_by_id_admin(user_id)
+        if not user:
+            raise NotFoundError("Không tìm thấy user")
+
+        if data.email and data.email != user.email:
+            if self.user_repo.get_by_email(data.email):
+                raise ValueError(f"Email {data.email} đã tồn tại")
+            user.email = data.email
+            
+        if data.student_id and data.student_id != user.student_id:
+            if self.user_repo.get_by_student_id(data.student_id):
+                raise ValueError(f"Mã sinh viên {data.student_id} đã tồn tại")
+            user.student_id = data.student_id
+
+        if data.full_name:
+            user.full_name = data.full_name
+            
+        if data.role:
+            if self.root_admin_email and user.email == self.root_admin_email and data.role != UserRole.ADMIN:
+                raise PermissionDeniedError("Không thể hạ quyền Root Admin")
+            user.role = data.role
+            
+        if data.password:
+            user.password_hash = hash_password(data.password)
+
+        user.updated_at = datetime.now(timezone.utc)
+        saved = self.user_repo.save(user)
+        self.uow.commit()
+        return UserDTO.model_validate(saved)
+
+    def import_users_csv(self, file_content: bytes) -> UserImportResultDTO:
+        content_str = file_content.decode("utf-8")
+        reader = csv.DictReader(io.StringIO(content_str))
+        
+        success_count = 0
+        failed_count = 0
+        errors = []
+        
+        for row in reader:
+            student_id = row.get("student_id", "").strip()
+            email = row.get("email", "").strip()
+            full_name = row.get("full_name", "").strip()
+            
+            if not student_id or not email or not full_name:
+                failed_count += 1
+                errors.append(f"Dòng thiếu dữ liệu: {row}")
+                continue
+                
+            if self.user_repo.get_by_email(email):
+                failed_count += 1
+                errors.append(f"Email {email} đã tồn tại")
+                continue
+                
+            if self.user_repo.get_by_student_id(student_id):
+                failed_count += 1
+                errors.append(f"Mã SV {student_id} đã tồn tại")
+                continue
+                
+            hashed_password = hash_password(student_id)
+            new_user = UserEntity(
+                id=uuid.uuid4(),
+                email=email,
+                student_id=student_id,
+                full_name=full_name,
+                role=UserRole.STUDENT,
+                password_hash=hashed_password,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            self.user_repo.save(new_user)
+            success_count += 1
+            
+        self.uow.commit()
+        
+        return UserImportResultDTO(
+            total=success_count + failed_count,
+            success=success_count,
+            failed=failed_count,
+            errors=errors
+        )
 
     def get_whitelist(self, challenge_id: uuid.UUID, page: int, size: int) -> dict:
         challenge = self.challenge_repo.get_by_id(challenge_id)
