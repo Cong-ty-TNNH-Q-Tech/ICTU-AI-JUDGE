@@ -178,13 +178,6 @@ class ChallengeEntity:
             and self.deleted_at is None
         )
 
-    def is_metric_locked(self) -> bool:
-        """
-        Nghiệp vụ UC09-E3: Khóa thay đổi metric khi đã có submission thành công.
-        Logic này được kiểm tra ở Use Case layer (truyền has_submissions vào).
-        """
-        return self.status == ChallengeStatus.PUBLISHED
-
     def is_team_locked(self, now: datetime) -> bool:
         """Nghiệp vụ: Kiểm tra hạn chốt đội."""
         if self.team_lock_deadline is None:
