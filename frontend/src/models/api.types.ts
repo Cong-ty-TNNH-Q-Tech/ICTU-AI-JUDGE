@@ -200,6 +200,11 @@ export interface LeaderboardEntry {
   is_selected_for_private: boolean;
 }
 
+export interface SourceCodeUploadResponse {
+  detail: string;
+  source_code_s3_key: string;
+}
+
 export interface LeaderboardResponse {
   total: number;
   page: number;
