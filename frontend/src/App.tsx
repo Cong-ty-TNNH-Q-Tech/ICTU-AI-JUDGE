@@ -29,6 +29,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const ProfileRedirect = () => {
+  const user = useAuthStore((state) => state.user);
+  return <Navigate to={`/profile/${user?.id ?? ''}`} replace />;
+};
+
 // ---- 401 Handler (module-level dedup) ----
 // ⚠️ ĐẶT NGOÀI COMPONENT APP VÌ:
 //    - handleUnauthorized dùng module-level flag _isHandling401 để dedup
@@ -145,7 +150,7 @@ function App() {
         {/* Issue #30 — Profile page */}
         <Route path="/profile/me" element={
           <ProtectedRoute>
-            <Navigate to={`/profile/${useAuthStore.getState().user?.id ?? ''}`} replace />
+            <ProfileRedirect />
           </ProtectedRoute>
         } />
         <Route path="/profile/:userId" element={

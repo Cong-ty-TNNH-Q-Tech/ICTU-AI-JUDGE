@@ -5,7 +5,7 @@ Dựa trên đặc tả docs/openapi.yaml — schemas UserProfile, UpdateProfile
 import uuid
 import datetime
 from typing import Optional
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class UserProfileDTO(BaseModel):
