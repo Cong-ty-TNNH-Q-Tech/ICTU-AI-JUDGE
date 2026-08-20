@@ -13,7 +13,11 @@ def admin_use_case():
     challenge_repo = MagicMock()
     submission_repo = MagicMock()
     leaderboard_repo = MagicMock()
-    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo)
+    uow = MagicMock()
+    # Mock context manager behavior for uow (with self.uow:)
+    uow.__enter__.return_value = uow
+    uow.__exit__.return_value = False
+    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo, uow)
 
 def test_list_users(admin_use_case):
     uid = uuid.uuid4()
