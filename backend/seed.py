@@ -1,10 +1,8 @@
-import asyncio
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine, Base
 from app.adapters.database.models import UserModel, ChallengeModel
 from app.domain.entities.entities import UserRole, ChallengeType, ChallengeStatus, MetricDirection
-from app.core.security import hash_password
 
 def seed():
     # Create tables

@@ -3,7 +3,6 @@ Cleanup Use Cases — UC15
 """
 import logging
 from datetime import datetime
-import uuid
 
 from app.application.interfaces.repositories import ISubmissionRepository, IStorageRepository
 
