@@ -12,6 +12,7 @@ from app.application.interfaces.repositories import (
     ISolutionRepository,
     IChallengeRepository,
     IUserRepository,
+    IUnitOfWork,
 )
 from app.application.dtos.solution_dtos import SolutionListResponseDTO, SolutionResponseDTO
 from app.domain.entities.entities import ChallengeStatus, SolutionEntity, UserEntity
@@ -22,11 +23,13 @@ logger = logging.getLogger(__name__)
 class SolutionUseCase:
     def __init__(
         self,
+        uow: IUnitOfWork,
         solution_repo: ISolutionRepository,
         storage_repo: IStorageRepository,
         challenge_repo: IChallengeRepository,
         user_repo: IUserRepository,
     ):
+        self._uow = uow
         self._solution_repo = solution_repo
         self._storage_repo = storage_repo
         self._challenge_repo = challenge_repo
@@ -132,8 +135,10 @@ class SolutionUseCase:
             upvotes=0,
             created_at=datetime.datetime.now(datetime.timezone.utc),
         )
-        saved = self._solution_repo.save(solution)
-        logger.info("Solution published successfully: %s", saved.id)
+        with self._uow:
+            saved = self._solution_repo.save(solution)
+            self._uow.commit()
+            logger.info("Solution published successfully: %s", saved.id)
 
         # 5. Trả về DTO với presigned URL đã generate
         return SolutionResponseDTO(
@@ -158,7 +163,9 @@ class SolutionUseCase:
         Raises ValueError nếu đã vote rồi.
         Raises LookupError nếu solution không tồn tại.
         """
-        updated = self._solution_repo.upvote(solution_id, user_id)
-        if not updated:
-            raise LookupError(f"Solution {solution_id} không tồn tại.")
-        return self._to_dto(updated)
+        with self._uow:
+            updated = self._solution_repo.upvote(solution_id, user_id)
+            if not updated:
+                raise LookupError(f"Solution {solution_id} không tồn tại.")
+            self._uow.commit()
+            return self._to_dto(updated)

@@ -111,7 +111,7 @@ class ChallengeUseCase:
             raise ValueError("Không thể sửa bài thi đã có sinh viên nộp bài thành công.")
 
         # Update fields
-        update_data = data.dict(exclude_unset=True, exclude={"tag_ids"})
+        update_data = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
         for key, value in update_data.items():
             setattr(challenge, key, value)
             
