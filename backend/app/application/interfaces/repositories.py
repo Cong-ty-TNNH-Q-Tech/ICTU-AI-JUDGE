@@ -125,7 +125,12 @@ class IContestRepository(ABC):
 
     @abstractmethod
     def delete(self, contest_id: uuid.UUID) -> None:
-        """Soft delete — cập nhật deleted_at thay vì xoá hàng."""
+        """Soft delete — cập nhật deleted_at thay vì xoá cứng."""
+        ...
+
+    @abstractmethod
+    def unlink_challenges(self, contest_id: uuid.UUID) -> int:
+        """Set contest_id = NULL cho tất cả challenges thuộc contest này."""
         ...
 
     @abstractmethod
