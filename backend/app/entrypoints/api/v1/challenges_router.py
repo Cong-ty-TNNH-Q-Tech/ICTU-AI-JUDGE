@@ -6,7 +6,6 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
 
 
 from app.application.dtos.submission_dtos import (
@@ -25,7 +24,6 @@ from app.entrypoints.dependencies import (
     get_optional_current_user_id,
     get_current_user,
     get_optional_current_user,
-    get_db,
     get_solution_use_case,
     get_challenge_use_case,
     get_submission_use_case,

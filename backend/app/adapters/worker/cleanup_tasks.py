@@ -3,7 +3,6 @@ Cleanup Task — Cronjob UC15: Fix Worker Treo & Dọn rác.
 Chạy theo schedule trong celery_app.conf.beat_schedule.
 """
 import logging
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.adapters.worker.celery_app import celery_app

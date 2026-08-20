@@ -15,7 +15,6 @@ from app.application.dtos.challenge_dtos import (
 from app.application.interfaces.repositories import IChallengeRepository, IStorageRepository, ITagRepository, IUnitOfWork, IContestRepository
 from app.application.utils.file_validation import validate_zip_format, validate_zip_contains_ground_truth_csv
 from app.domain.entities.entities import ChallengeEntity, ChallengeStatus
-from app.application.dtos.tag_dtos import TagResponseDTO
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +92,7 @@ class ChallengeUseCase:
     ) -> ChallengeResponseDTO:
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
-            raise ValueError(f"Bài thi không tồn tại.")
+            raise ValueError("Bài thi không tồn tại.")
 
         # UC09-E3: Không cho sửa nếu đã có bài nộp thành công
         if self.challenge_repo.has_successful_submission(challenge_id):
@@ -153,6 +152,7 @@ class ChallengeUseCase:
 
     def delete_challenge(self, challenge_id: uuid.UUID) -> None:
         self.challenge_repo.soft_delete(challenge_id)
+        self.uow.commit()
 
     def upload_secrets(
         self,
