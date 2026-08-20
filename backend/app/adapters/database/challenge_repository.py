@@ -40,6 +40,7 @@ class SQLChallengeRepository(IChallengeRepository):
             metric_direction=MetricDirection(model.metric_direction),
             created_by=model.created_by,
             created_at=model.created_at,
+            updated_at=model.updated_at,
             dataset_url=model.dataset_url or "",
             ground_truth_url=model.ground_truth_url or "",
             custom_metric_url=model.custom_metric_url or "",
