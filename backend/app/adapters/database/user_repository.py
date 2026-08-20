@@ -78,6 +78,13 @@ class UserRepository(IUserRepository):
         result = self._session.execute(stmt).scalar_one_or_none()
         return self._to_entity(result) if result else None
 
+    def get_by_student_id(self, student_id: str) -> Optional[UserEntity]:
+        stmt = select(UserModel).where(
+            UserModel.student_id == student_id, UserModel.deleted_at.is_(None)
+        )
+        result = self._session.execute(stmt).scalar_one_or_none()
+        return self._to_entity(result) if result else None
+
     def save(self, user: UserEntity) -> UserEntity:
         model = self._to_model(user)
         merged = self._session.merge(model)
@@ -120,15 +127,6 @@ class UserRepository(IUserRepository):
         ).offset((page - 1) * size).limit(size)
         models = self._session.execute(stmt).scalars().all()
         return [self._to_entity(m) for m in models], total
-
-
-    def update_password(self, user_id: uuid.UUID, password_hash: str) -> None:
-        stmt = (
-            update(UserModel)
-            .where(UserModel.id == user_id)
-            .values(password_hash=password_hash)
-        )
-        self._session.execute(stmt)
 
     def soft_delete(self, user_id: uuid.UUID) -> None:
         stmt = (

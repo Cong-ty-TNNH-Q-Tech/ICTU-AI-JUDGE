@@ -3,7 +3,6 @@ Leaderboard Use Case.
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
 from app.application.dtos.challenge_dtos import (
     ChallengeResponseDTO,
@@ -18,6 +17,7 @@ from app.application.dtos.leaderboard_dtos import (
 from app.application.dtos.tag_dtos import TagResponseDTO
 from app.application.interfaces.repositories import (
     IChallengeRepository,
+    IContestRepository,
     ILeaderboardRepository,
     ITeamRepository,
 )
@@ -29,10 +29,12 @@ class LeaderboardUseCase:
         self,
         leaderboard_repo: ILeaderboardRepository,
         challenge_repo: IChallengeRepository,
+        contest_repo: IContestRepository,
         team_repo: ITeamRepository,
     ):
         self.leaderboard_repo = leaderboard_repo
         self.challenge_repo = challenge_repo
+        self.contest_repo = contest_repo
         self.team_repo = team_repo
 
     def get_leaderboard(
@@ -95,7 +97,7 @@ class LeaderboardUseCase:
         lb_type: LeaderboardType,
         current_time: datetime,
     ) -> ContestLeaderboardResponseDTO:
-        contest = self.challenge_repo.get_by_id(contest_id)
+        contest = self.contest_repo.get_by_id(contest_id)
         if not contest:
             raise ValueError("Contest not found")
             
@@ -197,10 +199,9 @@ class LeaderboardUseCase:
         max_time = datetime.max.replace(tzinfo=timezone.utc) if current_time.tzinfo else datetime.max
         leaderboard.sort(
             key=lambda x: (
-                x.total_score if is_higher_better else -x.total_score,
-                -last_submission_map.get(x.team_id, max_time).timestamp()
-            ),
-            reverse=True
+                -x.total_score if is_higher_better else x.total_score,
+                last_submission_map.get(x.team_id, max_time).timestamp()
+            )
         )
 
         # 6. Assign ranks

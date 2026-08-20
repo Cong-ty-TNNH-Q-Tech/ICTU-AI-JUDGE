@@ -21,3 +21,15 @@ class ResetPasswordRequestDTO(BaseModel):
 class LoginRequestDTO(BaseModel):
     email: EmailStr = Field(..., description="Email đăng nhập")
     password: str = Field(..., min_length=1, description="Mật khẩu")
+
+
+class RegisterRequestDTO(BaseModel):
+    email: EmailStr = Field(..., description="Email đăng ký")
+    password: str = Field(..., min_length=8, description="Mật khẩu")
+    full_name: str = Field(..., min_length=1, description="Họ và tên")
+    student_id: str = Field(..., description="Mã sinh viên")
+
+
+class VerifyOTPRequestDTO(BaseModel):
+    email: EmailStr = Field(..., description="Email đăng ký")
+    otp: str = Field(..., min_length=6, max_length=6, description="Mã OTP")

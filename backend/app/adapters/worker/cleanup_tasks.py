@@ -3,7 +3,6 @@ Cleanup Task — Cronjob UC15: Fix Worker Treo & Dọn rác.
 Chạy theo schedule trong celery_app.conf.beat_schedule.
 """
 import logging
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.adapters.worker.celery_app import celery_app
@@ -51,6 +50,7 @@ def cleanup_stale_submissions() -> dict:
             )
 
         logger.info("Cleanup: marked %d stale submissions as FAILED", len(stale))
+        db.commit()
         return {"cleaned": len(stale)}
 
 @celery_app.task(name="app.adapters.worker.cleanup_tasks.cleanup_s3_storage")

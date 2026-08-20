@@ -5,7 +5,6 @@ Inject DB session, Settings và current_user vào Use Cases qua Depends.
 import uuid
 from collections.abc import Generator
 
-import jwt
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -39,9 +38,10 @@ from app.core.database import SQLUnitOfWork
 from app.adapters.storage.s3_repository import S3StorageRepository
 from app.application.interfaces.message_broker import IMessageBroker
 from app.adapters.message_broker.celery_adapter import CeleryMessageBroker
-from app.application.interfaces.clients import IGoogleAuthClient, IMailClient
 from app.adapters.clients.google_auth_client import GoogleAuthClient
 from app.adapters.clients.mail_client import SMTPMailClient
+from app.application.interfaces.clients import IGoogleAuthClient, IMailClient, ICacheClient
+from app.adapters.clients.redis_client import RedisCacheClient
 from app.application.use_cases.solution_use_case import SolutionUseCase
 from app.application.use_cases.profile_use_case import ProfileUseCase
 from app.application.use_cases.submission_use_case import SubmissionUseCase
@@ -51,7 +51,7 @@ from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.use_cases.tag_use_case import TagUseCase
 from app.application.use_cases.auth_use_case import AuthUseCase
 from app.application.use_cases.contest_use_case import ContestUseCase
-from app.domain.entities.entities import UserEntity, UserRole
+from app.domain.entities.entities import UserEntity
 
 settings = get_settings()
 
@@ -208,12 +208,13 @@ def get_message_broker() -> IMessageBroker:
 
 
 def get_solution_use_case(
+    uow: IUnitOfWork = Depends(get_uow),
     solution_repo: ISolutionRepository = Depends(get_solution_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> SolutionUseCase:
-    return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
+    return SolutionUseCase(uow, solution_repo, storage_repo, challenge_repo, user_repo)
 
 
 def get_profile_use_case(
@@ -248,11 +249,12 @@ def get_challenge_use_case(
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     tag_repo: ITagRepository = Depends(get_tag_repository),
+    contest_repo: IContestRepository = Depends(get_contest_repository),
     settings: Settings = Depends(get_settings_dep),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> ChallengeUseCase:
     return ChallengeUseCase(
-        challenge_repo, storage_repo, tag_repo, uow,
+        challenge_repo, storage_repo, tag_repo, contest_repo, uow,
         zip_max_uncompressed_mb=settings.ZIP_MAX_UNCOMPRESSED_MB,
         zip_max_file_count=settings.ZIP_MAX_FILE_COUNT,
     )
@@ -291,10 +293,15 @@ def get_tag_use_case(
 def get_mail_client() -> IMailClient:
     return SMTPMailClient()
 
+def get_cache_client() -> ICacheClient:
+    return RedisCacheClient()
+
 def get_auth_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
     password_reset_repo: IPasswordResetRepository = Depends(get_password_reset_repository),
     google_client: IGoogleAuthClient = Depends(get_google_auth_client),
+    mail_client: IMailClient = Depends(get_mail_client),
+    cache_client: ICacheClient = Depends(get_cache_client),
     uow: IUnitOfWork = Depends(get_uow),
 ) -> AuthUseCase:
     """
@@ -306,6 +313,8 @@ def get_auth_use_case(
         user_repo=user_repo,
         google_client=google_client,
         password_reset_repo=password_reset_repo,
+        mail_client=mail_client,
+        cache_client=cache_client,
         uow=uow,
         root_admin_email=settings.ROOT_ADMIN_EMAIL,
         frontend_url=settings.FRONTEND_URL,
@@ -331,14 +340,15 @@ def get_optional_current_user(
 
 get_current_admin = require_admin
 
-from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
+from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase  # noqa: E402
 
 def get_leaderboard_use_case(
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    contest_repo: IContestRepository = Depends(get_contest_repository),
     team_repo: ITeamRepository = Depends(get_team_repository),
 ) -> LeaderboardUseCase:
-    return LeaderboardUseCase(leaderboard_repo, challenge_repo, team_repo)
+    return LeaderboardUseCase(leaderboard_repo, challenge_repo, contest_repo, team_repo)
 
 
 def get_contest_use_case(

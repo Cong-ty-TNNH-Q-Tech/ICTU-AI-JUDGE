@@ -113,6 +113,62 @@ paths:
         '400':
           description: Token không hợp lệ hoặc đã hết hạn.
 
+  /auth/register:
+    post:
+      summary: Đăng ký tài khoản
+      tags:
+        - Auth
+      description: Gửi thông tin đăng ký. Một mã OTP sẽ được gửi về email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                full_name:
+                  type: string
+                student_id:
+                  type: string
+      responses:
+        '200':
+          description: Yêu cầu đăng ký thành công, đã gửi OTP.
+        '400':
+          description: Dữ liệu không hợp lệ hoặc email không hợp lệ.
+
+  /auth/verify-otp:
+    post:
+      summary: Xác thực OTP đăng ký
+      tags:
+        - Auth
+      description: Gửi OTP nhận được qua email để hoàn tất đăng ký.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                otp:
+                  type: string
+      responses:
+        '200':
+          description: Xác thực thành công, trả về thông tin User và JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: OTP không hợp lệ hoặc đã hết hạn.
+
   /auth/logout:
     post:
       summary: Đăng xuất
@@ -835,7 +891,7 @@ paths:
                   description: (Tùy chọn) Script python chấm điểm thủ công
                 metric_name:
                   type: string
-                  description: Tên metric (ví dụ ACCURACY, F1_SCORE, CUSTOM)
+                  description: Tên metric (ví dụ ACCURACY, F1_SCORE, RMSE, MAE, R2_SCORE, LOG_LOSS, CUSTOM)
       responses:
         '200':
           description: Chạy Sandbox thành công, trả về điểm.
