@@ -49,13 +49,13 @@ def google_login(
     # Tạo JWT access token
     access_token = create_access_token(subject=str(user.id), role=user.role.value)
 
-    # Set vào HttpOnly Cookie
     response.set_cookie(
         key=settings.COOKIE_NAME,
         value=access_token,
         httponly=True,
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=(settings.APP_ENV != "development"),
     )
 
     return UserResponse(
@@ -95,6 +95,7 @@ def login_with_password(
         httponly=True,
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=(settings.APP_ENV != "development"),
     )
 
     return UserResponse(
@@ -197,6 +198,7 @@ def verify_otp(
         httponly=True,
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=(settings.APP_ENV != "development"),
     )
 
     return UserResponse(
