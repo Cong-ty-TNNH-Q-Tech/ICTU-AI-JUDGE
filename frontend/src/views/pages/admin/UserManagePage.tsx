@@ -9,8 +9,10 @@
  */
 import React, { useState } from 'react';
 import { useAdminUsersVM } from '../../../viewmodels/useAdminVM';
-import type { UserRole } from '../../../models/api.types';
+import type { UserRole, UserResponse } from '../../../models/api.types';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import UserFormModal from '../../components/admin/UserFormModal';
+import ImportCSVModal from '../../components/admin/ImportCSVModal';
 
 const UserManagePage = () => {
   const [search, setSearch] = useState('');
@@ -26,7 +28,13 @@ const UserManagePage = () => {
     updateUserRole,
     updatingRoleId,
     togglingStatusId,
+    createUser,
+    updateUser,
+    importUsersCSV,
   } = useAdminUsersVM({ q: search, page, size: PAGE_SIZE });
+
+  const [formModal, setFormModal] = useState<{ isOpen: boolean; data: UserResponse | null }>({ isOpen: false, data: null });
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // --- Confirmation modal state ---
   const [confirmModal, setConfirmModal] = useState<{
@@ -71,11 +79,19 @@ const UserManagePage = () => {
             </svg>
             <input
               type="text"
-              placeholder="Tìm kiếm người dùng..."
+              placeholder="Tìm kiếm sinh viên theo tên, email, MSV..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-surface-200 dark:border-white/10 pl-9 pr-4 py-2 text-[13px] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 transition-all font-medium w-56"
             />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setFormModal({ isOpen: true, data: null })} className="px-4 py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-xl text-[13px] font-semibold transition-all flex items-center shadow-md shadow-primary-500/20">
+              <span className="mr-1.5">+</span> Thêm Sinh Viên
+            </button>
+            <button onClick={() => setImportModalOpen(true)} className="px-4 py-2.5 bg-surface-50 dark:bg-surface-dark border border-border-light dark:border-border-dark hover:bg-surface-200 dark:hover:bg-surface-dark-200 text-content-primary dark:text-content-dark-primary rounded-xl text-[13px] font-semibold transition-all flex items-center shadow-sm">
+              <span className="mr-1.5">⬆</span> Nhập CSV
+            </button>
           </div>
         </div>
 
@@ -161,8 +177,10 @@ const UserManagePage = () => {
 
                       {/* Action — mở ConfirmationModal thay vì gọi thẳng */}
                       <td className="px-5 py-4 text-right rounded-r-xl">
-                        <button
-                          onClick={() => openConfirmToggle(u.id, u.full_name || u.email, u.is_active)}
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => setFormModal({ isOpen: true, data: u })} className="p-1.5 text-content-secondary hover:text-primary-500 hover:bg-primary-500/10 rounded transition-colors" title="Sửa thông tin"><span>Sửa</span></button>
+                          <button
+                            onClick={() => openConfirmToggle(u.id, u.full_name || u.email, u.is_active)}
                           disabled={togglingStatusId === u.id}
                           className={`glass-btn text-[12px] py-1.5 px-3 flex items-center gap-1.5 ml-auto disabled:opacity-50 disabled:cursor-wait ${u.is_active ? 'text-red-500 hover:text-red-600 dark:hover:text-red-400' : 'text-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400'}`}
                         >
@@ -173,8 +191,9 @@ const UserManagePage = () => {
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
                           ) : null}
-                          {u.is_active ? 'Khóa' : 'Mở khóa'}
+                          <span>{u.is_active ? 'Khóa' : 'Mở khóa'}</span>
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -214,17 +233,32 @@ const UserManagePage = () => {
       {/* Issue #1: Confirmation Modal cho Lock/Unlock */}
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
-        title={confirmModal.currentStatus ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?'}
-        message={
-          confirmModal.currentStatus
-            ? `Bạn có chắc chắn muốn khóa tài khoản của "${confirmModal.userName}"? Người dùng sẽ không thể đăng nhập sau thao tác này.`
-            : `Bạn có chắc chắn muốn mở khóa tài khoản của "${confirmModal.userName}"?`
-        }
+        title={confirmModal.currentStatus ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+        message={`Bạn có chắc muốn ${confirmModal.currentStatus ? 'Khóa' : 'Mở khóa'} tài khoản của ${confirmModal.userName} không?`}
         confirmLabel={confirmModal.currentStatus ? 'Khóa tài khoản' : 'Mở khóa'}
         confirmVariant={confirmModal.currentStatus ? 'danger' : 'warning'}
         loading={confirmLoading}
         onConfirm={handleConfirmToggle}
-        onCancel={() => setConfirmModal({ isOpen: false, userId: '', userName: '', currentStatus: false })}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <UserFormModal
+        isOpen={formModal.isOpen}
+        onClose={() => setFormModal({ isOpen: false, data: null })}
+        initialData={formModal.data}
+        onSubmit={async (data) => {
+          if (formModal.data) {
+            await updateUser(formModal.data.id, data);
+          } else {
+            await createUser(data as any);
+          }
+        }}
+      />
+
+      <ImportCSVModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSubmit={importUsersCSV}
       />
     </>
   );
