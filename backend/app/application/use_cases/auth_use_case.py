@@ -6,7 +6,6 @@ import logging
 import secrets
 import uuid
 import json
-import random
 from datetime import datetime, timedelta, timezone
 
 from app.application.interfaces.repositories import IUserRepository, IPasswordResetRepository, IUnitOfWork
@@ -220,7 +219,7 @@ class AuthUseCase:
             raise ValueError("Mã sinh viên này đã được đăng ký.")
             
         # Generate 6-digit OTP
-        otp = f"{random.randint(0, 999999):06d}"
+        otp = f"{secrets.randbelow(1_000_000):06d}"
         
         # Save to Redis with 5 minutes expiration
         key = f"reg_otp:{email}"
