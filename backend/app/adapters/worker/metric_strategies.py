@@ -5,7 +5,7 @@ import pandas as pd
 import sys
 import math
 import json
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score, precision_score
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, recall_score, precision_score, r2_score, mean_absolute_error, log_loss
 
 def compute_score(y_true, y_pred, metric_name):
     if len(y_true) == 0: return None
@@ -21,6 +21,33 @@ def compute_score(y_true, y_pred, metric_name):
             print(f"Lỗi ép kiểu dữ liệu sang float khi tính RMSE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
             sys.exit(1)
         return math.sqrt(mean_squared_error(y_t, y_p))
+    elif metric_name == 'MAE':
+        try:
+            y_t = [float(x) for x in y_true]
+            y_p = [float(x) for x in y_pred]
+        except ValueError as e:
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính MAE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            sys.exit(1)
+        return mean_absolute_error(y_t, y_p)
+    elif metric_name == 'R2_SCORE':
+        try:
+            y_t = [float(x) for x in y_true]
+            y_p = [float(x) for x in y_pred]
+        except ValueError as e:
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính R2 Score. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            sys.exit(1)
+        import numpy as np
+        if np.var(y_t) == 0:
+            return 0.0
+        return r2_score(y_t, y_p)
+    elif metric_name == 'LOG_LOSS':
+        try:
+            y_t = [float(x) for x in y_true]
+            y_p = [float(x) for x in y_pred]
+        except ValueError as e:
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính Log Loss. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            sys.exit(1)
+        return log_loss(y_t, y_p)
     elif metric_name == 'PRECISION':
         return precision_score(y_true, y_pred, average='macro', zero_division=0)
     elif metric_name == 'RECALL':
