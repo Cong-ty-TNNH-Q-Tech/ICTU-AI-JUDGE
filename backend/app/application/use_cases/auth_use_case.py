@@ -5,10 +5,12 @@ UC01 Extension: Auto-promote Root Admin to ADMIN role on first login.
 import logging
 import secrets
 import uuid
+import json
+import random
 from datetime import datetime, timedelta, timezone
 
 from app.application.interfaces.repositories import IUserRepository, IPasswordResetRepository, IUnitOfWork
-from app.application.interfaces.clients import IGoogleAuthClient, IMailClient
+from app.application.interfaces.clients import IGoogleAuthClient, IMailClient, ICacheClient
 from app.domain.entities.entities import UserEntity, UserRole, PasswordResetEntity
 from app.domain.exceptions.exceptions import AuthenticationError, InvalidPasswordError, InvalidTokenError, NotFoundError, PasswordResetRateLimitError
 from app.core.security import verify_password, hash_password
@@ -21,6 +23,8 @@ class AuthUseCase:
         user_repo: IUserRepository,
         google_client: IGoogleAuthClient,
         password_reset_repo: IPasswordResetRepository,
+        mail_client: IMailClient,
+        cache_client: ICacheClient,
         uow: IUnitOfWork,
         root_admin_email: str | None = None,
         frontend_url: str = "http://localhost:5173",
@@ -28,6 +32,8 @@ class AuthUseCase:
         self._user_repo = user_repo
         self._google_client = google_client
         self._password_reset_repo = password_reset_repo
+        self._mail_client = mail_client
+        self._cache_client = cache_client
         self._uow = uow
         self._root_admin_email = root_admin_email
         self._frontend_url = frontend_url
@@ -73,8 +79,14 @@ class AuthUseCase:
                 needs_save = True
                 logger.info("Root admin role promoted for existing user: %s", email)
             if needs_save:
-                user = self._user_repo.save(user)
+                with self._uow:
+                    user = self._user_repo.save(user)
+                    self._uow.commit()
             return user
+
+        # Check student_id uniqueness before creating
+        if self._user_repo.get_by_student_id(student_id):
+            raise ValueError(f"Mã sinh viên {student_id} đã được liên kết với một tài khoản khác.")
 
         role = UserRole.ADMIN if is_root else UserRole.STUDENT
         new_user = UserEntity(
@@ -92,7 +104,10 @@ class AuthUseCase:
             logger.info("Root admin account created via Google OAuth: %s", email)
         else:
             logger.info("Created new user via Google OAuth: %s", email)
-        return self._user_repo.save(new_user)
+        with self._uow:
+            saved_user = self._user_repo.save(new_user)
+            self._uow.commit()
+            return saved_user
 
     def login_with_password(self, email: str, password: str) -> UserEntity:
         """
@@ -165,6 +180,9 @@ class AuthUseCase:
         return user.email, user.full_name, reset_link
 
     def reset_password(self, token: str, new_password: str) -> None:
+        if len(new_password) < 8:
+            raise ValueError("Mật khẩu mới phải có ít nhất 8 ký tự.")
+            
         reset_entity = self._password_reset_repo.get_by_token(token)
         if not reset_entity:
             raise InvalidTokenError("Đường dẫn đặt lại mật khẩu không hợp lệ.")
@@ -184,4 +202,86 @@ class AuthUseCase:
         self._password_reset_repo.mark_as_used(reset_entity.id)
         self._uow.commit()
         logger.info("Password reset successfully for user %s", user.id)
+
+    def request_registration(self, email: str, password: str, full_name: str, student_id: str) -> None:
+        if len(password) < 8:
+            raise ValueError("Mật khẩu phải có ít nhất 8 ký tự.")
+            
+        if not email.endswith("@ictu.edu.vn"):
+            raise ValueError("Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn.")
+            
+        import re
+        if not re.match(r"^[A-Za-z0-9]{5,20}$", student_id):
+            raise ValueError("Mã sinh viên không hợp lệ (chỉ gồm 5-20 ký tự chữ và số).")
+
+        user = self._user_repo.get_by_email(email)
+        if user:
+            raise ValueError("Email này đã được đăng ký.")
+            
+        if self._user_repo.get_by_student_id(student_id):
+            raise ValueError("Mã sinh viên này đã được đăng ký.")
+            
+        # Generate 6-digit OTP
+        otp = f"{random.randint(0, 999999):06d}"
+        
+        # Save to Redis with 5 minutes expiration
+        key = f"reg_otp:{email}"
+        payload = {
+            "otp": otp,
+            "password_hash": hash_password(password),
+            "full_name": full_name,
+            "student_id": student_id,
+        }
+        self._cache_client.set(key, json.dumps(payload), 300)
+        
+        # Send Email
+        subject = "Mã xác nhận đăng ký tài khoản ICTU AI Judge"
+        html_content = f"""
+        <html>
+            <body>
+                <h2>Xin chào {full_name},</h2>
+                <p>Mã xác nhận (OTP) để đăng ký tài khoản của bạn là: <strong>{otp}</strong></p>
+                <p>Mã này có hiệu lực trong vòng 5 phút.</p>
+                <br/>
+                <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.</p>
+            </body>
+        </html>
+        """
+        self._mail_client.send_email(email, subject, html_content)
+        logger.info("Registration OTP sent to %s", email)
+
+    def verify_registration_otp(self, email: str, otp: str) -> UserEntity:
+        key = f"reg_otp:{email}"
+        data_str = self._cache_client.get(key)
+        
+        if not data_str:
+            raise AuthenticationError("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng đăng ký lại.")
+            
+        data = json.loads(data_str)
+        if data.get("otp") != otp:
+            raise AuthenticationError("Mã OTP không chính xác.")
+            
+        # Create user
+        is_root = self._is_root_admin(email)
+        role = UserRole.ADMIN if is_root else UserRole.STUDENT
+        
+        new_user = UserEntity(
+            id=uuid.uuid4(),
+            email=email,
+            student_id=data.get("student_id", ""),
+            full_name=data.get("full_name", ""),
+            role=role,
+            password_hash=data.get("password_hash", ""),
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc),
+            deleted_at=None,
+        )
+        
+        saved_user = self._user_repo.save(new_user)
+        self._uow.commit()
+        
+        self._cache_client.delete(key)
+        logger.info("User registered successfully via OTP: %s", email)
+        
+        return saved_user
 
