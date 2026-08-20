@@ -43,3 +43,9 @@ demo_challenge/
 backend/tests/**/__pycache__/
 backend/tests/**/*.pyc
 
+
+# Junk scripts and logs
+*.txt
+resolve_*.py
+fix_*.py
+
