@@ -3,7 +3,6 @@ Leaderboard Use Case.
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
 from app.application.dtos.challenge_dtos import (
     ChallengeResponseDTO,
