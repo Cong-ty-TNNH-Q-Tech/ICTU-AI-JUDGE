@@ -2,7 +2,7 @@
  * Admin Service — Gọi API Admin endpoints (UC12).
  */
 import { apiClient } from '../core/apiClient';
-import type { PaginatedResponse, UserResponse, UserRole } from '../models/api.types';
+import type { PaginatedResponse, UserResponse, UserRole, UserCreateRequest, UserUpdateRequest, UserImportResult } from '../models/api.types';
 
 export const adminService = {
   /** Lấy danh sách sinh viên (có phân trang + tìm kiếm). */
@@ -37,6 +37,28 @@ export const adminService = {
   /** Chạy thử Metric với file mẫu. */
   async testMetric(formData: FormData): Promise<{ score: number }> {
     const { data } = await apiClient.post<{ score: number }>('/admin/challenges/test-metric', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  /** Tạo tài khoản mới. */
+  async createUser(request: UserCreateRequest): Promise<UserResponse> {
+    const { data } = await apiClient.post<UserResponse>('/admin/users', request);
+    return data;
+  },
+
+  /** Cập nhật thông tin tài khoản. */
+  async updateUser(id: string, request: UserUpdateRequest): Promise<UserResponse> {
+    const { data } = await apiClient.put<UserResponse>(`/admin/users/${id}`, request);
+    return data;
+  },
+
+  /** Import danh sách tài khoản từ CSV. */
+  async importUsersCSV(file: File): Promise<UserImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post<UserImportResult>('/admin/users/import-csv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data;
