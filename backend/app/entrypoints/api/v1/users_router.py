@@ -10,7 +10,6 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from app.application.dtos.auth_dtos import ChangePasswordRequestDTO
 from app.application.dtos.profile_dtos import (
@@ -25,7 +24,6 @@ from app.domain.entities.entities import UserEntity
 from app.entrypoints.dependencies import (
     get_auth_use_case,
     get_current_user,
-    get_db,
     get_profile_use_case,
     get_team_use_case,
 )
