@@ -38,6 +38,7 @@ async def select_for_private(
     return use_case.select_for_private(
         submission_id=submission_id,
         user_id=user_id,
+        is_selected=body.is_selected_for_private,
     )
 
 
