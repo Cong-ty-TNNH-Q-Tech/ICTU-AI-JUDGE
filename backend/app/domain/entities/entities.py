@@ -122,6 +122,7 @@ class ContestEntity:
         self.start_time = _ensure_tz(self.start_time)  # type: ignore[assignment]
         self.end_time = _ensure_tz(self.end_time)
         self.created_at = _ensure_tz(self.created_at)  # type: ignore[assignment]
+        self.updated_at = _ensure_tz(self.updated_at)
         self.deleted_at = _ensure_tz(self.deleted_at)
 
 
@@ -141,6 +142,7 @@ class ChallengeEntity:
     metric_direction: MetricDirection
     created_by: uuid.UUID
     created_at: datetime
+    updated_at: datetime | None = None
     # Thuộc về một Cuộc thi (Contest) nếu có (Issue #123). Dùng để gom nhóm challenges theo kỳ thi.
     contest_id: uuid.UUID | None = None
     dataset_url: str = ""
@@ -164,6 +166,7 @@ class ChallengeEntity:
         self.start_time = _ensure_tz(self.start_time)  # type: ignore[assignment]
         self.end_time = _ensure_tz(self.end_time)
         self.created_at = _ensure_tz(self.created_at)  # type: ignore[assignment]
+        self.updated_at = _ensure_tz(self.updated_at)
         self.deleted_at = _ensure_tz(self.deleted_at)
         self.team_lock_deadline = _ensure_tz(self.team_lock_deadline)
 

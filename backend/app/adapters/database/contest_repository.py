@@ -35,6 +35,7 @@ class SQLContestRepository(IContestRepository):
             end_time=model.end_time,
             created_by=model.created_by,
             created_at=model.created_at,
+            updated_at=model.updated_at,
             deleted_at=model.deleted_at,
             challenge_count=challenge_count,
         )
@@ -61,6 +62,7 @@ class SQLContestRepository(IContestRepository):
             team_lock_deadline=model.team_lock_deadline,
             created_by=model.created_by,
             created_at=model.created_at,
+            updated_at=model.updated_at,
             deleted_at=model.deleted_at,
         )
 
