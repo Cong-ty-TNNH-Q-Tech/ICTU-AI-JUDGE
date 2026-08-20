@@ -32,3 +32,23 @@ class UserRoleUpdateRequestDTO(BaseModel):
 
 class WhitelistAddRequestDTO(BaseModel):
     user_ids: list[uuid.UUID]
+
+class UserCreateDTO(BaseModel):
+    student_id: str
+    email: str
+    full_name: str
+    role: UserRole = UserRole.STUDENT
+    password: str | None = None
+
+class UserUpdateDTO(BaseModel):
+    student_id: str | None = None
+    email: str | None = None
+    full_name: str | None = None
+    role: UserRole | None = None
+    password: str | None = None
+
+class UserImportResultDTO(BaseModel):
+    total: int
+    success: int
+    failed: int
+    errors: list[str]
