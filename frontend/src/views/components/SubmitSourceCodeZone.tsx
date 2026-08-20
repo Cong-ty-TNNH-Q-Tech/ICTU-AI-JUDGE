@@ -161,7 +161,7 @@ const SubmitSourceCodeZone: React.FC<SubmitSourceCodeZoneProps> = ({
               >
                 {successfulSubmissions.map(sub => (
                   <option key={sub.id} value={sub.id}>
-                    Nộp lúc {new Date(sub.created_at).toLocaleString('vi-VN')} - Điểm Public: {sub.public_score?.toFixed(4) || 'N/A'} {sub.is_selected_for_private ? '(Đang chọn tính điểm Private)' : ''}
+                    Nộp lúc {new Date(sub.submitted_at).toLocaleString('vi-VN')} - Điểm Public: {sub.public_score?.toFixed(4) || 'N/A'} {sub.is_selected_for_private ? '(Đang chọn tính điểm Private)' : ''}
                   </option>
                 ))}
               </select>

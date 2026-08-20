@@ -229,9 +229,9 @@ export function useSubmissionVM(challengeId: string) {
       
       setSourceCodeSuccess('Nộp Source Code thành công! Bạn đã hoàn thành bài thi.');
       await fetchSubmissions(false);
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setSourceCodeError(err.response.data?.detail || err.message || 'Lỗi nộp source code');
+    } catch (err: unknown) {
+      if (err instanceof SubmissionError) {
+        setSourceCodeError(err.message);
       } else {
         setSourceCodeError(err instanceof Error ? err.message : 'Lỗi nộp source code');
       }

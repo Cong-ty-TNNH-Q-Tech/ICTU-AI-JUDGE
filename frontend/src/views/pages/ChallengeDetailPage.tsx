@@ -393,7 +393,19 @@ const ChallengeDetailPage = () => {
 
         {/* TAB 3.5: SUBMIT SOURCE CODE */}
         {activeTab === 'source_code' && (
-          new Date() < new Date(challenge.end_time) ? (
+          !challenge.end_time ? (
+            <div className="text-center py-16 px-6 bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-2xl shadow-sm">
+              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25m0 2.25h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">Không hỗ trợ nộp Source Code</h4>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                Cuộc thi này không giới hạn thời gian nên không yêu cầu nộp Source Code (Anti-Cheat).
+              </p>
+            </div>
+          ) : new Date() < new Date(challenge.end_time) ? (
             <div className="text-center py-16 px-6 bg-white dark:bg-surface-dark border border-surface-200 dark:border-slate-800 rounded-2xl shadow-sm">
               <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
