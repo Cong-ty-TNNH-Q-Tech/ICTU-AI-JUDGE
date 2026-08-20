@@ -50,6 +50,7 @@ def cleanup_stale_submissions() -> dict:
             )
 
         logger.info("Cleanup: marked %d stale submissions as FAILED", len(stale))
+        db.commit()
         return {"cleaned": len(stale)}
 
 @celery_app.task(name="app.adapters.worker.cleanup_tasks.cleanup_s3_storage")
