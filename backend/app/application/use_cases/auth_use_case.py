@@ -61,6 +61,10 @@ class AuthUseCase:
 
 
         is_root = self._is_root_admin(email)
+        
+        if not is_root and not email.lower().endswith("@ictu.edu.vn"):
+            raise AuthenticationError("Chỉ chấp nhận đăng nhập/đăng ký bằng email thuộc tên miền @ictu.edu.vn.")
+            
         student_id = email.split("@")[0]
         full_name = data.get("name", "Student")
 
@@ -203,7 +207,7 @@ class AuthUseCase:
         if len(password) < 8:
             raise ValueError("Mật khẩu phải có ít nhất 8 ký tự.")
             
-        if not email.endswith("@ictu.edu.vn"):
+        if not email.lower().endswith("@ictu.edu.vn"):
             raise ValueError("Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn.")
             
         import re
