@@ -15,8 +15,9 @@ settings = get_settings()
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,      # Kiểm tra kết nối trước khi dùng
-    pool_size=10,
-    max_overflow=20,
+    pool_size=50,
+    max_overflow=100,
+    pool_recycle=1800,       # Đóng connection sau 30 phút để tránh lỗi stale connection
     echo=settings.DEBUG,     # Log SQL nếu DEBUG=true
 )
 
@@ -36,7 +37,7 @@ class Base(DeclarativeBase):
     pass
 
 
-from app.application.interfaces.repositories import IUnitOfWork
+from app.application.interfaces.repositories import IUnitOfWork  # noqa: E402
 
 class SQLUnitOfWork(IUnitOfWork):
     """

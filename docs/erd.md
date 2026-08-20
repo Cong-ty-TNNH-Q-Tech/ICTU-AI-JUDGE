@@ -65,7 +65,7 @@ erDiagram
         datetime team_lock_deadline "Hạn chót gộp đội"
         int rate_limit_minutes "VD: 10 phút"
         int max_file_size_mb "VD: 50MB"
-        string metric_name "VD: Accuracy, RMSE"
+        string metric_name "VD: Accuracy, RMSE, MAE, R2 Score, Log Loss"
         string metric_direction "ENUM: HIGHER_IS_BETTER, LOWER_IS_BETTER"
         string custom_metric_url "S3 Link file metric.py"
         string dataset_url "Link Google Drive chứa tài liệu đề thi"
