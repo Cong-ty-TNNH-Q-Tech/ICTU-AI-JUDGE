@@ -38,9 +38,17 @@ class ChallengeUseCase:
         self.zip_max_file_count = zip_max_file_count
         self.uow = uow
 
+    def _validate_contest_id(self, contest_id: uuid.UUID | None) -> None:
+        if contest_id is None:
+            return
+        contest = self.contest_repo.get_by_id(contest_id)
+        if not contest:
+            raise ValueError(f"Cuộc thi (contest_id={contest_id}) không tồn tại hoặc đã bị xóa.")
+
     def create_challenge(
         self, admin_id: uuid.UUID, data: ChallengeCreateRequestDTO
     ) -> ChallengeResponseDTO:
+        self._validate_contest_id(data.contest_id)
         new_entity = ChallengeEntity(
             id=uuid.uuid4(),
             title=data.title,
@@ -90,6 +98,9 @@ class ChallengeUseCase:
     def update_challenge(
         self, challenge_id: uuid.UUID, data: ChallengeUpdateRequestDTO
     ) -> ChallengeResponseDTO:
+        if data.contest_id is not None:
+            self._validate_contest_id(data.contest_id)
+            
         challenge = self.challenge_repo.get_by_id(challenge_id)
         if not challenge:
             raise ValueError("Bài thi không tồn tại.")
