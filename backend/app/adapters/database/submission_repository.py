@@ -203,8 +203,10 @@ class SQLSubmissionRepository(ISubmissionRepository):
                 .where(
                     SubmissionModel.team_id == team_id,
                     SubmissionModel.challenge_id == challenge_id,
-                    # Không đếm các bài lỗi format vào rate limit
-                    SubmissionModel.status != SubmissionStatus.FAILED,
+                    # Không đếm các bài lỗi format (FAILED) hoặc đang đợi xử lý (PENDING) vào rate limit
+                    SubmissionModel.status.not_in(
+                        [SubmissionStatus.FAILED, SubmissionStatus.PENDING]
+                    ),
                 )
                 .order_by(SubmissionModel.submitted_at.desc())
             )
