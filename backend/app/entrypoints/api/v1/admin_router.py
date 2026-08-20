@@ -8,12 +8,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
 
 from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO, UserRoleUpdateRequestDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO
 from app.application.use_cases.admin_use_case import AdminUseCase
-from app.entrypoints.dependencies import get_db, require_admin, get_admin_use_case
+from app.entrypoints.dependencies import require_admin, get_admin_use_case
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_admin)])

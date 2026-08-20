@@ -5,7 +5,6 @@ Inject DB session, Settings và current_user vào Use Cases qua Depends.
 import uuid
 from collections.abc import Generator
 
-import jwt
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -52,7 +51,7 @@ from app.application.use_cases.admin_use_case import AdminUseCase
 from app.application.use_cases.tag_use_case import TagUseCase
 from app.application.use_cases.auth_use_case import AuthUseCase
 from app.application.use_cases.contest_use_case import ContestUseCase
-from app.domain.entities.entities import UserEntity, UserRole
+from app.domain.entities.entities import UserEntity
 
 settings = get_settings()
 
@@ -341,7 +340,7 @@ def get_optional_current_user(
 
 get_current_admin = require_admin
 
-from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
+from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase  # noqa: E402
 
 def get_leaderboard_use_case(
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
