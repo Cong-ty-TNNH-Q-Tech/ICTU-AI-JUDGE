@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 
 import docker
 from celery import Task
-from celery.exceptions import SoftTimeLimitExceeded
 
 from app.adapters.worker.celery_app import celery_app
 from app.adapters.worker.metric_strategies import get_built_in_metric_script
