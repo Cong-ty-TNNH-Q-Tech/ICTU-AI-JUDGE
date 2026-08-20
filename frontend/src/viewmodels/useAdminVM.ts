@@ -21,6 +21,8 @@ import type {
   ChallengeUpdateRequest,
   UserRole,
   Participant,
+  UserCreateRequest,
+  UserUpdateRequest,
 } from '../models/api.types';
 
 // ==========================================
@@ -92,16 +94,56 @@ export function useAdminUsersVM(options: { page?: number; size?: number; q?: str
     }
   }, [fetchUsers]);
 
+  const createUser = useCallback(async (data: UserCreateRequest) => {
+    try {
+      await adminService.createUser(data);
+      await fetchUsers();
+      useToastStore.getState().showToast('Thêm tài khoản thành công', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi tạo tài khoản';
+      useToastStore.getState().showToast(msg, 'error');
+      throw err;
+    }
+  }, [fetchUsers]);
+
+  const updateUser = useCallback(async (userId: string, data: UserUpdateRequest) => {
+    try {
+      await adminService.updateUser(userId, data);
+      await fetchUsers();
+      useToastStore.getState().showToast('Cập nhật tài khoản thành công', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật tài khoản';
+      useToastStore.getState().showToast(msg, 'error');
+      throw err;
+    }
+  }, [fetchUsers]);
+
+  const importUsersCSV = useCallback(async (file: File) => {
+    try {
+      const result = await adminService.importUsersCSV(file);
+      await fetchUsers();
+      useToastStore.getState().showToast(`Import thành công ${result.success} tài khoản`, 'success');
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi import file CSV';
+      useToastStore.getState().showToast(msg, 'error');
+      throw err;
+    }
+  }, [fetchUsers]);
+
   return {
     users: data?.items ?? [],
     meta: data,
     loading,
     error,
+    updatingRoleId,
+    togglingStatusId,
     refetch: fetchUsers,
     toggleUserStatus,
     updateUserRole,
-    updatingRoleId,
-    togglingStatusId,
+    createUser,
+    updateUser,
+    importUsersCSV,
   };
 }
 

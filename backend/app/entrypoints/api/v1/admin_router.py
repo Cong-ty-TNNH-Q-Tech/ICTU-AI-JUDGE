@@ -6,10 +6,10 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
 
-from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO, UserRoleUpdateRequestDTO
+from app.application.dtos.admin_dtos import UserListResponseDTO, UserStatusUpdateRequestDTO, UserRoleUpdateRequestDTO, UserCreateDTO, UserUpdateDTO, UserDTO, UserImportResultDTO
 from app.application.dtos.submission_dtos import SubmissionListResponseDTO
 from app.application.use_cases.admin_use_case import AdminUseCase
 from app.entrypoints.dependencies import require_admin, get_admin_use_case
@@ -62,15 +62,42 @@ async def update_user_status(
     return result
 
 
-@router.patch("/users/{user_id}/role")
+@router.put("/users/{user_id}/role")
 async def update_user_role(
     user_id: uuid.UUID,
-    request: UserRoleUpdateRequestDTO,
-    use_case: AdminUseCase = Depends(get_admin_use_case)
+    data: UserRoleUpdateRequestDTO,
+    use_case: AdminUseCase = Depends(get_admin_use_case),
 ):
-    """Cấp/Đổi quyền cho người dùng (Admin only)."""
-    result = use_case.update_user_role(user_id=user_id, role=request.role)
-    return result
+    """UC12 — Đổi quyền (STUDENT/ADMIN)."""
+    return use_case.update_user_role(user_id=user_id, role=data.role)
+
+@router.post("/users", response_model=UserDTO)
+async def create_user(
+    data: UserCreateDTO,
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
+    """Thêm tài khoản sinh viên/admin thủ công."""
+    return use_case.create_user(data)
+
+@router.put("/users/{user_id}", response_model=UserDTO)
+async def update_user(
+    user_id: uuid.UUID,
+    data: UserUpdateDTO,
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
+    """Cập nhật thông tin tài khoản."""
+    return use_case.update_user(user_id, data)
+
+@router.post("/users/import-csv", response_model=UserImportResultDTO)
+async def import_users_csv(
+    file: UploadFile = File(...),
+    use_case: AdminUseCase = Depends(get_admin_use_case),
+):
+    """Import tài khoản sinh viên từ file CSV."""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .csv")
+    content = await file.read()
+    return use_case.import_users_csv(content)
 
 
 @router.get("/challenges/{challenge_id}/submissions", response_model=SubmissionListResponseDTO)

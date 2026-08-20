@@ -13,7 +13,11 @@ def admin_use_case():
     challenge_repo = MagicMock()
     submission_repo = MagicMock()
     leaderboard_repo = MagicMock()
-    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo)
+    uow = MagicMock()
+    # Mock context manager behavior for uow (with self.uow:)
+    uow.__enter__.return_value = uow
+    uow.__exit__.return_value = False
+    return AdminUseCase(user_repo, challenge_repo, submission_repo, leaderboard_repo, uow)
 
 def test_list_users(admin_use_case):
     uid = uuid.uuid4()
@@ -244,3 +248,93 @@ def test_add_whitelist_by_identifiers_with_uuid(admin_use_case):
 
     assert result["added"] == 1
     assert result["resolved"] == 1
+
+from unittest.mock import patch
+
+@patch("app.application.use_cases.admin_use_case._run_sandbox")
+def test_test_metric(mock_run, admin_use_case):
+    mock_run.return_value = 0.95
+    score = admin_use_case.test_metric(b"gt", b"sub", b"script", "accuracy")
+    assert score == 0.95
+
+@patch("app.application.use_cases.admin_use_case._run_sandbox")
+def test_test_metric_failure(mock_run, admin_use_case):
+    mock_run.side_effect = Exception("Error")
+    with pytest.raises(ValueError):
+        admin_use_case.test_metric(b"gt", b"sub", b"script", "accuracy")
+
+from app.application.dtos.admin_dtos import UserCreateDTO, UserUpdateDTO
+
+def test_create_user_success(admin_use_case):
+    data = UserCreateDTO(email="new@example.com", student_id="123", full_name="New", role=UserRole.STUDENT, password="pwd")
+    admin_use_case.user_repo.get_by_email.return_value = None
+    admin_use_case.user_repo.get_by_student_id.return_value = None
+    mock_saved = UserEntity(id=uuid.uuid4(), email=data.email, student_id=data.student_id, full_name=data.full_name, role=data.role, password_hash="hash", created_at=datetime.now(), updated_at=datetime.now())
+    admin_use_case.user_repo.save.return_value = mock_saved
+    
+    res = admin_use_case.create_user(data)
+    assert res.email == "new@example.com"
+    admin_use_case.uow.commit.assert_called_once()
+
+def test_create_user_duplicate_email(admin_use_case):
+    data = UserCreateDTO(email="new@example.com", student_id="123", full_name="New", role=UserRole.STUDENT, password="pwd")
+    admin_use_case.user_repo.get_by_email.return_value = True
+    with pytest.raises(ValueError):
+        admin_use_case.create_user(data)
+
+def test_create_user_duplicate_student_id(admin_use_case):
+    data = UserCreateDTO(email="new@example.com", student_id="123", full_name="New", role=UserRole.STUDENT, password="pwd")
+    admin_use_case.user_repo.get_by_email.return_value = None
+    admin_use_case.user_repo.get_by_student_id.return_value = True
+    with pytest.raises(ValueError):
+        admin_use_case.create_user(data)
+
+def test_update_user_success(admin_use_case):
+    uid = uuid.uuid4()
+    mock_user = _make_user()
+    admin_use_case.user_repo.get_by_id_admin.return_value = mock_user
+    admin_use_case.user_repo.get_by_email.return_value = None
+    admin_use_case.user_repo.get_by_student_id.return_value = None
+    admin_use_case.user_repo.save.return_value = mock_user
+
+    data = UserUpdateDTO(email="updated@example.com", student_id="999", full_name="Updated", role=UserRole.ADMIN, password="new")
+    res = admin_use_case.update_user(uid, data)
+    assert res.email == "updated@example.com"
+    admin_use_case.uow.commit.assert_called_once()
+
+def test_update_user_not_found(admin_use_case):
+    admin_use_case.user_repo.get_by_id_admin.return_value = None
+    with pytest.raises(NotFoundError):
+        admin_use_case.update_user(uuid.uuid4(), UserUpdateDTO())
+
+def test_update_user_duplicate_email(admin_use_case):
+    mock_user = _make_user()
+    admin_use_case.user_repo.get_by_id_admin.return_value = mock_user
+    admin_use_case.user_repo.get_by_email.return_value = True
+    with pytest.raises(ValueError):
+        admin_use_case.update_user(uuid.uuid4(), UserUpdateDTO(email="exists@example.com"))
+
+def test_update_user_duplicate_student_id(admin_use_case):
+    mock_user = _make_user()
+    admin_use_case.user_repo.get_by_id_admin.return_value = mock_user
+    admin_use_case.user_repo.get_by_email.return_value = None
+    admin_use_case.user_repo.get_by_student_id.return_value = True
+    with pytest.raises(ValueError):
+        admin_use_case.update_user(uuid.uuid4(), UserUpdateDTO(student_id="exists"))
+
+def test_update_user_root_admin_role_change(admin_use_case):
+    admin_use_case.root_admin_email = "root@example.com"
+    mock_user = _make_user("root@example.com")
+    admin_use_case.user_repo.get_by_id_admin.return_value = mock_user
+    with pytest.raises(PermissionDeniedError):
+        admin_use_case.update_user(uuid.uuid4(), UserUpdateDTO(role=UserRole.STUDENT))
+
+def test_import_users_csv(admin_use_case):
+    csv_content = b"student_id,email,full_name\n123,test1@test.com,User 1\n,test2@test.com,User 2\n"
+    admin_use_case.user_repo.get_by_email.return_value = None
+    admin_use_case.user_repo.get_by_student_id.return_value = None
+    
+    res = admin_use_case.import_users_csv(csv_content)
+    assert res.success == 1
+    assert res.failed == 1
+    admin_use_case.uow.commit.assert_called_once()

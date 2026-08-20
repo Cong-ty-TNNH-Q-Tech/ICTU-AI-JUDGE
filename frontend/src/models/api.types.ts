@@ -41,6 +41,29 @@ export interface UserResponse {
   avatar_url?: string | null;  // Presigned URL (generated on-the-fly)
 }
 
+export interface UserCreateRequest {
+  student_id: string;
+  email: string;
+  full_name: string;
+  role?: UserRole;
+  password?: string;
+}
+
+export interface UserUpdateRequest {
+  student_id?: string;
+  email?: string;
+  full_name?: string;
+  role?: UserRole;
+  password?: string;
+}
+
+export interface UserImportResult {
+  total: number;
+  success: number;
+  failed: number;
+  errors: string[];
+}
+
 export interface UserProfile {
   id: string;
   email: string;
