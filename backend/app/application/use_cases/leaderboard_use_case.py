@@ -199,10 +199,9 @@ class LeaderboardUseCase:
         max_time = datetime.max.replace(tzinfo=timezone.utc) if current_time.tzinfo else datetime.max
         leaderboard.sort(
             key=lambda x: (
-                x.total_score if is_higher_better else -x.total_score,
-                -last_submission_map.get(x.team_id, max_time).timestamp()
-            ),
-            reverse=True
+                -x.total_score if is_higher_better else x.total_score,
+                last_submission_map.get(x.team_id, max_time).timestamp()
+            )
         )
 
         # 6. Assign ranks
