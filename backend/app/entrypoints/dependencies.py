@@ -209,12 +209,13 @@ def get_message_broker() -> IMessageBroker:
 
 
 def get_solution_use_case(
+    uow: IUnitOfWork = Depends(get_uow),
     solution_repo: ISolutionRepository = Depends(get_solution_repository),
     storage_repo: IStorageRepository = Depends(get_storage_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> SolutionUseCase:
-    return SolutionUseCase(solution_repo, storage_repo, challenge_repo, user_repo)
+    return SolutionUseCase(uow, solution_repo, storage_repo, challenge_repo, user_repo)
 
 
 def get_profile_use_case(
@@ -345,9 +346,10 @@ from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
 def get_leaderboard_use_case(
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
     challenge_repo: IChallengeRepository = Depends(get_challenge_repository),
+    contest_repo: IContestRepository = Depends(get_contest_repository),
     team_repo: ITeamRepository = Depends(get_team_repository),
 ) -> LeaderboardUseCase:
-    return LeaderboardUseCase(leaderboard_repo, challenge_repo, team_repo)
+    return LeaderboardUseCase(leaderboard_repo, challenge_repo, contest_repo, team_repo)
 
 
 def get_contest_use_case(
