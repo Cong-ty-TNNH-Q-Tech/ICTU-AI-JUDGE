@@ -5,7 +5,6 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from app.application.dtos.challenge_dtos import ChallengeResponseDTO
 from app.application.utils.mappers import challenge_to_dto
 from app.application.dtos.contest_dtos import (
     ContestChallengesResponseDTO,
@@ -15,7 +14,7 @@ from app.application.dtos.contest_dtos import (
     ContestUpdateDTO,
 )
 from app.application.interfaces.repositories import IContestRepository, IChallengeRepository, IUnitOfWork
-from app.domain.entities.entities import ChallengeEntity, ContestEntity, ContestStatus, ChallengeStatus
+from app.domain.entities.entities import ContestEntity, ContestStatus, ChallengeStatus
 from app.domain.exceptions.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)

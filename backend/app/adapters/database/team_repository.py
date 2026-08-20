@@ -56,7 +56,6 @@ class SQLTeamRepository(ITeamRepository):
         Hỗ trợ Contest (Parent-Child): Nếu user nộp bài cho Challenge con,
         Team có thể được tạo ở Challenge con HOẶC Challenge cha.
         """
-        from sqlalchemy import or_
         from app.adapters.database.models import ChallengeModel
         
         # Lấy Challenge hiện tại để biết parent_id
