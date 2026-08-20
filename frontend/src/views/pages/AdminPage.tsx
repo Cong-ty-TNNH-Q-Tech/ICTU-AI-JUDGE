@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useAuthStore } from '../../store';
 import ChallengeManagePage from './admin/ChallengeManagePage';
 import UserManagePage from './admin/UserManagePage';
 import ContestManagePage from './admin/ContestManagePage';
 
 const AdminPage = () => {
-  const user = useAuthStore((state) => state.user);
   const [tab, setTab] = useState<'challenges' | 'contests' | 'users'>('challenges');
 
   const tabs = [
