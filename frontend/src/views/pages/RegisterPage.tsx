@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import OTPVerificationModal from '../components/OTPVerificationModal';
 import { useToastStore } from '../../store/toastStore';
 import { useAuthVM } from '../../viewmodels/useAuthVM';
 
 const RegisterPage = () => {
   const { loading, register } = useAuthVM();
-  const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
