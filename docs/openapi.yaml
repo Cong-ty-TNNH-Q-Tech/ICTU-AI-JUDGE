@@ -891,7 +891,7 @@ paths:
                   description: (Tùy chọn) Script python chấm điểm thủ công
                 metric_name:
                   type: string
-                  description: Tên metric (ví dụ ACCURACY, F1_SCORE, CUSTOM)
+                  description: Tên metric (ví dụ ACCURACY, F1_SCORE, RMSE, MAE, R2_SCORE, LOG_LOSS, CUSTOM)
       responses:
         '200':
           description: Chạy Sandbox thành công, trả về điểm.

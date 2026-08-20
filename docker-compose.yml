@@ -88,7 +88,7 @@ services:
     env_file:
       - .env
     environment:
-      - HOST_PRETRAINED_WEIGHTS_PATH=pretrained_weights_data
+      - HOST_PRETRAINED_WEIGHTS_PATH=ictu_ai_judge_pretrained_weights
     volumes:
       - ./backend:/app
       # [CRITICAL] DooD (Docker-out-of-Docker) for Sandbox execution
@@ -114,7 +114,7 @@ services:
     env_file:
       - .env
     environment:
-      - HOST_PRETRAINED_WEIGHTS_PATH=pretrained_weights_data
+      - HOST_PRETRAINED_WEIGHTS_PATH=ictu_ai_judge_pretrained_weights
     volumes:
       - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
@@ -142,6 +142,22 @@ services:
       - "8386:80"
     depends_on:
       - backend
+
+  flower:
+    build: 
+      context: ./backend
+    container_name: ictu_ai_judge_flower
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker_cpu:
+        condition: service_started
+    command: celery -A app.adapters.worker.celery_app flower --port=5555 --basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD}
 
   sandbox_builder:
     build:
@@ -171,3 +187,4 @@ volumes:
   pgdata:
   minio_data:
   pretrained_weights_data:
+    name: ictu_ai_judge_pretrained_weights
