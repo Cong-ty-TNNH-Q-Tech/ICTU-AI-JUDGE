@@ -11,6 +11,8 @@ from app.application.dtos.auth_dtos import (
     ForgotPasswordRequestDTO,
     LoginRequestDTO,
     ResetPasswordRequestDTO,
+    RegisterRequestDTO,
+    VerifyOTPRequestDTO,
 )
 from app.application.use_cases.auth_use_case import AuthUseCase
 from app.core.config import get_settings
@@ -157,3 +159,49 @@ def reset_password(
     """
     auth_use_case.reset_password(request.token, request.new_password)
     return {"message": "Mật khẩu đã được đặt lại thành công."}
+
+
+@router.post("/register")
+def register(
+    request: RegisterRequestDTO,
+    auth_use_case: AuthUseCase = Depends(get_auth_use_case),
+):
+    """
+    Yêu cầu đăng ký tài khoản. Gửi mã OTP về email.
+    """
+    auth_use_case.request_registration(
+        email=request.email,
+        password=request.password,
+        full_name=request.full_name,
+        student_id=request.student_id,
+    )
+    return {"message": "Mã xác thực OTP đã được gửi đến email của bạn."}
+
+
+@router.post("/verify-otp", response_model=UserResponse)
+def verify_otp(
+    request: VerifyOTPRequestDTO,
+    response: Response,
+    auth_use_case: AuthUseCase = Depends(get_auth_use_case),
+):
+    """
+    Xác thực OTP và tạo tài khoản, trả về token đăng nhập.
+    """
+    user = auth_use_case.verify_registration_otp(request.email, request.otp)
+
+    access_token = create_access_token(subject=str(user.id), role=user.role.value)
+
+    response.set_cookie(
+        key=settings.COOKIE_NAME,
+        value=access_token,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+    )

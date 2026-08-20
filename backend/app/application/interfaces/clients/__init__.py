@@ -21,3 +21,16 @@ class IMailClient(ABC):
         Gửi email qua SMTP.
         """
         ...
+
+class ICacheClient(ABC):
+    @abstractmethod
+    def set(self, key: str, value: str, ttl_seconds: int) -> None:
+        ...
+
+    @abstractmethod
+    def get(self, key: str) -> str | None:
+        ...
+
+    @abstractmethod
+    def delete(self, key: str) -> None:
+        ...

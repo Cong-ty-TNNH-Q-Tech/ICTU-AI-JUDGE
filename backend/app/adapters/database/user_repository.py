@@ -78,6 +78,13 @@ class UserRepository(IUserRepository):
         result = self._session.execute(stmt).scalar_one_or_none()
         return self._to_entity(result) if result else None
 
+    def get_by_student_id(self, student_id: str) -> Optional[UserEntity]:
+        stmt = select(UserModel).where(
+            UserModel.student_id == student_id, UserModel.deleted_at.is_(None)
+        )
+        result = self._session.execute(stmt).scalar_one_or_none()
+        return self._to_entity(result) if result else None
+
     def save(self, user: UserEntity) -> UserEntity:
         model = self._to_model(user)
         merged = self._session.merge(model)
