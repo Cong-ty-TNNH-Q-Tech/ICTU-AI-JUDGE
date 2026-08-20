@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from app.application.dtos.leaderboard_dtos import LeaderboardResponseDTO, LeaderboardType
 from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase

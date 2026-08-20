@@ -5,7 +5,6 @@ Shared file validation utilities for Use Cases.
 import csv
 import io
 import posixpath
-import uuid
 import zipfile
 
 
