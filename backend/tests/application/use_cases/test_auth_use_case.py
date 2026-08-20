@@ -13,8 +13,10 @@ def auth_use_case():
     user_repo = MagicMock()
     google_client = MagicMock()
     password_reset_repo = MagicMock()
+    mail_client = MagicMock()
+    cache_client = MagicMock()
     uow = MagicMock()
-    return AuthUseCase(user_repo, google_client, password_reset_repo, uow)
+    return AuthUseCase(user_repo, google_client, password_reset_repo, mail_client, cache_client, uow)
 
 def test_login_with_google_success_new_user(auth_use_case):
     auth_use_case._google_client.verify_token.return_value = {
@@ -23,6 +25,7 @@ def test_login_with_google_success_new_user(auth_use_case):
         "name": "Test User"
     }
     auth_use_case._user_repo.get_by_email.return_value = None
+    auth_use_case._user_repo.get_by_student_id.return_value = None
     
     def mock_save(u):
         return u
@@ -187,3 +190,51 @@ def test_reset_password(auth_use_case):
     auth_use_case._password_reset_repo.mark_as_used.assert_called_once_with(reset.id)
     auth_use_case._uow.commit.assert_called_once()
 
+def test_request_registration_success(auth_use_case):
+    auth_use_case._user_repo.get_by_email.return_value = None
+    auth_use_case._user_repo.get_by_student_id.return_value = None
+    auth_use_case.request_registration("test@ictu.edu.vn", "password", "Test Name", "DTC12345")
+    auth_use_case._cache_client.set.assert_called_once()
+    auth_use_case._mail_client.send_email.assert_called_once()
+
+def test_request_registration_invalid_email(auth_use_case):
+    with pytest.raises(ValueError, match="Chỉ chấp nhận email thuộc tên miền @ictu.edu.vn."):
+        auth_use_case.request_registration("test@gmail.com", "password", "Test Name", "DTC12345")
+
+def test_request_registration_existing_email(auth_use_case):
+    auth_use_case._user_repo.get_by_email.return_value = MagicMock()
+    with pytest.raises(ValueError, match="Email này đã được đăng ký."):
+        auth_use_case.request_registration("test@ictu.edu.vn", "password", "Test Name", "DTC12345")
+
+def test_verify_registration_otp_success(auth_use_case):
+    import json
+    auth_use_case._cache_client.get.return_value = json.dumps({
+        "otp": "123456",
+        "password_hash": "hash",
+        "full_name": "Test",
+        "student_id": "123"
+    })
+    
+    auth_use_case._user_repo.save.side_effect = lambda u: u
+    
+    user = auth_use_case.verify_registration_otp("test@ictu.edu.vn", "123456")
+    
+    assert user.email == "test@ictu.edu.vn"
+    assert user.full_name == "Test"
+    auth_use_case._user_repo.save.assert_called_once()
+    auth_use_case._uow.commit.assert_called_once()
+    auth_use_case._cache_client.delete.assert_called_once()
+
+def test_verify_registration_otp_invalid(auth_use_case):
+    import json
+    auth_use_case._cache_client.get.return_value = json.dumps({
+        "otp": "123456"
+    })
+    
+    with pytest.raises(AuthenticationError, match="Mã OTP không chính xác."):
+        auth_use_case.verify_registration_otp("test@ictu.edu.vn", "654321")
+
+def test_verify_registration_otp_expired(auth_use_case):
+    auth_use_case._cache_client.get.return_value = None
+    with pytest.raises(AuthenticationError, match="Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng đăng ký lại."):
+        auth_use_case.verify_registration_otp("test@ictu.edu.vn", "123456")

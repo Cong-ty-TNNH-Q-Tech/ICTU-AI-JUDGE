@@ -149,6 +149,12 @@ const LoginPage = () => {
         <p className="text-[12px] text-content-tertiary text-center leading-relaxed">
           Only <span className="font-medium text-content-secondary dark:text-content-dark-secondary">@ictu.edu.vn</span> accounts are permitted.
         </p>
+        <p className="text-[12px] text-content-tertiary text-center mt-2">
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
+            Đăng ký ngay
+          </Link>
+        </p>
       </div>
 
       {/* Terms */}
