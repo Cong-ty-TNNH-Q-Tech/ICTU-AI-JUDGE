@@ -154,6 +154,18 @@ class ChallengeEntity:
     require_gpu: bool = False
     tags: list[TagEntity] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        """Ensure datetime fields are timezone-aware."""
+        def _ensure_tz(dt: datetime | None) -> datetime | None:
+            if dt is not None and dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+        self.start_time = _ensure_tz(self.start_time)  # type: ignore[assignment]
+        self.end_time = _ensure_tz(self.end_time)
+        self.created_at = _ensure_tz(self.created_at)  # type: ignore[assignment]
+        self.deleted_at = _ensure_tz(self.deleted_at)
+        self.team_lock_deadline = _ensure_tz(self.team_lock_deadline)
+
     def is_accepting_submissions(self, now: datetime) -> bool:
         """
         Nghiệp vụ: Kiểm tra cửa sổ thời gian nhận bài.
