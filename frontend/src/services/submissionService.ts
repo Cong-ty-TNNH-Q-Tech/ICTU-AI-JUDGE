@@ -1,5 +1,5 @@
 import { apiClient } from '../core/apiClient';
-import type { Submission, SelectForPrivateRequest } from '../models/api.types';
+import type { Submission, SelectForPrivateRequest, SourceCodeUploadResponse } from '../models/api.types';
 import type { AxiosProgressEvent } from 'axios';
 import axios from 'axios';
 
@@ -57,5 +57,25 @@ export const submissionService = {
       }
       throw err;
     }
+  },
+
+  /** UC06 — Nộp Source Code (Anti-Cheat) */
+  async uploadSourceCodeWithProgress(
+    submissionId: string, 
+    file: File, 
+    onProgress: (progressEvent: AxiosProgressEvent) => void
+  ): Promise<SourceCodeUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const { data } = await apiClient.post<SourceCodeUploadResponse>(
+      `/submissions/${submissionId}/source-code`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: onProgress,
+      }
+    );
+    return data;
   }
 };
