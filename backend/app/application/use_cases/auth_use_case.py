@@ -6,7 +6,6 @@ import logging
 import secrets
 import uuid
 import json
-import random
 from datetime import datetime, timedelta, timezone
 
 from app.application.interfaces.repositories import IUserRepository, IPasswordResetRepository, IUnitOfWork
@@ -59,8 +58,10 @@ class AuthUseCase:
         if data.get("email_verified") not in (True, "true"):
             raise AuthenticationError("Email Google chưa được xác thực (email_verified=false).")
 
-
         is_root = self._is_root_admin(email)
+        
+        if not is_root and not email.endswith("@ictu.edu.vn"):
+            raise AuthenticationError("Chỉ cho phép tài khoản email @ictu.edu.vn")
         student_id = email.split("@")[0]
         full_name = data.get("name", "Student")
 
@@ -218,7 +219,7 @@ class AuthUseCase:
             raise ValueError("Mã sinh viên này đã được đăng ký.")
             
         # Generate 6-digit OTP
-        otp = f"{random.randint(0, 999999):06d}"
+        otp = f"{secrets.randbelow(1_000_000):06d}"
         
         # Save to Redis with 5 minutes expiration
         key = f"reg_otp:{email}"
