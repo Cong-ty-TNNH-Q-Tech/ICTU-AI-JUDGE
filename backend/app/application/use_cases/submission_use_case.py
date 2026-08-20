@@ -214,6 +214,7 @@ class SubmissionUseCase:
         self,
         submission_id: uuid.UUID,
         user_id: uuid.UUID,
+        is_selected: bool = True,
     ) -> SelectForPrivateResponseDTO:
         """
         UC05 — Đánh dấu bài nộp làm bài tính điểm chung cuộc.
@@ -251,21 +252,39 @@ class SubmissionUseCase:
             challenge_id=submission.challenge_id,
         )
 
-        # Chọn submission mới
-        self.submission_repo.set_selected_for_private(submission_id, True)
+        if is_selected:
+            # Chọn submission mới
+            self.submission_repo.set_selected_for_private(submission_id, True)
+            self.leaderboard_repo.update_private_selection(
+                team_id=submission.team_id,
+                challenge_id=submission.challenge_id,
+                submission_id=submission_id,
+                private_score=submission.private_score,
+            )
+            msg = "Đã chọn bài làm bài tính điểm chung cuộc."
+        else:
+            self.leaderboard_repo.update_private_selection(
+                team_id=submission.team_id,
+                challenge_id=submission.challenge_id,
+                submission_id=None,
+                private_score=None,
+            )
+            msg = "Đã bỏ chọn bài tính điểm chung cuộc."
+            
         if self.uow:
             self.uow.commit()
             
         logger.info(
-            "UC05 — Selected for private: submission_id=%s team_id=%s",
+            "UC05 — Selected for private: submission_id=%s team_id=%s selected=%s",
             submission_id,
             submission.team_id,
+            is_selected
         )
 
         return SelectForPrivateResponseDTO(
             submission_id=submission_id,
-            is_selected_for_private=True,
-            message="Đã chọn bài làm bài tính điểm chung cuộc.",
+            is_selected_for_private=is_selected,
+            message=msg,
         )
 
     # ==========================================
