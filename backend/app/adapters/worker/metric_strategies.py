@@ -26,7 +26,7 @@ def compute_score(y_true, y_pred, metric_name):
             y_t = [float(x) for x in y_true]
             y_p = [float(x) for x in y_pred]
         except ValueError as e:
-            print(f"Lỗi ép kiểu dữ liệu sang float khi tính MAE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính MAE. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
             sys.exit(1)
         return mean_absolute_error(y_t, y_p)
     elif metric_name == 'R2_SCORE':
@@ -34,7 +34,7 @@ def compute_score(y_true, y_pred, metric_name):
             y_t = [float(x) for x in y_true]
             y_p = [float(x) for x in y_pred]
         except ValueError as e:
-            print(f"Lỗi ép kiểu dữ liệu sang float khi tính R2 Score. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính R2 Score. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
             sys.exit(1)
         import numpy as np
         if np.var(y_t) == 0:
@@ -45,7 +45,7 @@ def compute_score(y_true, y_pred, metric_name):
             y_t = [float(x) for x in y_true]
             y_p = [float(x) for x in y_pred]
         except ValueError as e:
-            print(f"Lỗi ép kiểu dữ liệu sang float khi tính Log Loss. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {e}")
+            print(f"Lỗi ép kiểu dữ liệu sang float khi tính Log Loss. Vui lòng đảm bảo các cột dự đoán chỉ chứa số. Chi tiết: {{e}}")
             sys.exit(1)
         return log_loss(y_t, y_p)
     elif metric_name == 'PRECISION':

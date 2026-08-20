@@ -36,7 +36,7 @@ class Base(DeclarativeBase):
     pass
 
 
-from app.application.interfaces.repositories import IUnitOfWork
+from app.application.interfaces.repositories import IUnitOfWork  # noqa: E402
 
 class SQLUnitOfWork(IUnitOfWork):
     """

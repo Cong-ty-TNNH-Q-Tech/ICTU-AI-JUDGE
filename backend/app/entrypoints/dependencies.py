@@ -340,7 +340,7 @@ def get_optional_current_user(
 
 get_current_admin = require_admin
 
-from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase
+from app.application.use_cases.leaderboard_use_case import LeaderboardUseCase  # noqa: E402
 
 def get_leaderboard_use_case(
     leaderboard_repo: ILeaderboardRepository = Depends(get_leaderboard_repository),
